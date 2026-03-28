@@ -1,10 +1,14 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const ready = resolvedTheme !== undefined;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
   const dark = resolvedTheme === "dark";
 
   return (
@@ -12,10 +16,10 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setTheme(dark ? "light" : "dark")}
       className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-foreground shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
-      aria-label={dark ? "Açık temaya geç" : "Koyu temaya geç"}
-      title={dark ? "Açık tema" : "Koyu tema"}
+      aria-label={mounted ? (dark ? "Açık temaya geç" : "Koyu temaya geç") : "Tema değiştir"}
+      title={mounted ? (dark ? "Açık tema" : "Koyu tema") : "Tema değiştir"}
     >
-      {ready ? (
+      {mounted ? (
         dark ? (
           <SunIcon className="h-[1.125rem] w-[1.125rem] text-amber-300" />
         ) : (

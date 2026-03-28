@@ -39,28 +39,57 @@ function isDifficulty(v: string): v is Difficulty {
 /* ------------------------------------------------------------------ */
 
 async function _getSongBySlugs(artistSlug: string, songSlug: string): Promise<(SongDoc & { id: string }) | null> {
-  const snap = await db()
-    .collection(COLLECTION)
-    .where("artistSlug", "==", artistSlug)
-    .where("slug", "==", songSlug)
-    .where("moderationStatus", "==", "approved")
-    .limit(1)
-    .get();
+  try {
+    const snap = await db()
+      .collection(COLLECTION)
+      .where("artistSlug", "==", artistSlug)
+      .where("slug", "==", songSlug)
+      .where("moderationStatus", "==", "approved")
+      .limit(1)
+      .get();
 
-  if (snap.empty) return null;
-  const doc = snap.docs[0];
-  return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+    if (snap.empty) return null;
+    const doc = snap.docs[0];
+    return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+  } catch (err: unknown) {
+    if ((err as { code?: number }).code === 9) {
+      console.warn("[songs] Composite index missing for slug query, falling back to broader query");
+      const snap = await db()
+        .collection(COLLECTION)
+        .where("artistSlug", "==", artistSlug)
+        .where("moderationStatus", "==", "approved")
+        .get();
+      const doc = snap.docs.find((d) => (d.data() as SongDoc).slug === songSlug);
+      if (!doc) return null;
+      return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+    }
+    throw err;
+  }
 }
 
 async function _getSongsByArtist(artistSlug: string): Promise<(SongDoc & { id: string })[]> {
-  const snap = await db()
-    .collection(COLLECTION)
-    .where("artistSlug", "==", artistSlug)
-    .where("moderationStatus", "==", "approved")
-    .orderBy("title")
-    .get();
-
-  return snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
+  try {
+    const snap = await db()
+      .collection(COLLECTION)
+      .where("artistSlug", "==", artistSlug)
+      .where("moderationStatus", "==", "approved")
+      .orderBy("title")
+      .get();
+    return snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
+  } catch (err: unknown) {
+    if ((err as { code?: number }).code === 9) {
+      console.warn("[songs] Composite index missing for artist query, falling back to in-memory sort");
+      const snap = await db()
+        .collection(COLLECTION)
+        .where("artistSlug", "==", artistSlug)
+        .where("moderationStatus", "==", "approved")
+        .get();
+      return snap.docs
+        .map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }))
+        .sort((a, b) => a.title.localeCompare(b.title, "tr"));
+    }
+    throw err;
+  }
 }
 
 async function _getFilteredSongs(params: {
@@ -69,23 +98,47 @@ async function _getFilteredSongs(params: {
   ton?: string;
   zorluk?: string;
 }): Promise<(SongDoc & { id: string })[]> {
-  let q: FirebaseFirestore.Query = db()
-    .collection(COLLECTION)
-    .where("moderationStatus", "==", "approved");
+  let results: (SongDoc & { id: string })[];
 
-  if (params.sanatci) {
-    q = q.where("artistSlug", "==", params.sanatci);
-  }
-  if (params.ton) {
-    q = q.where("originalKey", "==", params.ton);
-  }
-  if (params.zorluk && isDifficulty(params.zorluk)) {
-    q = q.where("difficulty", "==", params.zorluk);
-  }
+  try {
+    let q: FirebaseFirestore.Query = db()
+      .collection(COLLECTION)
+      .where("moderationStatus", "==", "approved");
 
-  q = q.orderBy("title");
-  const snap = await q.get();
-  let results = snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
+    if (params.sanatci) {
+      q = q.where("artistSlug", "==", params.sanatci);
+    }
+    if (params.ton) {
+      q = q.where("originalKey", "==", params.ton);
+    }
+    if (params.zorluk && isDifficulty(params.zorluk)) {
+      q = q.where("difficulty", "==", params.zorluk);
+    }
+
+    q = q.orderBy("title");
+    const snap = await q.get();
+    results = snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
+  } catch (err: unknown) {
+    const code = (err as { code?: number }).code;
+    if (code === 9) {
+      console.warn("[songs] Composite index missing, falling back to in-memory filter+sort");
+      const allSnap = await db()
+        .collection(COLLECTION)
+        .where("moderationStatus", "==", "approved")
+        .get();
+      results = allSnap.docs
+        .map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }))
+        .filter((s) => {
+          if (params.sanatci && s.artistSlug !== params.sanatci) return false;
+          if (params.ton && s.originalKey !== params.ton) return false;
+          if (params.zorluk && isDifficulty(params.zorluk) && s.difficulty !== params.zorluk) return false;
+          return true;
+        })
+        .sort((a, b) => a.title.localeCompare(b.title, "tr"));
+    } else {
+      throw err;
+    }
+  }
 
   if (params.harf) {
     const h = params.harf.toUpperCase();
