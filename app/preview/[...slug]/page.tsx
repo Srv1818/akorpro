@@ -55,6 +55,9 @@ export default async function PreviewPage({ params }: Props) {
         <Suspense fallback={<PreviewFallback />}>
           <PreviewClient
             songId={song.id}
+            songTitle={song.title}
+            artistSlug={song.artistSlug}
+            songSlug={song.slug}
             originalKey={song.originalKey}
             chordBody={song.chordBody}
             serverUid={sessionUser?.uid ?? null}
