@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { artistPath, chordPath } from "@/lib/paths";
-import type { MockSong } from "@/lib/types/content";
+import type { SongSummary } from "@/lib/types/content";
 
-export function SongCard({ song, showArtist = true }: { song: MockSong; showArtist?: boolean }) {
+export function SongCard({ song, showArtist = true }: { song: SongSummary; showArtist?: boolean }) {
   return (
     <article className="rounded-xl border border-border bg-surface p-4 shadow-sm transition hover:border-accent/30">
       <h2 className="font-semibold text-foreground">

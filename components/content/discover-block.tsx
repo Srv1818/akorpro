@@ -1,4 +1,4 @@
-import type { MockSong } from "@/lib/types/content";
+import type { SongSummary } from "@/lib/types/content";
 import { SongCard } from "@/components/content/song-card";
 
 export function DiscoverBlock({
@@ -8,7 +8,7 @@ export function DiscoverBlock({
 }: {
   id: string;
   title: string;
-  songs: MockSong[];
+  songs: SongSummary[];
 }) {
   return (
     <section className="space-y-4" aria-labelledby={id}>

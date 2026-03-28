@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/content/page-header";
 import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
-import { getSongBySlugs } from "@/data/mock/songs";
+import { getSongBySlugs } from "@/lib/firestore/songs";
 import { getServerSessionUser } from "@/lib/auth/server-session";
 import { firstParam } from "@/lib/search-params";
 
@@ -17,11 +17,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   if (slug?.length !== 2) return { title: "Önizleme", robots: { index: false, follow: true } };
   const [a, s] = slug;
-  const song = getSongBySlugs(a, s);
+  const song = await getSongBySlugs(a, s);
   if (!song) return { title: "Önizleme", robots: { index: false, follow: true } };
   return {
     title: `Önizleme: ${song.title}`,
-    description: `Paylaşım ve sahne araçları iskeleti — ${song.artistName}. Parametreli transpose URL kanonik değildir.`,
+    description: `${song.artistName} — ${song.title} · Orijinal ton: ${song.originalKey}. Transpoze ve sahne araçları.`,
     robots: { index: false, follow: true },
   };
 }
@@ -38,7 +38,7 @@ export default async function PreviewPage({ params, searchParams }: Props) {
   const { slug } = await params;
   if (!slug || slug.length !== 2) notFound();
   const [artistSlug, songSlug] = slug;
-  const song = getSongBySlugs(artistSlug, songSlug);
+  const song = await getSongBySlugs(artistSlug, songSlug);
   if (!song) notFound();
 
   const sp = await searchParams;
@@ -56,6 +56,18 @@ export default async function PreviewPage({ params, searchParams }: Props) {
           <>
             {song.artistName} · Orijinal ton (sunucu):{" "}
             <span className="font-mono text-foreground">{song.originalKey}</span>
+            {song.tempo ? (
+              <>
+                {" · "}
+                <span className="text-foreground">{song.tempo} BPM</span>
+              </>
+            ) : null}
+            {song.capo ? (
+              <>
+                {" · Kapo: "}
+                <span className="text-foreground">{song.capo}. perde</span>
+              </>
+            ) : null}
           </>
         }
       />

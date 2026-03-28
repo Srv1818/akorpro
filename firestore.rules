@@ -15,6 +15,25 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
+    /* ---- Şarkılar (songs) ---- */
+    match /songs/{songId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---- Sanatçılar (artists) ---- */
+    match /artists/{artistId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---- Keşfet (discover) ---- */
+    match /discover/{section} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---- Kullanıcı: çalma listeleri ---- */
     match /users/{userId}/playlists/{playlistId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }
@@ -23,11 +42,12 @@ service cloud.firestore {
       allow read, write: if isOwner(userId) || isAdmin();
     }
 
+    /* ---- Kullanıcı: songOverrides ---- */
     match /users/{userId}/songOverrides/{songId} {
       allow read, write: if isOwner(userId) || isAdmin();
     }
 
-    /** Üst `users/{userId}` kök dokümanı (profil vb.) — şimdilik kapalı. */
+    /** users/{userId} kök dokümanı — şimdilik kapalı. */
     match /users/{userId} {
       allow read, write: if false;
     }

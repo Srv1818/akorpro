@@ -1,5 +1,24 @@
 export type Difficulty = "kolay" | "orta" | "zor";
 
+/** UI bileşenleri için minimum şarkı alanları (SongCard, DiscoverBlock vb.) */
+export type SongSummary = {
+  id: string;
+  title: string;
+  slug: string;
+  artistSlug: string;
+  artistName: string;
+  originalKey: string;
+  difficulty: Difficulty;
+};
+
+/** Filtre facet seçenekleri — SongFilters prop */
+export type FilterFacets = {
+  artists: { slug: string; name: string }[];
+  keys: string[];
+  difficulties: readonly Difficulty[];
+  letters: string[];
+};
+
 export type MockArtist = {
   id: string;
   name: string;

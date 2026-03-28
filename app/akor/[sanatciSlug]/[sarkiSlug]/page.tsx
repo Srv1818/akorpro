@@ -2,30 +2,31 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/content/page-header";
-import { getSongBySlugs, mockSongs } from "@/data/mock/songs";
+import { getSongBySlugs, getAllApprovedSongs } from "@/lib/firestore/songs";
 import { previewPath } from "@/lib/paths";
 
 type Props = {
   params: Promise<{ sanatciSlug: string; sarkiSlug: string }>;
 };
 
-export function generateStaticParams() {
-  return mockSongs.map((s) => ({ sanatciSlug: s.artistSlug, sarkiSlug: s.slug }));
+export async function generateStaticParams() {
+  const songs = await getAllApprovedSongs();
+  return songs.map((s) => ({ sanatciSlug: s.artistSlug, sarkiSlug: s.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { sanatciSlug, sarkiSlug } = await params;
-  const song = getSongBySlugs(sanatciSlug, sarkiSlug);
+  const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) return { title: "Şarkı bulunamadı" };
   return {
     title: `${song.title} — ${song.artistName}`,
-    description: `${song.originalKey} ton — mock akor metni. Orijinal ton sunucuda sabittir; transpoze yalnızca önizleme ve istemci katmanında.`,
+    description: `${song.title} akor ve sözleri — ${song.artistName} · Orijinal ton: ${song.originalKey}`,
   };
 }
 
 export default async function AkorSongPage({ params }: Props) {
   const { sanatciSlug, sarkiSlug } = await params;
-  const song = getSongBySlugs(sanatciSlug, sarkiSlug);
+  const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) notFound();
 
   return (
@@ -41,6 +42,18 @@ export default async function AkorSongPage({ params }: Props) {
             <span className="font-mono text-foreground">{song.originalKey}</span>
             <span className="text-muted"> · Zorluk: </span>
             <span className="capitalize text-foreground">{song.difficulty}</span>
+            {song.tempo ? (
+              <>
+                <span className="text-muted"> · Tempo: </span>
+                <span className="text-foreground">{song.tempo} BPM</span>
+              </>
+            ) : null}
+            {song.capo ? (
+              <>
+                <span className="text-muted"> · Kapo: </span>
+                <span className="text-foreground">{song.capo}. perde</span>
+              </>
+            ) : null}
           </>
         }
       />
@@ -52,11 +65,19 @@ export default async function AkorSongPage({ params }: Props) {
           >
             Önizleme modu
           </Link>
-          <span className="self-center text-xs text-muted">Transpoze / sahne araçları önizlemede (mock).</span>
+          {song.timeSignature ? (
+            <span className="self-center text-xs text-muted">Ölçü: {song.timeSignature}</span>
+          ) : null}
+          {song.tuning && song.tuning !== "Standard" ? (
+            <span className="self-center text-xs text-muted">Akort: {song.tuning}</span>
+          ) : null}
         </div>
         <article className="mt-8 rounded-2xl border border-border bg-surface p-6">
           <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed text-foreground">{song.chordBody}</pre>
         </article>
+        {song.copyrightSource ? (
+          <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p>
+        ) : null}
       </div>
     </>
   );

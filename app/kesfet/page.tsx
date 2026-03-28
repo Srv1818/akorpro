@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
 import { DiscoverBlock } from "@/components/content/discover-block";
 import { PageHeader } from "@/components/content/page-header";
-import { getDiscoverFeatured, getDiscoverNew, getDiscoverPopular } from "@/data/mock/discover";
+import { getDiscoverFeatured, getDiscoverNew, getDiscoverPopular } from "@/lib/firestore/discover";
 
 export const metadata: Metadata = {
   title: "Keşfet",
-  description: "Popüler, yeni ve öne çıkan şarkılar — mock veri ile üç ayrı sunucu bölümü.",
+  description: "Popüler, yeni ve öne çıkan şarkılar.",
 };
 
-export default function KesfetPage() {
-  const popular = getDiscoverPopular();
-  const yeni = getDiscoverNew();
-  const featured = getDiscoverFeatured();
+export default async function KesfetPage() {
+  const [popular, yeni, featured] = await Promise.all([
+    getDiscoverPopular(),
+    getDiscoverNew(),
+    getDiscoverFeatured(),
+  ]);
 
   return (
     <>
       <PageHeader
         title="Keşfet"
-        description="Üç blok için ayrı mock veri kaynakları (ARCHITECTURE Faz 2). İleride her blok bağımsız Firestore sorgusu ve ISR etiketleri ile beslenecek."
+        description="Her blok bağımsız Firestore sorgusu ile beslenir."
       />
       <div className="mx-auto max-w-6xl space-y-12 px-4 py-10 sm:px-6 lg:px-8">
         <DiscoverBlock id="discover-popular" title="Popüler" songs={popular} />

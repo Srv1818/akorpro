@@ -36,13 +36,12 @@ export default function Home() {
       />
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-medium uppercase tracking-widest text-accent">Faz 2 · routing + mock</p>
+          <p className="text-sm font-medium uppercase tracking-widest text-accent">Faz 3 · Firestore</p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             AkorPro&apos;ya hoş geldiniz
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
-            Kanonik URL&apos;ler, keşfet üçlüsü, şarkı listesi filtreleri ve önizleme iskeleti hazır. Bir sonraki adım
-            Firebase ve gerçek içerik borusu (Faz 3).
+            Şarkılar, sanatçılar ve keşfet akışı Firestore&apos;dan besleniyor. Auth, çalma listeleri ve songOverrides hazır.
           </p>
         </div>
 
@@ -84,7 +83,7 @@ export default function Home() {
           <Link href="/giris" className="font-medium text-accent underline-offset-4 hover:underline">
             Giriş
           </Link>{" "}
-          (Faz 3)
+          Giriş
         </p>
       </div>
     </div>

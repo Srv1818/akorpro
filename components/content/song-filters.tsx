@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { filterFacetOptions } from "@/data/mock/filters";
+import type { FilterFacets } from "@/lib/types/content";
 
 type Props = {
   basePath: string;
@@ -9,6 +9,7 @@ type Props = {
     ton?: string;
     zorluk?: string;
   };
+  facets: FilterFacets;
 };
 
 function buildQuery(next: Record<string, string | undefined>): string {
@@ -26,8 +27,8 @@ function withoutKey(c: Props["current"], key: keyof Props["current"]): Props["cu
   return n;
 }
 
-export function SongFilters({ basePath, current }: Props) {
-  const { artists, keys, difficulties, letters } = filterFacetOptions();
+export function SongFilters({ basePath, current, facets }: Props) {
+  const { artists, keys, difficulties, letters } = facets;
 
   return (
     <div className="space-y-6 rounded-2xl border border-border bg-surface p-4 sm:p-6">
@@ -64,7 +65,7 @@ export function SongFilters({ basePath, current }: Props) {
           >
             <option value="">Tümü</option>
             {artists.map((a) => (
-              <option key={a.id} value={a.slug}>
+              <option key={a.slug} value={a.slug}>
                 {a.name}
               </option>
             ))}
