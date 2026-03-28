@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE_MAX_MS, SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { getAdminAuth } from "@/lib/firebase/admin";
+import { sessionRateLimiter } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!sessionRateLimiter.check(clientIp)) {
+    return NextResponse.json({ error: "Çok fazla istek. Lütfen bekleyin." }, { status: 429 });
+  }
+
   const auth = getAdminAuth();
   if (!auth) {
     return NextResponse.json(

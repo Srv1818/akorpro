@@ -15,6 +15,16 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
+    /**
+     * Rate limit: son yazımdan bu yana en az `seconds` saniye geçmiş olmalı.
+     * Yeni doküman (create) her zaman kabul edilir.
+     */
+    function rateLimitWrite(seconds) {
+      return !exists(resource)
+        || !("updatedAt" in resource.data)
+        || request.time > resource.data.updatedAt + duration.value(seconds, 's');
+    }
+
     /* ---- Şarkılar (songs) ---- */
     match /songs/{songId} {
       allow read: if true;
@@ -35,16 +45,31 @@ service cloud.firestore {
 
     /* ---- Kullanıcı: çalma listeleri ---- */
     match /users/{userId}/playlists/{playlistId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) && rateLimitWrite(2)) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /users/{userId}/playlists/{playlistId}/items/{itemId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) && rateLimitWrite(1)) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     /* ---- Kullanıcı: songOverrides ---- */
     match /users/{userId}/songOverrides/{songId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) && rateLimitWrite(2)) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    /* ---- Admin audit log (server-side write only) ---- */
+    match /admin_audit/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     /** users/{userId} kök dokümanı — şimdilik kapalı. */

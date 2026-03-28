@@ -24,9 +24,11 @@ function ThemeCookieSync() {
 export function ThemeProvider({
   children,
   defaultTheme,
+  nonce,
 }: {
   children: React.ReactNode;
   defaultTheme: "dark" | "light" | "system";
+  nonce?: string;
 }) {
   return (
     <NextThemesProvider
@@ -35,6 +37,7 @@ export function ThemeProvider({
       enableSystem
       storageKey={THEME_COOKIE}
       disableTransitionOnChange
+      nonce={nonce}
     >
       <ThemeCookieSync />
       {children}

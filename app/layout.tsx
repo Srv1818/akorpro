@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteNavbar } from "@/components/layout/site-navbar";
@@ -33,8 +33,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const jar = await cookies();
+  const [jar, hdrs] = await Promise.all([cookies(), headers()]);
   const defaultTheme = defaultThemeFromCookie(jar.get(THEME_COOKIE)?.value);
+  const nonce = hdrs.get("x-nonce") ?? undefined;
 
   const firebaseAuthHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 
@@ -51,7 +52,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
       >
-        <ThemeProvider defaultTheme={defaultTheme}>
+        <ThemeProvider defaultTheme={defaultTheme} nonce={nonce}>
           <a
             href="#icerik"
             className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-foreground"

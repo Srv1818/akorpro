@@ -2,8 +2,10 @@ import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore, type Firestore } from "firebase/firestore";
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
+import { activateAppCheck } from "@/lib/security/app-check";
 
 let emulatorsConnected = false;
+let appCheckActivated = false;
 
 function connectEmulatorsIfNeeded(app: FirebaseApp) {
   if (emulatorsConnected) return;
@@ -33,6 +35,12 @@ export function getFirebaseApp(): FirebaseApp {
   }
   const app = getApps().length > 0 ? getApp() : initializeApp(config);
   connectEmulatorsIfNeeded(app);
+
+  if (!appCheckActivated) {
+    appCheckActivated = true;
+    activateAppCheck();
+  }
+
   return app;
 }
 
