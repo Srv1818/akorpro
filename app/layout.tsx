@@ -36,8 +36,18 @@ export default async function RootLayout({
   const jar = await cookies();
   const defaultTheme = defaultThemeFromCookie(jar.get(THEME_COOKIE)?.value);
 
+  const firebaseAuthHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+
   return (
     <html lang="tr" suppressHydrationWarning>
+      <head>
+        {firebaseAuthHost ? (
+          <>
+            <link rel="preconnect" href={`https://${firebaseAuthHost}`} crossOrigin="" />
+            <link rel="dns-prefetch" href="https://www.googleapis.com" />
+          </>
+        ) : null}
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
       >

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { AuthHeaderActions } from "@/components/auth/auth-header-actions";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { mainNav } from "@/lib/nav";
 
 export function SiteNavbar() {
@@ -41,12 +42,7 @@ export function SiteNavbar() {
             Ara
           </Link>
           <ThemeToggle />
-          <Link
-            href="/giris"
-            className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted sm:px-4"
-          >
-            Giriş
-          </Link>
+          <AuthHeaderActions />
           <MobileNav items={items} />
         </div>
       </div>
