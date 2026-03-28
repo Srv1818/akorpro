@@ -3,11 +3,14 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/content/page-header";
 import { PreviewClient } from "@/components/preview/preview-client";
+import { PreviewShell } from "@/components/preview/preview-shell";
 import { getSongBySlugs } from "@/data/mock/songs";
 import { getServerSessionUser } from "@/lib/auth/server-session";
+import { firstParam } from "@/lib/search-params";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -31,12 +34,17 @@ function PreviewFallback() {
   );
 }
 
-export default async function PreviewPage({ params }: Props) {
+export default async function PreviewPage({ params, searchParams }: Props) {
   const { slug } = await params;
   if (!slug || slug.length !== 2) notFound();
   const [artistSlug, songSlug] = slug;
   const song = getSongBySlugs(artistSlug, songSlug);
   if (!song) notFound();
+
+  const sp = await searchParams;
+  const rawTranspose = firstParam(sp.transpose);
+  const parsedTranspose = rawTranspose !== undefined ? Number(rawTranspose) : 0;
+  const initialTranspose = Number.isFinite(parsedTranspose) ? parsedTranspose : 0;
 
   const sessionUser = await getServerSessionUser();
 
@@ -53,15 +61,17 @@ export default async function PreviewPage({ params }: Props) {
       />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <Suspense fallback={<PreviewFallback />}>
-          <PreviewClient
-            songId={song.id}
-            songTitle={song.title}
-            artistSlug={song.artistSlug}
-            songSlug={song.slug}
-            originalKey={song.originalKey}
-            chordBody={song.chordBody}
-            serverUid={sessionUser?.uid ?? null}
-          />
+          <PreviewShell instanceKey={song.id} initialTranspose={initialTranspose} initialScaleId="ionian">
+            <PreviewClient
+              songId={song.id}
+              songTitle={song.title}
+              artistSlug={song.artistSlug}
+              songSlug={song.slug}
+              originalKey={song.originalKey}
+              chordBody={song.chordBody}
+              serverUid={sessionUser?.uid ?? null}
+            />
+          </PreviewShell>
         </Suspense>
       </div>
     </>

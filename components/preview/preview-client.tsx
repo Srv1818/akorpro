@@ -16,10 +16,14 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
+import { Fretboard } from "@/components/tools/fretboard";
+import { mockScales } from "@/data/mock/scales";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { getClientAuth, getClientFirestore } from "@/lib/firebase/client";
+import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 
 const OVERRIDE_SCHEMA_VERSION = 1;
 
@@ -56,9 +60,14 @@ export function PreviewClient({
   const pathname = usePathname();
   const [sceneMode, setSceneMode] = useState(false);
 
+  const semitones = usePreviewToolsStore((s) => s.transposeSemitones);
+  const setTransposeSemitones = usePreviewToolsStore((s) => s.setTransposeSemitones);
+  const resetTonalAndTranspose = usePreviewToolsStore((s) => s.resetTonalAndTranspose);
+  const selectedScaleId = usePreviewToolsStore((s) => s.selectedScaleId);
+  const setSelectedScaleId = usePreviewToolsStore((s) => s.setSelectedScaleId);
+
   const fromUrl = Number(searchParams.get("transpose") ?? "0");
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
-  const [semitones, setSemitones] = useState(initial);
 
   const [firebaseUid, setFirebaseUid] = useState<string | null | undefined>(undefined);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -78,8 +87,8 @@ export function PreviewClient({
   }, [initial]);
 
   useEffect(() => {
-    setSemitones(initial);
-  }, [initial]);
+    setTransposeSemitones(initial);
+  }, [initial, setTransposeSemitones]);
 
   useEffect(() => {
     hydrateReadyRef.current = false;
@@ -132,7 +141,7 @@ export function PreviewClient({
         const t = data.transposeSemitones;
         if (typeof t === "number" && Number.isFinite(t)) {
           urlTransposeRef.current = t;
-          setSemitones(t);
+          setTransposeSemitones(t);
         }
       } catch {
         if (!cancelled) hydrateReadyRef.current = true;
@@ -142,7 +151,7 @@ export function PreviewClient({
     return () => {
       cancelled = true;
     };
-  }, [firebaseUid, songId, initial]);
+  }, [firebaseUid, songId, initial, setTransposeSemitones]);
 
   useEffect(() => {
     if (firebaseUid === undefined || firebaseUid === null || !getFirebasePublicConfig()) {
@@ -188,19 +197,19 @@ export function PreviewClient({
 
   const replaceTranspose = useCallback(
     (n: number) => {
-      setSemitones(n);
+      setTransposeSemitones(n);
       urlTransposeRef.current = n;
       const q = n === 0 ? "" : `?transpose=${n}`;
       router.replace(`${pathname}${q}`, { scroll: false });
     },
-    [pathname, router],
+    [pathname, router, setTransposeSemitones],
   );
 
   const resetOriginal = useCallback(() => {
-    setSemitones(0);
+    resetTonalAndTranspose();
     urlTransposeRef.current = 0;
     router.replace(pathname, { scroll: false });
-  }, [pathname, router]);
+  }, [pathname, resetTonalAndTranspose, router]);
 
   const onSave = useCallback(async () => {
     setSaveMessage(null);
@@ -361,6 +370,28 @@ export function PreviewClient({
           <span className="block sm:inline sm:pl-2">· Parametreli URL kanonik değildir (ARCHITECTURE).</span>
         ) : null}
       </p>
+
+      <div className="mt-8 grid gap-8 border-t border-border pt-8 lg:grid-cols-2">
+        <CircleOfFifths variant="widget" />
+        <div>
+          <label htmlFor="preview-scale" className="block text-xs font-medium text-muted">
+            Gam (mock — store ile fretboard)
+          </label>
+          <select
+            id="preview-scale"
+            value={selectedScaleId ?? "ionian"}
+            onChange={(e) => setSelectedScaleId(e.target.value || null)}
+            className="mt-1 w-full max-w-xs rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
+          >
+            {mockScales.map((sc) => (
+              <option key={sc.id} value={sc.id}>
+                {sc.name}
+              </option>
+            ))}
+          </select>
+          <Fretboard mode="scale" maxFret={12} className="mt-4" />
+        </div>
+      </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="flex flex-wrap items-center gap-2">

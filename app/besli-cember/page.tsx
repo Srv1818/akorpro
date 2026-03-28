@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { BesliCemberTools } from "@/components/besli-cember/besli-cember-tools";
 import { PageHeader } from "@/components/content/page-header";
 
 export const metadata: Metadata = {
   title: "5'li çember",
-  description: "Çember aracı iskeleti — SVG/Canvas ve Preview store senkronu ileride.",
+  description: "5'li çember ve tonal merkez — Preview store ile fretboard (akor modu) aynı state'i paylaşır.",
 };
 
 export default function BesliCemberPage() {
@@ -11,15 +12,10 @@ export default function BesliCemberPage() {
     <>
       <PageHeader
         title="5'li çember"
-        description="Ton merkezi ve mod seçimi burada tek bir görsel bileşende toplanacak. Şimdilik yer tutucu; tıklama → merkez güncelleme akışı ARCHITECTURE’daki Preview store ile hizalanacak."
+        description="Tıklama → tonal merkez güncellenir; fretboard majör üçlü vurgusu aynı Zustand store üzerinden okunur (ARCHITECTURE Faz 1)."
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex aspect-square max-h-[min(28rem,70vw)] items-center justify-center rounded-2xl border-2 border-dashed border-border bg-bg">
-          <div className="text-center text-muted">
-            <p className="text-sm font-medium text-foreground">CircleOfFifths</p>
-            <p className="mt-1 text-xs">Tam sayfa + widget varyantı (Faz 1 bileşen iskelesi)</p>
-          </div>
-        </div>
+        <BesliCemberTools />
       </div>
     </>
   );
