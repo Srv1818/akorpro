@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/content/page-header";
 import { PreviewClient } from "@/components/preview/preview-client";
 import { getSongBySlugs } from "@/data/mock/songs";
+import { getServerSessionUser } from "@/lib/auth/server-session";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -37,6 +38,8 @@ export default async function PreviewPage({ params }: Props) {
   const song = getSongBySlugs(artistSlug, songSlug);
   if (!song) notFound();
 
+  const sessionUser = await getServerSessionUser();
+
   return (
     <>
       <PageHeader
@@ -50,7 +53,12 @@ export default async function PreviewPage({ params }: Props) {
       />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <Suspense fallback={<PreviewFallback />}>
-          <PreviewClient originalKey={song.originalKey} chordBody={song.chordBody} />
+          <PreviewClient
+            songId={song.id}
+            originalKey={song.originalKey}
+            chordBody={song.chordBody}
+            serverUid={sessionUser?.uid ?? null}
+          />
         </Suspense>
       </div>
     </>

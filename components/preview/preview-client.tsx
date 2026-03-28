@@ -1,14 +1,30 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import type { SongOverrideDoc } from "@/lib/types/song-override";
+import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
+import { getClientAuth, getClientFirestore } from "@/lib/firebase/client";
+
+const OVERRIDE_SCHEMA_VERSION = 1;
 
 type Props = {
+  songId: string;
   originalKey: string;
   chordBody: string;
+  serverUid: string | null;
 };
 
-export function PreviewClient({ originalKey, chordBody }: Props) {
+function formatError(err: unknown): string {
+  if (err && typeof err === "object" && "code" in err) {
+    return String((err as { code: string }).code);
+  }
+  return "Bilinmeyen hata";
+}
+
+export function PreviewClient({ songId, originalKey, chordBody, serverUid }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -18,13 +34,89 @@ export function PreviewClient({ originalKey, chordBody }: Props) {
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
   const [semitones, setSemitones] = useState(initial);
 
+  const [firebaseUid, setFirebaseUid] = useState<string | null | undefined>(undefined);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const urlTransposeRef = useRef(0);
+
+  const hydrateReadyRef = useRef(false);
+
+  useEffect(() => {
+    urlTransposeRef.current = initial;
+  }, [initial]);
+
   useEffect(() => {
     setSemitones(initial);
   }, [initial]);
 
+  useEffect(() => {
+    hydrateReadyRef.current = false;
+  }, [songId, firebaseUid]);
+
+  useEffect(() => {
+    if (!getFirebasePublicConfig()) {
+      setFirebaseUid(null);
+      return;
+    }
+    try {
+      const auth = getClientAuth();
+      const unsub = auth.onAuthStateChanged((u) => {
+        setFirebaseUid(u?.uid ?? null);
+      });
+      return () => unsub();
+    } catch {
+      setFirebaseUid(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (firebaseUid === undefined || firebaseUid === null || !songId) return;
+    if (hydrateReadyRef.current) return;
+
+    if (initial !== 0) {
+      hydrateReadyRef.current = true;
+      return;
+    }
+
+    if (!getFirebasePublicConfig()) {
+      hydrateReadyRef.current = true;
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const db = getClientFirestore();
+        const snap = await getDoc(doc(db, "users", firebaseUid, "songOverrides", songId));
+        if (cancelled) return;
+        if (urlTransposeRef.current !== 0) {
+          hydrateReadyRef.current = true;
+          return;
+        }
+        hydrateReadyRef.current = true;
+        if (!snap.exists) return;
+        const data = snap.data() as Partial<SongOverrideDoc>;
+        const t = data.transposeSemitones;
+        if (typeof t === "number" && Number.isFinite(t)) {
+          urlTransposeRef.current = t;
+          setSemitones(t);
+        }
+      } catch {
+        if (!cancelled) hydrateReadyRef.current = true;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUid, songId, initial]);
+
   const replaceTranspose = useCallback(
     (n: number) => {
       setSemitones(n);
+      urlTransposeRef.current = n;
       const q = n === 0 ? "" : `?transpose=${n}`;
       router.replace(`${pathname}${q}`, { scroll: false });
     },
@@ -33,17 +125,64 @@ export function PreviewClient({ originalKey, chordBody }: Props) {
 
   const resetOriginal = useCallback(() => {
     setSemitones(0);
+    urlTransposeRef.current = 0;
     router.replace(pathname, { scroll: false });
   }, [pathname, router]);
 
+  const onSave = useCallback(async () => {
+    setSaveMessage(null);
+    if (!firebaseUid) {
+      setSaveState("error");
+      setSaveMessage("Önce giriş yapın.");
+      return;
+    }
+    if (serverUid && serverUid !== firebaseUid) {
+      setSaveState("error");
+      setSaveMessage("Tarayıcı oturumu ile sunucu çerezi eşleşmiyor. Çıkış yapıp yeniden giriş yapın.");
+      return;
+    }
+    if (!getFirebasePublicConfig()) {
+      setSaveState("error");
+      setSaveMessage("Firebase istemci yapılandırması eksik.");
+      return;
+    }
+    setSaveState("saving");
+    try {
+      const db = getClientFirestore();
+      const payload: SongOverrideDoc = {
+        songId,
+        transposeSemitones: semitones,
+        schemaVersion: OVERRIDE_SCHEMA_VERSION,
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(doc(db, "users", firebaseUid, "songOverrides", songId), payload, { merge: true });
+      setSaveState("saved");
+      setSaveMessage("Tercih kaydedildi.");
+    } catch (e) {
+      setSaveState("error");
+      setSaveMessage(formatError(e));
+    }
+  }, [firebaseUid, semitones, serverUid, songId]);
+
+  const firebaseConfigured = Boolean(getFirebasePublicConfig());
+  const sessionMismatch = Boolean(serverUid && firebaseUid && serverUid !== firebaseUid);
+  const canSave =
+    firebaseConfigured && firebaseUid !== undefined && firebaseUid !== null && !sessionMismatch;
+
   return (
     <div className={sceneMode ? "rounded-2xl ring-2 ring-accent ring-offset-2 ring-offset-bg" : ""}>
+      {sessionMismatch ? (
+        <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
+          Sunucu oturumu ile tarayıcı Firebase oturumu eşleşmiyor. Çıkış yapıp yeniden giriş yapın.
+        </p>
+      ) : null}
+
       <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-medium text-foreground">Önizleme görünümü</p>
           <p className="text-xs text-muted">
-            Orijinal ton sunucuda sabit: <span className="font-mono text-foreground">{originalKey}</span> · Transpoze yalnızca
-            görünüm (Faz 2 mock)
+            Orijinal ton sunucuda sabit: <span className="font-mono text-foreground">{originalKey}</span> · Transpoze
+            görünüm katmanı; tercih Firestore&apos;ta saklanabilir.
           </p>
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
@@ -92,24 +231,42 @@ export function PreviewClient({ originalKey, chordBody }: Props) {
         ) : null}
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled
-          title="Faz 3 — Firebase"
-          className="rounded-lg bg-accent/50 px-4 py-2 text-sm font-medium text-accent-foreground opacity-60"
+          disabled={!canSave || saveState === "saving"}
+          onClick={() => void onSave()}
+          title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Kaydet
+          {saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
         </button>
-        <button
-          type="button"
-          disabled
-          title="Faz 3 — oturum gerekir"
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted opacity-60"
-        >
-          Çalma listeme ekle
-        </button>
+        {firebaseUid === undefined ? (
+          <span className="text-sm text-muted">Oturum kontrol ediliyor…</span>
+        ) : firebaseUid === null ? (
+          <Link
+            href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
+          >
+            Giriş (Kaydet için)
+          </Link>
+        ) : (
+          <Link
+            href="/calma-listeleri"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-surface hover:text-foreground"
+          >
+            Çalma listelerim
+          </Link>
+        )}
       </div>
+      {saveMessage ? (
+        <p
+          className={`mt-2 text-sm ${saveState === "error" ? "text-red-200" : "text-muted"}`}
+          role={saveState === "error" ? "alert" : "status"}
+        >
+          {saveMessage}
+        </p>
+      ) : null}
 
       <article className="mt-8 rounded-2xl border border-border bg-bg p-6">
         <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed text-foreground">{chordBody}</pre>
