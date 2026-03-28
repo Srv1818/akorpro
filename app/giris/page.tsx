@@ -5,7 +5,7 @@ import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 
 export const metadata: Metadata = {
   title: "Giriş",
-  description: "Firebase Auth ile oturum açma.",
+  description: "Google ile oturum açma.",
   robots: { index: false, follow: true },
 };
 
@@ -28,7 +28,7 @@ export default async function GirisPage({
     <>
       <PageHeader
         title="Giriş"
-        description="E-posta ve şifre ile oturum açın. İlk kez kullanıyorsanız Firebase Console’da E-posta/Şifre sağlayıcısını açıp kullanıcı oluşturun."
+        description="Yalnızca Google ile giriş. Firebase Console’da Authentication → Google sağlayıcısını açın; canlı ortamda yetkili domain’leri ekleyin."
       />
       <div className="mx-auto max-w-md px-4 py-10 sm:px-6">
         {firebaseClient ? (

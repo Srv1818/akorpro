@@ -4,9 +4,10 @@ import Link from "next/link";
 import { getAuth, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
+import type { SessionUser } from "@/lib/auth/session-user";
 import { getFirebaseApp } from "@/lib/firebase/client";
 
-type MeResponse = { user: { uid: string; email: string | null } | null };
+type MeResponse = { user: SessionUser | null };
 
 export function AuthHeaderActions() {
   const router = useRouter();
