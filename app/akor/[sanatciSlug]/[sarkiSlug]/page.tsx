@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/content/page-header";
+import { CoverImage } from "@/components/content/cover-image";
 import { SongCard } from "@/components/content/song-card";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
@@ -88,6 +89,16 @@ export default async function AkorSongPage({ params }: Props) {
             ) : null}
           </>
         }
+        leading={
+          <CoverImage
+            src={song.coverImageUrl}
+            alt={`${song.title} — ${song.artistName} kapak`}
+            priority
+            className="h-20 w-20 sm:h-24 sm:w-24"
+            width={384}
+            height={384}
+          />
+        }
       />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="flex flex-wrap gap-2">
@@ -104,8 +115,8 @@ export default async function AkorSongPage({ params }: Props) {
             <span className="self-center text-xs text-muted">Akort: {song.tuning}</span>
           ) : null}
         </div>
-        <article className="mt-8 rounded-2xl border border-border bg-surface p-6">
-          <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed text-foreground">{song.chordBody}</pre>
+        <article className="mt-8 rounded-2xl border border-border bg-surface p-4 sm:p-6">
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{song.chordBody}</pre>
         </article>
         {song.copyrightSource ? (
           <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/content/page-header";
+import { CoverImage } from "@/components/content/cover-image";
 import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -83,6 +84,16 @@ export default async function PreviewPage({ params, searchParams }: Props) {
               </>
             ) : null}
           </>
+        }
+        leading={
+          <CoverImage
+            src={song.coverImageUrl}
+            alt={`${song.title} — ${song.artistName} kapak`}
+            priority
+            className="h-16 w-16 sm:h-20 sm:w-20"
+            width={256}
+            height={256}
+          />
         }
       />
 

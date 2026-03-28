@@ -50,3 +50,48 @@ body {
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-accent;
 }
+
+/* ------------------------------------------------------------------ */
+/* Faz 8 — Mobil dokunma hedefleri (CWV)                              */
+/* ------------------------------------------------------------------ */
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  summary {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Faz 8 — Okunabilir akor satırları (dark/light kontrast WCAG AA)    */
+/* ------------------------------------------------------------------ */
+.chord-line {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.8;
+}
+
+:root .chord-line {
+  color: rgb(var(--chord-major));
+}
+.dark .chord-line {
+  color: rgb(var(--chord-major));
+  text-shadow: 0 0 8px rgb(var(--chord-major) / 0.15);
+}
+
+.lyric-line {
+  line-height: 1.8;
+}
+
+/* Akor satırı hover — okunabilirlik yardımcısı */
+pre:has(.chord-line):hover .chord-line {
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--chord-major) / 0.3);
+  text-underline-offset: 3px;
+}

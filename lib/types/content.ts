@@ -9,6 +9,7 @@ export type SongSummary = {
   artistName: string;
   originalKey: string;
   difficulty: Difficulty;
+  coverImageUrl?: string;
 };
 
 /** Filtre facet seçenekleri — SongFilters prop */

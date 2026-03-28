@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/content/page-header";
+import { CoverImage } from "@/components/content/cover-image";
 import { SongCard } from "@/components/content/song-card";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
@@ -64,6 +65,16 @@ export default async function SanatciPage({ params }: Props) {
           artist.genre
             ? `${artist.genre} · ${artist.songCount} şarkı`
             : `${artist.songCount} şarkı`
+        }
+        leading={
+          <CoverImage
+            src={artist.imageUrl}
+            alt={`${artist.name} profil`}
+            priority
+            className="h-20 w-20 rounded-full sm:h-24 sm:w-24"
+            width={384}
+            height={384}
+          />
         }
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">

@@ -2,14 +2,15 @@
 
 type AdSlotProps = {
   slotId: string;
-  format?: "horizontal" | "vertical" | "rectangle";
+  format?: "horizontal" | "vertical" | "rectangle" | "sticky-bottom";
   className?: string;
 };
 
-const MIN_HEIGHTS: Record<string, string> = {
+const DIMENSIONS: Record<string, string> = {
   horizontal: "min-h-[90px]",
   vertical: "min-h-[600px]",
   rectangle: "min-h-[250px]",
+  "sticky-bottom": "min-h-[50px] sm:min-h-[90px]",
 };
 
 /**
@@ -19,12 +20,13 @@ const MIN_HEIGHTS: Record<string, string> = {
  * (no layout shift, no stuck spinner).
  */
 export function AdSlot({ slotId, format = "rectangle", className }: AdSlotProps) {
-  const height = MIN_HEIGHTS[format];
+  const height = DIMENSIONS[format];
 
   return (
     <aside
       id={`ad-${slotId}`}
       aria-label="Reklam"
+      data-ad-format={format}
       className={`flex items-center justify-center overflow-hidden rounded-xl border border-border/50 bg-surface/50 ${height} ${className ?? ""}`}
     >
       <span className="text-xs text-muted/40 select-none">Reklam alanı</span>

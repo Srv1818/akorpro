@@ -16,6 +16,9 @@ export interface SongDoc {
   /** Sunucu HTML — akor + söz gövdesi */
   chordBody: string;
 
+  /** Kapak görseli URL (Firebase Storage / harici CDN) — isteğe bağlı */
+  coverImageUrl?: string;
+
   /* Künye ------------------------------------------------------------- */
   originalKey: string;
   difficulty: Difficulty;

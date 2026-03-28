@@ -343,7 +343,7 @@ export function PreviewClient({
             key={n}
             type="button"
             onClick={() => replaceTranspose(n)}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
               semitones === n
                 ? "border-accent bg-accent text-accent-foreground"
                 : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -355,7 +355,7 @@ export function PreviewClient({
         <button
           type="button"
           onClick={resetOriginal}
-          className="ml-auto rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface"
+          className="ml-auto rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
         >
           Orijinale dön
         </button>
@@ -484,8 +484,8 @@ export function PreviewClient({
         </p>
       ) : null}
 
-      <article className="mt-8 rounded-2xl border border-border bg-bg p-6">
-        <pre className="whitespace-pre-wrap font-sans text-base leading-relaxed text-foreground">{chordBody}</pre>
+      <article className="mt-8 rounded-2xl border border-border bg-bg p-4 sm:p-6">
+        <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{chordBody}</pre>
       </article>
     </div>
   );

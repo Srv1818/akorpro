@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/components/theme/providers";
 import { THEME_COOKIE, defaultThemeFromCookie } from "@/lib/theme";
 import { SITE_URL } from "@/lib/paths";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
+import { WebVitalsReporter } from "@/components/analytics/web-vitals";
+import { SwRegister } from "@/components/pwa/sw-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -58,6 +60,12 @@ export default async function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#10b981" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
         {firebaseAuthHost ? (
           <>
             <link rel="preconnect" href={`https://${firebaseAuthHost}`} crossOrigin="" />
@@ -69,6 +77,8 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
       >
         <SiteJsonLd />
+        <WebVitalsReporter />
+        <SwRegister />
         <ThemeProvider defaultTheme={defaultTheme} nonce={nonce}>
           <a
             href="#icerik"
