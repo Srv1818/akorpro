@@ -56,11 +56,11 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
         focusable="false"
       >
         <title>Fretboard</title>
-        <text x={4} y={16} className="fill-muted-foreground text-[10px]">
+        <text x={4} y={16} className="fill-muted text-[10px]">
           Tel
         </text>
         {Array.from({ length: strings }, (_, sIdx) => (
-          <text key={`sl-${sIdx}`} x={4} y={28 + sIdx * rowH + rowH / 2} className="fill-muted-foreground text-[9px]" dominantBaseline="middle">
+          <text key={`sl-${sIdx}`} x={4} y={28 + sIdx * rowH + rowH / 2} className="fill-muted text-[9px]" dominantBaseline="middle">
             {6 - sIdx}
           </text>
         ))}
@@ -113,7 +113,7 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
             </g>
           );
         })}
-        <text x={labelW + nutW / 2} y={h - 6} textAnchor="middle" className="fill-muted-foreground text-[9px]">
+        <text x={labelW + nutW / 2} y={h - 6} textAnchor="middle" className="fill-muted text-[9px]">
           0
         </text>
         {Array.from({ length: maxFret }, (_, f) => (
@@ -122,7 +122,7 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
             x={labelW + nutW + f * fretW + fretW / 2}
             y={h - 6}
             textAnchor="middle"
-            className="fill-muted-foreground text-[9px]"
+            className="fill-muted text-[9px]"
           >
             {f + 1}
           </text>

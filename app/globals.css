@@ -18,6 +18,14 @@
   --chord-diminished: 225 29 72;
   --chord-augmented: 217 119 6;
   --chord-extension: 139 92 246;
+  /* Ham SVG / inline style — bileşenler var(--bg) vb. kullanır; Tailwind yalnızca --color-* tanımlar */
+  --bg: rgb(var(--color-bg));
+  --surface: rgb(var(--color-surface));
+  --foreground: rgb(var(--color-foreground));
+  --muted-foreground: rgb(var(--color-muted));
+  --border: rgb(var(--color-border));
+  --accent: rgb(var(--color-accent));
+  --accent-foreground: rgb(var(--color-accent-foreground));
 }
 
 .dark {

@@ -83,13 +83,20 @@ export function PreviewClient({
 
   const hydrateReadyRef = useRef(false);
 
+  /**
+   * Sync URL param → store, but only when the value genuinely differs from what
+   * replaceTranspose / resetOriginal already set.  This prevents a redundant
+   * Zustand set() — and the resulting subscriber cascade — that used to fire on
+   * every searchParam update triggered by router.replace().
+   */
   useEffect(() => {
+    if (initial !== urlTransposeRef.current) {
+      setTransposeSemitones(initial);
+    }
     urlTransposeRef.current = initial;
+    // setTransposeSemitones is a stable Zustand action; intentionally omitted from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial]);
-
-  useEffect(() => {
-    setTransposeSemitones(initial);
-  }, [initial, setTransposeSemitones]);
 
   useEffect(() => {
     hydrateReadyRef.current = false;

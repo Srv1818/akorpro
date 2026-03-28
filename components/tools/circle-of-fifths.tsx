@@ -19,11 +19,10 @@ function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
   const rRing = size * 0.36;
   const rHit = variant === "full" ? 26 : 20;
 
-  const centerLabelIdx = CO5_PITCH_CLASSES.findIndex((p) => p === tonalCenter);
-  const centerLabel = centerLabelIdx >= 0 ? CO5_LABELS[centerLabelIdx] : "?";
+  const activeCoIdx = CO5_PITCH_CLASSES.findIndex((p) => p === tonalCenter);
+  const centerLabel = activeCoIdx >= 0 ? CO5_LABELS[activeCoIdx] : "?";
 
   const groupRef = useRef<SVGSVGElement>(null);
-  const activeCoIdx = CO5_PITCH_CLASSES.findIndex((p) => p === tonalCenter);
 
   const handleKeyDown = useCallback(
     (e: ReactKeyboardEvent<SVGSVGElement>) => {
@@ -72,7 +71,7 @@ function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
           x={cx}
           y={cy - 4}
           textAnchor="middle"
-          className="fill-muted-foreground pointer-events-none select-none text-[10px] font-medium"
+          className="fill-muted pointer-events-none select-none text-[10px] font-medium"
         >
           Merkez
         </text>
