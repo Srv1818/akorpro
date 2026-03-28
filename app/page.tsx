@@ -36,13 +36,13 @@ export default function Home() {
       />
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-medium uppercase tracking-widest text-accent">Faz 1 · iskelet</p>
+          <p className="text-sm font-medium uppercase tracking-widest text-accent">Faz 2 · routing + mock</p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             AkorPro&apos;ya hoş geldiniz
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted sm:text-lg">
-            Okunabilir akor satırları, güvenilir sunucu tarafı içerik ve bir araya gelen araçlar: kütüphane, gamlar ve
-            5&apos;li çember. Amacımız, çalarken ekranda kaybolmadan odaklanmanızı sağlamak.
+            Kanonik URL&apos;ler, keşfet üçlüsü, şarkı listesi filtreleri ve önizleme iskeleti hazır. Bir sonraki adım
+            Firebase ve gerçek içerik borusu (Faz 3).
           </p>
         </div>
 
@@ -73,11 +73,18 @@ export default function Home() {
         </ul>
 
         <p className="mt-12 text-center text-sm text-muted">
-          Rotalar şu an iskelet aşamasında;{" "}
+          <Link href="/gitar-akorlari" className="font-medium text-accent underline-offset-4 hover:underline">
+            Tüm şarkılar
+          </Link>
+          {" · "}
+          <Link href="/arama" className="font-medium text-accent underline-offset-4 hover:underline">
+            Arama
+          </Link>
+          {" · "}
           <Link href="/giris" className="font-medium text-accent underline-offset-4 hover:underline">
-            giriş
+            Giriş
           </Link>{" "}
-          ve içerik bağlaması sonraki fazlarda eklenecek.
+          (Faz 3)
         </p>
       </div>
     </div>

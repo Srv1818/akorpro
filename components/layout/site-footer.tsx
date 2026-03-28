@@ -1,13 +1,9 @@
 import Link from "next/link";
-
-const links = [
-  { href: "/kesfet", label: "Keşfet" },
-  { href: "/akor-kutuphanesi", label: "Akor kütüphanesi" },
-  { href: "/gamlar", label: "Gamlar" },
-  { href: "/besli-cember", label: "5'li çember" },
-] as const;
+import { footerNav } from "@/lib/nav";
 
 export function SiteFooter() {
+  const links = [...footerNav];
+
   return (
     <footer className="mt-auto border-t border-border bg-surface">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -24,7 +20,7 @@ export function SiteFooter() {
               deneyim için tasarlandı.
             </p>
           </div>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Alt bağlantılar">
+          <nav className="flex max-w-xl flex-wrap gap-x-6 gap-y-2" aria-label="Alt bağlantılar">
             {links.map((l) => (
               <Link
                 key={l.href}
@@ -37,7 +33,7 @@ export function SiteFooter() {
           </nav>
         </div>
         <p className="mt-10 border-t border-border pt-8 text-center text-xs text-muted">
-          © {new Date().getFullYear()} AkorPro. Faz 1 iskelet — içerik ve auth yakında.
+          © {new Date().getFullYear()} AkorPro. Faz 2 — mock routing; auth ve içerik API&apos;si Faz 3.
         </p>
       </div>
     </footer>

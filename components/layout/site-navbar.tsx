@@ -1,15 +1,11 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { MobileNav } from "@/components/layout/mobile-nav";
-
-const nav = [
-  { href: "/kesfet", label: "Keşfet" },
-  { href: "/akor-kutuphanesi", label: "Kütüphane" },
-  { href: "/gamlar", label: "Gamlar" },
-  { href: "/besli-cember", label: "5'li Çember" },
-] as const;
+import { mainNav } from "@/lib/nav";
 
 export function SiteNavbar() {
+  const items = [...mainNav];
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
@@ -23,13 +19,13 @@ export function SiteNavbar() {
           <span className="hidden sm:inline">AkorPro</span>
         </Link>
 
-        <div className="hidden flex-1 justify-center md:flex">
-          <nav className="flex items-center gap-1" aria-label="Ana menü">
-            {nav.map((item) => (
+        <div className="hidden flex-1 justify-center overflow-x-auto md:flex">
+          <nav className="flex shrink-0 items-center gap-0.5 lg:gap-1" aria-label="Ana menü">
+            {items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-surface hover:text-foreground"
+                className="whitespace-nowrap rounded-lg px-2 py-2 text-sm font-medium text-muted transition hover:bg-surface hover:text-foreground lg:px-3"
               >
                 {item.label}
               </Link>
@@ -38,6 +34,12 @@ export function SiteNavbar() {
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 md:ml-0">
+          <Link
+            href="/arama"
+            className="hidden rounded-lg px-2 py-2 text-sm font-medium text-muted hover:bg-surface hover:text-foreground sm:inline lg:hidden"
+          >
+            Ara
+          </Link>
           <ThemeToggle />
           <Link
             href="/giris"
@@ -45,7 +47,7 @@ export function SiteNavbar() {
           >
             Giriş
           </Link>
-          <MobileNav items={nav} />
+          <MobileNav items={items} />
         </div>
       </div>
     </header>
