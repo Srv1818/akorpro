@@ -1,14 +1,39 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Tasarım sistemi (ARCHITECTURE Faz 1):
+ * - Vurgu: emerald-500 tabanlı `accent` token’ları (--color-accent, globals.css).
+ * - Nötr krom: yerleşik `zinc-*` paleti (hover, ikon, kenarlık vurguları).
+ * - Akor semantiği: `chord.*` → maj / min / dim / aug / extension.
+ */
 export default {
   theme: {
     extend: {
       colors: {
         bg: "rgb(var(--color-bg) / <alpha-value>)",
         surface: "rgb(var(--color-surface) / <alpha-value>)",
-        text: "rgb(var(--color-text) / <alpha-value>)",
-        accent: "rgb(var(--color-accent) / <alpha-value>)",
-        chord: "rgb(var(--color-chord) / <alpha-value>)",
+        foreground: "rgb(var(--color-foreground) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
+        /** Ana vurgu — emerald-500 tabanlı token */
+        accent: {
+          DEFAULT: "rgb(var(--color-accent) / <alpha-value>)",
+          foreground: "rgb(var(--color-accent-foreground) / <alpha-value>)",
+          muted: "rgb(var(--color-accent-muted) / <alpha-value>)",
+        },
+        /** Akor satırı / tip semantiği (maj, min, dim, aug, 7/sus) */
+        chord: {
+          root: "rgb(var(--chord-root) / <alpha-value>)",
+          major: "rgb(var(--chord-major) / <alpha-value>)",
+          minor: "rgb(var(--chord-minor) / <alpha-value>)",
+          diminished: "rgb(var(--chord-diminished) / <alpha-value>)",
+          augmented: "rgb(var(--chord-augmented) / <alpha-value>)",
+          extension: "rgb(var(--chord-extension) / <alpha-value>)",
+        },
+      },
+      fontFamily: {
+        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
     },
   },
