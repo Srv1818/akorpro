@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/auth/login-form";
 import { PageHeader } from "@/components/content/page-header";
+import { getServerSessionUser } from "@/lib/auth/server-session";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 
 export const metadata: Metadata = {
@@ -12,6 +14,7 @@ export const metadata: Metadata = {
 function safeReturnTo(raw: string | string[] | undefined): string {
   if (typeof raw !== "string") return "/";
   if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  if (raw === "/giris" || raw.startsWith("/giris?")) return "/";
   return raw;
 }
 
@@ -23,6 +26,11 @@ export default async function GirisPage({
   const sp = await searchParams;
   const returnTo = safeReturnTo(sp.returnTo);
   const firebaseClient = getFirebasePublicConfig();
+
+  const sessionUser = await getServerSessionUser();
+  if (sessionUser) {
+    redirect(returnTo);
+  }
 
   return (
     <>

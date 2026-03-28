@@ -1,10 +1,10 @@
 "use client";
 
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { postSessionCookie } from "@/lib/auth/post-session-client";
-import { getFirebaseApp } from "@/lib/firebase/client";
+import { getClientAuth } from "@/lib/firebase/client";
 
 function mapGoogleAuthError(code: string): string {
   switch (code) {
@@ -36,7 +36,7 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
     setError(null);
     setPending(true);
     try {
-      const auth = getAuth(getFirebaseApp());
+      const auth = getClientAuth();
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       const cred = await signInWithPopup(auth, provider);

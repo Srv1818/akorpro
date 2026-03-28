@@ -27,3 +27,8 @@ export function getAdminAuth(): admin.auth.Auth | null {
   const app = getFirebaseAdminApp();
   return app ? app.auth() : null;
 }
+
+export function getAdminFirestore(): admin.firestore.Firestore | null {
+  const app = getFirebaseAdminApp();
+  return app ? app.firestore() : null;
+}

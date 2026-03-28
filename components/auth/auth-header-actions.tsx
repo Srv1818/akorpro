@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { getAuth, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
-import { getFirebaseApp } from "@/lib/firebase/client";
+import { getClientAuth } from "@/lib/firebase/client";
 
 type MeResponse = { user: SessionUser | null };
 
@@ -37,7 +37,7 @@ export function AuthHeaderActions() {
   async function onSignOut() {
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
     try {
-      const auth = getAuth(getFirebaseApp());
+      const auth = getClientAuth();
       await signOut(auth);
     } catch {
       /* İstemci yapılandırması yoksa yalnızca çerez silinir. */

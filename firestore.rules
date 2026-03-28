@@ -2,7 +2,36 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Faz 4: owner-only playlist / songOverrides + admin claim yazımları burada açılacak.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** Custom claim `admin` (boolean) — Console / Admin SDK ile atanır. */
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
+    }
+
+    match /users/{userId}/playlists/{playlistId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/playlists/{playlistId}/items/{itemId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/songOverrides/{songId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    /** Üst `users/{userId}` kök dokümanı (profil vb.) — şimdilik kapalı. */
+    match /users/{userId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
