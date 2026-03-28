@@ -5,6 +5,10 @@ import { PageHeader } from "@/components/content/page-header";
 import { getSongBySlugs, getAllApprovedSongs } from "@/lib/firestore/songs";
 import { previewPath } from "@/lib/paths";
 
+/** ISR: 1 hour (see lib/cache/tags.ts TTL.SONG_DETAIL) */
+export const revalidate = 3600;
+export const dynamicParams = true;
+
 type Props = {
   params: Promise<{ sanatciSlug: string; sarkiSlug: string }>;
 };

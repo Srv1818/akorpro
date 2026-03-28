@@ -1,5 +1,14 @@
+import { unstable_cache } from "next/cache";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { sanitizeTextContent, sanitizePlainField } from "@/lib/security/sanitize";
+import {
+  songTag,
+  songsArtistTag,
+  songsFilteredTag,
+  filterHash,
+  TAGS,
+  TTL,
+} from "@/lib/cache/tags";
 import type { SongDoc } from "@/lib/types/firestore";
 import type { Difficulty } from "@/lib/types/content";
 
@@ -21,8 +30,15 @@ function sanitizeSong(raw: SongDoc & { id: string }): SongDoc & { id: string } {
   };
 }
 
-/** Tek şarkı — slug çifti ile */
-export async function getSongBySlugs(artistSlug: string, songSlug: string): Promise<(SongDoc & { id: string }) | null> {
+function isDifficulty(v: string): v is Difficulty {
+  return v === "kolay" || v === "orta" || v === "zor";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Raw (uncached) queries                                             */
+/* ------------------------------------------------------------------ */
+
+async function _getSongBySlugs(artistSlug: string, songSlug: string): Promise<(SongDoc & { id: string }) | null> {
   const snap = await db()
     .collection(COLLECTION)
     .where("artistSlug", "==", artistSlug)
@@ -36,32 +52,7 @@ export async function getSongBySlugs(artistSlug: string, songSlug: string): Prom
   return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
 }
 
-/** Tek şarkı — ID ile */
-export async function getSongById(songId: string): Promise<(SongDoc & { id: string }) | null> {
-  const doc = await db().collection(COLLECTION).doc(songId).get();
-  if (!doc.exists) return null;
-  return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
-}
-
-/** Birden çok şarkıyı ID ile getir (keşfet blokları için) */
-export async function getSongsByIds(songIds: string[]): Promise<(SongDoc & { id: string })[]> {
-  if (songIds.length === 0) return [];
-
-  const refs = songIds.map((id) => db().collection(COLLECTION).doc(id));
-  const snaps = await db().getAll(...refs);
-
-  const result: (SongDoc & { id: string })[] = [];
-  for (const id of songIds) {
-    const snap = snaps.find((s) => s.id === id);
-    if (snap?.exists) {
-      result.push(sanitizeSong({ id: snap.id, ...(snap.data() as SongDoc) }));
-    }
-  }
-  return result;
-}
-
-/** Sanatçının tüm şarkıları */
-export async function getSongsByArtist(artistSlug: string): Promise<(SongDoc & { id: string })[]> {
+async function _getSongsByArtist(artistSlug: string): Promise<(SongDoc & { id: string })[]> {
   const snap = await db()
     .collection(COLLECTION)
     .where("artistSlug", "==", artistSlug)
@@ -72,8 +63,7 @@ export async function getSongsByArtist(artistSlug: string): Promise<(SongDoc & {
   return snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
 }
 
-/** Tüm onaylı şarkılar (filtreleme desteği ile) */
-export async function getFilteredSongs(params: {
+async function _getFilteredSongs(params: {
   harf?: string;
   sanatci?: string;
   ton?: string;
@@ -105,8 +95,7 @@ export async function getFilteredSongs(params: {
   return results;
 }
 
-/** Tüm onaylı şarkılar — generateStaticParams için */
-export async function getAllApprovedSongs(): Promise<(SongDoc & { id: string })[]> {
+async function _getAllApprovedSongs(): Promise<(SongDoc & { id: string })[]> {
   const snap = await db()
     .collection(COLLECTION)
     .where("moderationStatus", "==", "approved")
@@ -115,9 +104,8 @@ export async function getAllApprovedSongs(): Promise<(SongDoc & { id: string })[
   return snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
 }
 
-/** Filtre facet seçeneklerini döndür */
-export async function getFilterFacetOptions() {
-  const songs = await getAllApprovedSongs();
+async function _getFilterFacetOptions() {
+  const songs = await _getAllApprovedSongs();
 
   const artistMap = new Map<string, string>();
   const keysSet = new Set<string>();
@@ -139,6 +127,96 @@ export async function getFilterFacetOptions() {
   };
 }
 
-function isDifficulty(v: string): v is Difficulty {
-  return v === "kolay" || v === "orta" || v === "zor";
+/* ------------------------------------------------------------------ */
+/*  Cached public API                                                  */
+/* ------------------------------------------------------------------ */
+
+/** Tek şarkı — slug çifti ile (ISR cached) */
+export function getSongBySlugs(artistSlug: string, songSlug: string) {
+  return unstable_cache(
+    () => _getSongBySlugs(artistSlug, songSlug),
+    ["song-by-slugs", artistSlug, songSlug],
+    {
+      tags: [songTag(artistSlug, songSlug), TAGS.SONGS_ALL],
+      revalidate: TTL.SONG_DETAIL,
+    },
+  )();
+}
+
+/** Tek şarkı — ID ile (uncached, discover resolver uses its own cache) */
+export async function getSongById(songId: string): Promise<(SongDoc & { id: string }) | null> {
+  const doc = await db().collection(COLLECTION).doc(songId).get();
+  if (!doc.exists) return null;
+  return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+}
+
+/** Birden çok şarkıyı ID ile getir (keşfet blokları için — uncached, caller caches) */
+export async function getSongsByIds(songIds: string[]): Promise<(SongDoc & { id: string })[]> {
+  if (songIds.length === 0) return [];
+
+  const refs = songIds.map((id) => db().collection(COLLECTION).doc(id));
+  const snaps = await db().getAll(...refs);
+
+  const result: (SongDoc & { id: string })[] = [];
+  for (const id of songIds) {
+    const snap = snaps.find((s) => s.id === id);
+    if (snap?.exists) {
+      result.push(sanitizeSong({ id: snap.id, ...(snap.data() as SongDoc) }));
+    }
+  }
+  return result;
+}
+
+/** Sanatçının tüm şarkıları (ISR cached) */
+export function getSongsByArtist(artistSlug: string) {
+  return unstable_cache(
+    () => _getSongsByArtist(artistSlug),
+    ["songs-by-artist", artistSlug],
+    {
+      tags: [songsArtistTag(artistSlug), TAGS.SONGS_ALL],
+      revalidate: TTL.SONGS_LIST,
+    },
+  )();
+}
+
+/** Tüm onaylı şarkılar — filtreleme desteği ile (ISR cached) */
+export function getFilteredSongs(params: {
+  harf?: string;
+  sanatci?: string;
+  ton?: string;
+  zorluk?: string;
+}) {
+  const hash = filterHash(params);
+  return unstable_cache(
+    () => _getFilteredSongs(params),
+    ["songs-filtered", hash],
+    {
+      tags: [songsFilteredTag(hash), TAGS.SONGS_ALL],
+      revalidate: TTL.SONGS_FILTERED,
+    },
+  )();
+}
+
+/** Tüm onaylı şarkılar — generateStaticParams için (ISR cached) */
+export function getAllApprovedSongs() {
+  return unstable_cache(
+    _getAllApprovedSongs,
+    ["songs-all-approved"],
+    {
+      tags: [TAGS.SONGS_ALL],
+      revalidate: TTL.SONGS_LIST,
+    },
+  )();
+}
+
+/** Filtre facet seçeneklerini döndür (ISR cached) */
+export function getFilterFacetOptions() {
+  return unstable_cache(
+    _getFilterFacetOptions,
+    ["songs-filter-facets"],
+    {
+      tags: [TAGS.SONGS_FACETS, TAGS.SONGS_ALL],
+      revalidate: TTL.SONGS_FACETS,
+    },
+  )();
 }

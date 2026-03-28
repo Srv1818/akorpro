@@ -6,6 +6,10 @@ import { SongCard } from "@/components/content/song-card";
 import { getArtistBySlug, getAllArtists } from "@/lib/firestore/artists";
 import { getSongsByArtist } from "@/lib/firestore/songs";
 
+/** ISR: 1 hour (see lib/cache/tags.ts TTL.ARTIST) */
+export const revalidate = 3600;
+export const dynamicParams = true;
+
 type Props = {
   params: Promise<{ slug: string }>;
 };
