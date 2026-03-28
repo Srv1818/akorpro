@@ -18,9 +18,9 @@ function buildCsp(nonce: string): string {
 
   const directives: string[] = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https://*.googleusercontent.com${storageBucket ? ` https://${storageBucket}` : ""}`,
+    `img-src 'self' data: blob: https://*.googleusercontent.com https://www.google-analytics.com${storageBucket ? ` https://${storageBucket}` : ""}`,
     "font-src 'self'",
     [
       "connect-src 'self'",
@@ -30,6 +30,9 @@ function buildCsp(nonce: string): string {
       "https://firestore.googleapis.com",
       "https://identitytoolkit.googleapis.com",
       "https://securetoken.googleapis.com",
+      "https://www.google-analytics.com",
+      "https://analytics.google.com",
+      "https://*.sentry.io",
     ].join(" "),
     `frame-src 'self'${authDomain ? ` https://${authDomain}` : ""}`,
     "object-src 'none'",
@@ -79,6 +82,6 @@ function redirectToLogin(request: NextRequest, csp: string) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

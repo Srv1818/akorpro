@@ -8,6 +8,8 @@ import { THEME_COOKIE, defaultThemeFromCookie } from "@/lib/theme";
 import { SITE_URL } from "@/lib/paths";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { WebVitalsReporter } from "@/components/analytics/web-vitals";
+import { GoogleAnalytics } from "@/components/analytics/ga4";
+import { CookieBanner } from "@/components/consent/cookie-banner";
 import { SwRegister } from "@/components/pwa/sw-register";
 import "./globals.css";
 
@@ -76,6 +78,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
       >
+        <GoogleAnalytics />
         <SiteJsonLd />
         <WebVitalsReporter />
         <SwRegister />
@@ -91,6 +94,7 @@ export default async function RootLayout({
             {children}
           </main>
           <SiteFooter />
+          <CookieBanner />
         </ThemeProvider>
       </body>
     </html>

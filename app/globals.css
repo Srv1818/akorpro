@@ -95,3 +95,49 @@ pre:has(.chord-line):hover .chord-line {
   text-decoration-color: rgb(var(--chord-major) / 0.3);
   text-underline-offset: 3px;
 }
+
+/* ------------------------------------------------------------------ */
+/* Faz 9 — Yasal sayfa prose stili                                    */
+/* ------------------------------------------------------------------ */
+.prose-custom h1 {
+  @apply text-2xl font-bold tracking-tight text-foreground sm:text-3xl;
+  margin-bottom: 1rem;
+}
+.prose-custom h2 {
+  @apply text-lg font-semibold text-foreground;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.prose-custom p {
+  @apply text-sm leading-relaxed text-muted sm:text-base;
+  margin-bottom: 0.75rem;
+}
+.prose-custom .lead {
+  @apply text-xs text-muted;
+  margin-bottom: 1.5rem;
+}
+.prose-custom ul,
+.prose-custom ol {
+  @apply ml-5 list-disc text-sm text-muted sm:text-base;
+  margin-bottom: 0.75rem;
+}
+.prose-custom ol { list-style-type: decimal; }
+.prose-custom li { margin-bottom: 0.25rem; }
+.prose-custom a {
+  @apply text-accent underline-offset-2 hover:underline;
+}
+.prose-custom strong { @apply text-foreground; }
+.prose-custom code {
+  @apply rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-foreground;
+}
+.prose-custom table {
+  @apply w-full border-collapse text-sm;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+.prose-custom th {
+  @apply border-b border-border bg-surface/50 px-3 py-2 text-left text-xs font-medium text-muted;
+}
+.prose-custom td {
+  @apply border-b border-border/50 px-3 py-2 text-muted;
+}

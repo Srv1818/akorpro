@@ -24,3 +24,10 @@ export const footerNav = [
   { href: previewDemo, label: "Önizleme" },
   { href: chordPath("duman", "kufi"), label: "Örnek akor sayfası" },
 ] as const;
+
+export const legalNav = [
+  { href: "/gizlilik", label: "Gizlilik" },
+  { href: "/kullanim-kosullari", label: "Kullanım Koşulları" },
+  { href: "/cerez-politikasi", label: "Çerez Politikası" },
+  { href: "/telif", label: "Telif" },
+] as const;
