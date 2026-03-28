@@ -8,6 +8,12 @@ import { getServerSessionUser } from "@/lib/auth/server-session";
 export const metadata: Metadata = {
   title: "Katkıda bulun",
   description: "Şarkı akorlarını paylaşarak topluluğa katkıda bulunun. Moderatör onayı sonrası yayına alınır.",
+  alternates: { canonical: "/katki" },
+  openGraph: {
+    title: "Katkıda bulun",
+    description: "Şarkı akorlarını paylaşarak topluluğa katkıda bulunun. Moderatör onayı sonrası yayına alınır.",
+    url: "/katki",
+  },
 };
 
 export default async function ContributionPage() {

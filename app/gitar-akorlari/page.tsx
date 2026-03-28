@@ -25,6 +25,12 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   return {
     title: "Tüm şarkılar",
     description: "Gitar akorları — filtre ve arama ile şarkı keşfet.",
+    alternates: { canonical: "/gitar-akorlari" },
+    openGraph: {
+      title: "Tüm şarkılar",
+      description: "Gitar akorları — filtre ve arama ile şarkı keşfet.",
+      url: "/gitar-akorlari",
+    },
     ...(filtered ? { robots: { index: false, follow: true } } : {}),
   };
 }

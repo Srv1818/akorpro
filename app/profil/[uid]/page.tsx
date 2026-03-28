@@ -15,9 +15,13 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { uid } = await params;
   const profile = await getContributorProfile(uid);
+  const title = profile ? `${profile.displayName} — Katkıcı profili` : "Katkıcı profili";
+  const url = `/profil/${uid}`;
   return {
-    title: profile ? `${profile.displayName} — Katkıcı profili` : "Katkıcı profili",
+    title,
     robots: { index: true, follow: true },
+    alternates: { canonical: url },
+    openGraph: { title, url },
   };
 }
 

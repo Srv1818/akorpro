@@ -5,6 +5,12 @@ import { PageHeader } from "@/components/content/page-header";
 export const metadata: Metadata = {
   title: "Gamlar",
   description: "Diyatonik modlar, pentatonik diziler, blues, harmonik/melodik minör ve simetrik gamlar — fretboard ve 5'li çember ile interaktif keşif.",
+  alternates: { canonical: "/gamlar" },
+  openGraph: {
+    title: "Gamlar",
+    description: "Diyatonik modlar, pentatonik diziler, blues, harmonik/melodik minör ve simetrik gamlar — fretboard ve 5'li çember ile interaktif keşif.",
+    url: "/gamlar",
+  },
 };
 
 export default function GamlarPage() {

@@ -5,6 +5,12 @@ import { PageHeader } from "@/components/content/page-header";
 export const metadata: Metadata = {
   title: "5'li çember",
   description: "5'li çember ve tonal merkez — Preview store ile fretboard (akor modu) aynı state'i paylaşır.",
+  alternates: { canonical: "/besli-cember" },
+  openGraph: {
+    title: "5'li çember",
+    description: "5'li çember ve tonal merkez — Preview store ile fretboard (akor modu) aynı state'i paylaşır.",
+    url: "/besli-cember",
+  },
 };
 
 export default function BesliCemberPage() {

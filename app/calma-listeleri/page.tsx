@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Çalma listeleri",
   description: "Kişisel listeler — oturum gerektirir.",
   robots: { index: false, follow: true },
+  alternates: { canonical: "/calma-listeleri" },
 };
 
 export default async function CalmaListeleriPage() {

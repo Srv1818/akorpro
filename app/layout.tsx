@@ -5,6 +5,8 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteNavbar } from "@/components/layout/site-navbar";
 import { ThemeProvider } from "@/components/theme/providers";
 import { THEME_COOKIE, defaultThemeFromCookie } from "@/lib/theme";
+import { SITE_URL } from "@/lib/paths";
+import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,13 +21,27 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const siteName = "AkorPro";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "AkorPro — Gitar akorları ve müzik araçları",
     template: "%s · AkorPro",
   },
   description:
     "Şarkı akorları, kütüphane, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform. Topluluk ve erişilebilirlik odaklı.",
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    siteName,
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default async function RootLayout({
@@ -52,6 +68,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
       >
+        <SiteJsonLd />
         <ThemeProvider defaultTheme={defaultTheme} nonce={nonce}>
           <a
             href="#icerik"

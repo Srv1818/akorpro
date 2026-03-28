@@ -13,6 +13,7 @@ type Props = {
 export const metadata: Metadata = {
   title: "Arama",
   robots: { index: false, follow: true },
+  alternates: { canonical: "/arama" },
 };
 
 export default async function AramaPage({ searchParams }: Props) {

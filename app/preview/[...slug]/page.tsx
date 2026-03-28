@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/content/page-header";
 import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
+import { JsonLd } from "@/components/seo/json-ld";
 import { getSongBySlugs } from "@/lib/firestore/songs";
 import { getServerSessionUser } from "@/lib/auth/server-session";
 import { firstParam } from "@/lib/search-params";
+import { chordPath } from "@/lib/paths";
+import { songJsonLd } from "@/lib/seo/structured-data";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -19,10 +23,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const [a, s] = slug;
   const song = await getSongBySlugs(a, s);
   if (!song) return { title: "Önizleme", robots: { index: false, follow: true } };
+  const canonicalUrl = chordPath(a, s);
   return {
     title: `Önizleme: ${song.title}`,
     description: `${song.artistName} — ${song.title} · Orijinal ton: ${song.originalKey}. Transpoze ve sahne araçları.`,
     robots: { index: false, follow: true },
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title: `${song.title} — ${song.artistName}`,
+      description: `${song.artistName} — ${song.title} · Orijinal ton: ${song.originalKey}`,
+      url: canonicalUrl,
+    },
   };
 }
 
@@ -48,8 +59,11 @@ export default async function PreviewPage({ params, searchParams }: Props) {
 
   const sessionUser = await getServerSessionUser();
 
+  const canonical = chordPath(artistSlug, songSlug);
+
   return (
     <>
+      <JsonLd data={songJsonLd(song)} />
       <PageHeader
         title={`Önizleme: ${song.title}`}
         description={
@@ -71,7 +85,21 @@ export default async function PreviewPage({ params, searchParams }: Props) {
           </>
         }
       />
+
+      {/* Bot-visible künye (server HTML) */}
+      <section className="sr-only" aria-hidden="true">
+        <h2>{song.title} — {song.artistName}</h2>
+        <p>Orijinal ton: {song.originalKey} · Zorluk: {song.difficulty}</p>
+        {song.genre && <p>Tür: {song.genre}</p>}
+        {song.tempo && <p>Tempo: {song.tempo} BPM</p>}
+      </section>
+
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+        <p className="mb-4 text-sm text-muted">
+          <Link href={canonical} className="text-accent hover:underline">
+            ← Şarkı sayfasına dön
+          </Link>
+        </p>
         <Suspense fallback={<PreviewFallback />}>
           <PreviewShell instanceKey={song.id} initialTranspose={initialTranspose} initialScaleId="ionian">
             <PreviewClient

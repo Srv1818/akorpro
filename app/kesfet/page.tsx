@@ -9,6 +9,12 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Keşfet",
   description: "Popüler, yeni ve öne çıkan şarkılar.",
+  alternates: { canonical: "/kesfet" },
+  openGraph: {
+    title: "Keşfet",
+    description: "Popüler, yeni ve öne çıkan şarkılar.",
+    url: "/kesfet",
+  },
 };
 
 export default async function KesfetPage() {

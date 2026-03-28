@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Giriş",
   description: "Google ile oturum açma.",
   robots: { index: false, follow: true },
+  alternates: { canonical: "/giris" },
 };
 
 function safeReturnTo(raw: string | string[] | undefined): string {

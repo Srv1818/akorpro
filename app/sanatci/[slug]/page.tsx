@@ -3,8 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/content/page-header";
 import { SongCard } from "@/components/content/song-card";
+import { JsonLd } from "@/components/seo/json-ld";
+import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { getArtistBySlug, getAllArtists } from "@/lib/firestore/artists";
 import { getSongsByArtist } from "@/lib/firestore/songs";
+import { artistPath } from "@/lib/paths";
+import { artistJsonLd } from "@/lib/seo/structured-data";
 
 /** ISR: 1 hour (see lib/cache/tags.ts TTL.ARTIST) */
 export const revalidate = 3600;
@@ -23,9 +27,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const artist = await getArtistBySlug(slug);
   if (!artist) return { title: "Sanatçı bulunamadı" };
+  const title = artist.name;
+  const description = `${artist.name} gitar akorları ve şarkı sözleri.`;
+  const url = artistPath(slug);
   return {
-    title: artist.name,
-    description: `${artist.name} gitar akorları ve şarkı sözleri.`,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+    },
   };
 }
 
@@ -38,6 +51,13 @@ export default async function SanatciPage({ params }: Props) {
 
   return (
     <>
+      <JsonLd data={artistJsonLd(artist)} />
+      <Breadcrumbs
+        items={[
+          { label: "Ana Sayfa", href: "/" },
+          { label: artist.name, href: artistPath(slug) },
+        ]}
+      />
       <PageHeader
         title={artist.name}
         description={

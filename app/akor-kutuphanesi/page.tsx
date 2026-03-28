@@ -8,6 +8,12 @@ import { chordPath } from "@/lib/paths";
 export const metadata: Metadata = {
   title: "Akor kütüphanesi",
   description: "Gitar akor pozisyonları, parmak dizilimleri ve varyasyonlar — açık, barre ve gelişmiş akor şekilleri.",
+  alternates: { canonical: "/akor-kutuphanesi" },
+  openGraph: {
+    title: "Akor kütüphanesi",
+    description: "Gitar akor pozisyonları, parmak dizilimleri ve varyasyonlar — açık, barre ve gelişmiş akor şekilleri.",
+    url: "/akor-kutuphanesi",
+  },
 };
 
 export default async function AkorKutuphanesiPage() {
