@@ -1,11 +1,15 @@
-import type { MockScale } from "@/lib/types/content";
+import type { ScaleDoc } from "@/lib/types/chord-library";
+import scalesData from "@/data/scales.json";
 
-/** Gam → nota eşlemesi (C merkezli örnek) — ARCHITECTURE Faz 1 mock */
-export const mockScales: MockScale[] = [
-  { id: "ionian", name: "Iyonik (Majör)", notesC: ["C", "D", "E", "F", "G", "A", "B"] },
-  { id: "aeolian", name: "Eol (Doğal minör)", notesC: ["C", "D", "Eb", "F", "G", "Ab", "Bb"] },
-  { id: "dorian", name: "Dorik", notesC: ["C", "D", "Eb", "F", "G", "A", "Bb"] },
-  { id: "mixolydian", name: "Miksolidyen", notesC: ["C", "D", "E", "F", "G", "A", "Bb"] },
-  { id: "pent-major", name: "Majör pentatonik", notesC: ["C", "D", "E", "G", "A"] },
-  { id: "pent-minor", name: "Minör pentatonik", notesC: ["C", "Eb", "F", "G", "Bb"] },
-];
+/**
+ * Scales data source — loaded from static JSON.
+ * Can be swapped to Firestore `scales` collection in the future.
+ */
+export const scales: ScaleDoc[] = scalesData as ScaleDoc[];
+
+/** Backward compatibility alias */
+export const mockScales = scales.map((s) => ({
+  id: s.id,
+  name: s.name,
+  notesC: s.notesC,
+}));

@@ -5,4 +5,6 @@ export type SessionUser = {
   emailVerified: boolean;
   /** Firebase: örn. `password`, `google.com` */
   signInProvider: string | null;
+  /** Custom claim: admin */
+  admin: boolean;
 };

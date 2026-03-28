@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { mockScales } from "@/data/mock/scales";
+import { scales } from "@/data/mock/scales";
 import {
   majorTriadPitchClasses,
   OPEN_STRING_PC_TOP_FIRST,
@@ -27,7 +27,7 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
 
   const activePcs = useMemo(() => {
     if (mode === "chord") return majorTriadPitchClasses(tonal);
-    const scale = mockScales.find((sc) => sc.id === scaleId) ?? mockScales[0];
+    const scale = scales.find((sc) => sc.id === scaleId) ?? scales[0];
     if (!scale) return new Set<number>();
     return scalePitchClassesInKey(scale.notesC, tonal);
   }, [mode, tonal, scaleId]);

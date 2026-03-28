@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/content/page-header";
 
 export const metadata: Metadata = {
   title: "Gamlar",
-  description: "Gam mock verisi, 5'li çember ve fretboard scale modu — ortak Preview store.",
+  description: "Diyatonik modlar, pentatonik diziler, blues, harmonik/melodik minör ve simetrik gamlar — fretboard ve 5'li çember ile interaktif keşif.",
 };
 
 export default function GamlarPage() {
@@ -12,7 +12,7 @@ export default function GamlarPage() {
     <>
       <PageHeader
         title="Gamlar"
-        description="Liste mock’tan; seçilen gam ve tonal merkez tek store ile fretboard’a bağlanır (ARCHITECTURE). Veri kaynağı ileride JSON/Firestore olabilir."
+        description="Gam seçin, tonal merkezi belirleyin — fretboard ve 5'li çember otomatik güncellenir."
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <GamlarTools />

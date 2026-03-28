@@ -1,0 +1,17 @@
+[
+  { "id": "ionian", "name": "Iyonik (Majör)", "notesC": ["C","D","E","F","G","A","B"], "category": "Diyatonik", "description": "Standart majör dizi — mutlu, parlak ses.", "sortOrder": 1 },
+  { "id": "dorian", "name": "Dorik", "notesC": ["C","D","Eb","F","G","A","Bb"], "category": "Diyatonik", "description": "Minör karakter, yükseltilmiş 6. derece — blues, funk, jazz.", "sortOrder": 2 },
+  { "id": "phrygian", "name": "Frigya", "notesC": ["C","Db","Eb","F","G","Ab","Bb"], "category": "Diyatonik", "description": "Yarım tonla başlar — İspanyol, flamenko hissi.", "sortOrder": 3 },
+  { "id": "lydian", "name": "Lidya", "notesC": ["C","D","E","F#","G","A","B"], "category": "Diyatonik", "description": "Yükseltilmiş 4. derece — rüya gibi, açık ses.", "sortOrder": 4 },
+  { "id": "mixolydian", "name": "Miksolidyen", "notesC": ["C","D","E","F","G","A","Bb"], "category": "Diyatonik", "description": "Dominant karakter — rock, blues standart.", "sortOrder": 5 },
+  { "id": "aeolian", "name": "Eol (Doğal Minör)", "notesC": ["C","D","Eb","F","G","Ab","Bb"], "category": "Diyatonik", "description": "Standart doğal minör dizi — hüzünlü, melankolik.", "sortOrder": 6 },
+  { "id": "locrian", "name": "Lokrik", "notesC": ["C","Db","Eb","F","Gb","Ab","Bb"], "category": "Diyatonik", "description": "Azalmış beşli — kararsız, nadir kullanılır.", "sortOrder": 7 },
+  { "id": "pent-major", "name": "Majör Pentatonik", "notesC": ["C","D","E","G","A"], "category": "Pentatonik", "description": "5 notalı majör — country, pop, blues sololar.", "sortOrder": 8 },
+  { "id": "pent-minor", "name": "Minör Pentatonik", "notesC": ["C","Eb","F","G","Bb"], "category": "Pentatonik", "description": "5 notalı minör — rock ve blues'un temel dizisi.", "sortOrder": 9 },
+  { "id": "blues", "name": "Blues", "notesC": ["C","Eb","F","Gb","G","Bb"], "category": "Pentatonik", "description": "Minör pentatonik + blue note (b5) — blues doğaçlama.", "sortOrder": 10 },
+  { "id": "harmonic-minor", "name": "Harmonik Minör", "notesC": ["C","D","Eb","F","G","Ab","B"], "category": "Minör", "description": "Yükseltilmiş 7. derece — klasik, metal, neo-klasik.", "sortOrder": 11 },
+  { "id": "melodic-minor", "name": "Melodik Minör", "notesC": ["C","D","Eb","F","G","A","B"], "category": "Minör", "description": "Yüksek 6. ve 7. derece — jazz, fusion.", "sortOrder": 12 },
+  { "id": "whole-tone", "name": "Tam Ton", "notesC": ["C","D","E","F#","G#","A#"], "category": "Simetrik", "description": "Eşit tam ton aralıklar — rüya gibi, belirsiz.", "sortOrder": 13 },
+  { "id": "diminished-hw", "name": "Azalmış (Y-T)", "notesC": ["C","Db","Eb","E","F#","G","A","Bb"], "category": "Simetrik", "description": "Yarım-tam ton simetrik — jazz dominant.", "sortOrder": 14 },
+  { "id": "chromatic", "name": "Kromatik", "notesC": ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"], "category": "Diğer", "description": "Tüm 12 yarım ton — egzersiz ve geçiş.", "sortOrder": 15 }
+]

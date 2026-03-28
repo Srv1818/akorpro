@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AuthHeaderActions } from "@/components/auth/auth-header-actions";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { SearchDialog } from "@/components/search/search-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { mainNav } from "@/lib/nav";
 
@@ -35,12 +36,7 @@ export function SiteNavbar() {
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 md:ml-0">
-          <Link
-            href="/arama"
-            className="hidden rounded-lg px-2 py-2 text-sm font-medium text-muted hover:bg-surface hover:text-foreground sm:inline lg:hidden"
-          >
-            Ara
-          </Link>
+          <SearchDialog />
           <ThemeToggle />
           <AuthHeaderActions />
           <MobileNav items={items} />

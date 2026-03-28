@@ -66,15 +66,48 @@ service cloud.firestore {
       allow delete: if isOwner(userId) || isAdmin();
     }
 
+    /* ---- Contributions (user-submitted content) ---- */
+    match /contributions/{contribId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.contributorUid == request.auth.uid
+        && request.resource.data.status == "pending";
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ---- Contributor profiles ---- */
+    match /contributor_profiles/{uid} {
+      allow read: if true;
+      allow create: if isOwner(uid);
+      allow update: if (isOwner(uid) && rateLimitWrite(5)) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ---- Chord library (admin-only writes) ---- */
+    match /chord_library/{chordId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ---- Scales collection (admin-only writes) ---- */
+    match /scales/{scaleId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     /* ---- Admin audit log (server-side write only) ---- */
     match /admin_audit/{logId} {
       allow read: if isAdmin();
       allow write: if false;
     }
 
-    /** users/{userId} kök dokümanı — şimdilik kapalı. */
+    /** users/{userId} kök dokümanı — profil alanları. */
     match /users/{userId} {
-      allow read, write: if false;
+      allow read: if true;
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) && rateLimitWrite(5)) || isAdmin();
+      allow delete: if false;
     }
 
     match /{document=**} {

@@ -35,6 +35,7 @@ export async function getServerSessionUser(): Promise<SessionUser | null> {
         email: decoded.email ?? null,
         emailVerified: decoded.email_verified === true,
         signInProvider: firebaseClaim?.sign_in_provider ?? null,
+        admin: decoded.admin === true,
       };
     } catch {
       return null;
@@ -50,7 +51,8 @@ export async function getServerSessionUser(): Promise<SessionUser | null> {
     if (!uid) return null;
     const email = typeof payload.email === "string" ? payload.email : null;
     const { emailVerified, signInProvider } = claimsFromJwtPayload(payload);
-    return { uid, email, emailVerified, signInProvider };
+    const admin = (payload as Record<string, unknown>).admin === true;
+    return { uid, email, emailVerified, signInProvider, admin };
   } catch {
     return null;
   }

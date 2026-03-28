@@ -1,4 +1,4 @@
-# Firestore veri modeli (Faz 3 — tamamlandı)
+# Firestore veri modeli (Faz 3–6)
 
 Tek kaynak: `docs/ARCHITECTURE.md` ile uyumlu. Şema genişletilebilir; `schemaVersion` / `updatedAt` alanları zorunlu.
 
@@ -88,13 +88,83 @@ Section: `"popular"` | `"new"` | `"featured"`
 
 Playlist öğesi: **snapshot → songOverrides → sunucu varsayılanı**.
 
+## Faz 6 koleksiyonları
+
+### `contributions/{contribId}` — Topluluk katkıları
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `songTitle` | string | Şarkı başlığı |
+| `artistName` | string | Sanatçı adı |
+| `chordBody` | string | Akor + söz gövdesi |
+| `originalKey` | string | Orijinal ton |
+| `genre` | string | Tür |
+| `difficulty` | Difficulty | Zorluk |
+| `tempo` | number \| string | Opsiyonel |
+| `timeSignature` | string | Opsiyonel |
+| `tuning` | string | Opsiyonel |
+| `capo` | number | Opsiyonel |
+| `copyrightSource` | string | Opsiyonel |
+| `contributorUid` | string | Gönderenin UID'si |
+| `contributorDisplayName` | string | Görünen ad |
+| `status` | ModerationStatus | pending / approved / rejected |
+| `moderatorUid` | string | Moderatör UID — opsiyonel |
+| `moderatorNote` | string | Not — opsiyonel |
+| `approvedSongId` | string | Onaylanırsa oluşan şarkı ID — opsiyonel |
+| `schemaVersion` | number | Şema versiyonu |
+| `createdAt` | Timestamp | Oluşturulma |
+| `updatedAt` | Timestamp | Son güncelleme |
+
+### `contributor_profiles/{uid}` — Katkıcı profilleri (E-E-A-T)
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `uid` | string | Kullanıcı UID |
+| `displayName` | string | Görünen ad |
+| `bio` | string | Kısa biyografi — opsiyonel |
+| `avatarUrl` | string | Profil görseli — opsiyonel |
+| `approvedCount` | number | Onaylanmış katkı sayısı |
+| `verified` | boolean | Moderatör onaylı rozet |
+| `joinedAt` | Timestamp | Katılma tarihi |
+| `updatedAt` | Timestamp | Son güncelleme |
+
+### `chord_library/{chordId}` — Akor kütüphanesi
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `name` | string | Akor adı (C maj açık) |
+| `root` | string | Kök nota |
+| `quality` | string | Kalite (maj, min, 7, m7, sus4…) |
+| `fingering` | string | Parmak dizilimi (x32010) |
+| `frets` | number[] | Perde pozisyonları — opsiyonel |
+| `sortOrder` | number | Sıralama — opsiyonel |
+| `schemaVersion` | number | Şema versiyonu |
+| `createdAt` | Timestamp | Oluşturulma |
+| `updatedAt` | Timestamp | Son güncelleme |
+
+### `scales/{scaleId}` — Gamlar (alternatif: statik JSON)
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `name` | string | Gam adı |
+| `notesC` | string[] | C merkezli nota dizisi |
+| `category` | string | Kategori (Diyatonik, Pentatonik…) — opsiyonel |
+| `description` | string | Açıklama — opsiyonel |
+| `sortOrder` | number | Sıralama — opsiyonel |
+
+**Not:** Gamlar şu anda `data/scales.json` statik dosyasından okunur. Firestore `scales` koleksiyonu alternatif olarak kullanılabilir.
+
 ## Güvenlik kuralları
 
 Kaynak: `firestore.rules`.
 
 - `songs`, `artists`, `discover`: **herkes okur; yalnızca admin yazar** (`request.auth.token.admin == true`).
+- `contributions`: oturum açmış kullanıcı okur ve oluşturur (status=pending zorunlu); güncelleme/silme sadece admin.
+- `contributor_profiles/{uid}`: herkes okur; owner oluşturur ve günceller (rate limit 5s); admin her şeyi yapabilir.
+- `chord_library`, `scales`: herkes okur; yalnızca admin yazar.
 - `users/{uid}/playlists/{playlistId}` ve `.../items/{itemId}` ile `users/{uid}/songOverrides/{songId}`: **yalnızca** `request.auth.uid == uid` veya admin.
-- Üst `users/{uid}` kök dokümanı: şimdilik kapalı.
+- `users/{uid}` kök dokümanı: herkes okur; owner oluşturur ve günceller (rate limit 5s).
+- `admin_audit`: admin okur; istemci yazmaz (server-side Admin SDK ile yazılır).
 - Diğer tüm yollar: kapalı.
 
 ## İndeksler

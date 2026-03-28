@@ -11,3 +11,7 @@ export function artistPath(slug: string): string {
 export function previewPath(artistSlug: string, songSlug: string): string {
   return `/preview/${artistSlug}/${songSlug}`;
 }
+
+export function contributorProfilePath(uid: string): string {
+  return `/profil/${uid}`;
+}

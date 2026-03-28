@@ -4,7 +4,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { verifyFirebaseJwt } from "@/lib/auth/verify-firebase-jwt";
 
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const AUTH_ROUTES = ["/calma-listeleri"];
+const AUTH_ROUTES = ["/calma-listeleri", "/katki", "/admin"];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(
