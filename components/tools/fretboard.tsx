@@ -6,6 +6,7 @@ import {
   majorTriadPitchClasses,
   OPEN_STRING_PC_TOP_FIRST,
   scalePitchClassesInKey,
+  PC_TO_NAME,
 } from "@/lib/music/note-utils";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 
@@ -52,6 +53,7 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
         className="max-w-full text-foreground"
         role="img"
         aria-label={`Gitar perdeleri, ${mode} modu`}
+        focusable="false"
       >
         <title>Fretboard</title>
         <text x={4} y={16} className="fill-muted-foreground text-[10px]">
@@ -126,6 +128,34 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
           </text>
         ))}
       </svg>
+      {/* Screen-reader data table alternative */}
+      <table className="sr-only">
+        <caption>
+          Fretboard — aktif notalar ({mode === "chord" ? "akor" : "gam"} modu)
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Tel</th>
+            {Array.from({ length: maxFret + 1 }, (_, f) => (
+              <th key={f} scope="col">Perde {f}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: strings }, (_, sIdx) => (
+            <tr key={sIdx}>
+              <th scope="row">Tel {6 - sIdx}</th>
+              {Array.from({ length: maxFret + 1 }, (_, f) => {
+                const pc = pitchClassAtFret(sIdx, f);
+                const on = activePcs.has(pc);
+                return (
+                  <td key={f}>{on ? PC_TO_NAME[pc] : "—"}</td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

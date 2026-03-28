@@ -18,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { Fretboard } from "@/components/tools/fretboard";
+import { AutoScrollButton, MetronomeButton, CopyButton, PrintButton } from "@/components/preview/preview-toolbar";
 import { mockScales } from "@/data/mock/scales";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
@@ -336,13 +337,15 @@ export function PreviewClient({
         </label>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted">Transpoze:</span>
+      <div className="mt-6 flex flex-wrap items-center gap-2" role="group" aria-label="Transpoze kontrolleri">
+        <span className="text-sm text-muted" id="transpose-label">Transpoze:</span>
         {[-2, -1, 0, 1, 2].map((n) => (
           <button
             key={n}
             type="button"
             onClick={() => replaceTranspose(n)}
+            aria-pressed={semitones === n}
+            aria-label={`Transpoze ${n === 0 ? "orijinal" : n > 0 ? `+${n}` : `${n}`} yarım ton`}
             className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
               semitones === n
                 ? "border-accent bg-accent text-accent-foreground"
@@ -361,7 +364,7 @@ export function PreviewClient({
         </button>
       </div>
 
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-xs text-muted" aria-live="polite">
         Görüntülenen transpoze:{" "}
         <span className="font-mono text-foreground">
           {semitones === 0 ? "0" : semitones > 0 ? `+${semitones}` : semitones} yarım ton
@@ -467,24 +470,33 @@ export function PreviewClient({
           sayfasına gidin.
         </p>
       ) : null}
-      {addNotice ? (
-        <p
-          className={`mt-2 text-sm ${addNotice.variant === "error" ? "text-red-200" : "text-muted"}`}
-          role={addNotice.variant === "error" ? "alert" : "status"}
-        >
-          {addNotice.message}
-        </p>
-      ) : null}
-      {saveMessage ? (
-        <p
-          className={`mt-2 text-sm ${saveState === "error" ? "text-red-200" : "text-muted"}`}
-          role={saveState === "error" ? "alert" : "status"}
-        >
-          {saveMessage}
-        </p>
-      ) : null}
+      <div aria-live="polite" aria-atomic="true">
+        {addNotice ? (
+          <p
+            className={`mt-2 text-sm ${addNotice.variant === "error" ? "text-red-200" : "text-muted"}`}
+            role={addNotice.variant === "error" ? "alert" : "status"}
+          >
+            {addNotice.message}
+          </p>
+        ) : null}
+        {saveMessage ? (
+          <p
+            className={`mt-2 text-sm ${saveState === "error" ? "text-red-200" : "text-muted"}`}
+            role={saveState === "error" ? "alert" : "status"}
+          >
+            {saveMessage}
+          </p>
+        ) : null}
+      </div>
 
-      <article className="mt-8 rounded-2xl border border-border bg-bg p-4 sm:p-6">
+      <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4" role="toolbar" aria-label="Çalma araçları">
+        <AutoScrollButton />
+        <MetronomeButton bpm={typeof originalKey === "string" ? undefined : undefined} />
+        <CopyButton text={chordBody} />
+        <PrintButton />
+      </div>
+
+      <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
         <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{chordBody}</pre>
       </article>
     </div>

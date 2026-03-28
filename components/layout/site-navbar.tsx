@@ -9,7 +9,7 @@ export function SiteNavbar() {
   const items = [...mainNav];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-md">
+    <header id="ana-menu" className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-md" role="banner">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
         <Link
           href="/"

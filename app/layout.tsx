@@ -83,12 +83,20 @@ export default async function RootLayout({
         <WebVitalsReporter />
         <SwRegister />
         <ThemeProvider defaultTheme={defaultTheme} nonce={nonce}>
-          <a
-            href="#icerik"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-foreground"
-          >
-            İçeriğe atla
-          </a>
+          <nav aria-label="Erişim kısayolları" className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:left-4 focus-within:top-4 focus-within:z-[100] focus-within:flex focus-within:gap-2">
+            <a
+              href="#icerik"
+              className="rounded-lg bg-accent px-4 py-2 text-accent-foreground focus:outline-2 focus:outline-accent"
+            >
+              İçeriğe atla
+            </a>
+            <a
+              href="#ana-menu"
+              className="rounded-lg bg-accent px-4 py-2 text-accent-foreground focus:outline-2 focus:outline-accent"
+            >
+              Menüye atla
+            </a>
+          </nav>
           <SiteNavbar />
           <main id="icerik" className="flex-1">
             {children}
