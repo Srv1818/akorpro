@@ -1,13 +1,8 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { scales } from "@/data/mock/scales";
-import {
-  majorTriadPitchClasses,
-  OPEN_STRING_PC_TOP_FIRST,
-  scalePitchClassesInKey,
-  PC_TO_NAME,
-} from "@/lib/music/note-utils";
+import { gamlarCatalogAndTonicToPitchClassSet } from "@/lib/music/fretboard-from-scale-notes";
+import { majorTriadPitchClasses, OPEN_STRING_PC_TOP_FIRST, PC_TO_NAME } from "@/lib/music/note-utils";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 
 type Props = {
@@ -28,9 +23,7 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
 
   const activePcs = useMemo(() => {
     if (mode === "chord") return majorTriadPitchClasses(tonal);
-    const scale = scales.find((sc) => sc.id === scaleId) ?? scales[0];
-    if (!scale) return new Set<number>();
-    return scalePitchClassesInKey(scale.notesC, tonal);
+    return gamlarCatalogAndTonicToPitchClassSet(tonal, scaleId);
   }, [mode, tonal, scaleId]);
 
   const strings = 6;

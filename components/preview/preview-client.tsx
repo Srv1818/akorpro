@@ -19,7 +19,7 @@ import {
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { Fretboard } from "@/components/tools/fretboard";
 import { AutoScrollButton, MetronomeButton, CopyButton, PrintButton } from "@/components/preview/preview-toolbar";
-import { mockScales } from "@/data/mock/scales";
+import { GAMLAR_SCALE_CATALOG } from "@/data/gamlar-scale-catalog";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
 import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
@@ -374,11 +374,11 @@ export function PreviewClient({
           </label>
           <select
             id="preview-scale"
-            value={selectedScaleId ?? "ionian"}
+            value={selectedScaleId ?? "major"}
             onChange={(e) => setSelectedScaleId(e.target.value || null)}
             className="mt-1 w-full max-w-xs rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
           >
-            {mockScales.map((sc) => (
+            {GAMLAR_SCALE_CATALOG.map((sc) => (
               <option key={sc.id} value={sc.id}>
                 {sc.name}
               </option>

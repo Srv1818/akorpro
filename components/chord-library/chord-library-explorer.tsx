@@ -1,90 +1,111 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
+import {
+  GUITAR_QUALITY_OPTIONS,
+  GUITAR_ROOT_ENTRIES,
+  getGuitarChord,
+  parseFretChar,
+  type GuitarChordDef,
+  type GuitarChordPosition,
+  type GuitarQualitySuffix,
+  type GuitarRootDbKey,
+} from "@/lib/chords-db/guitar";
 
-const ROOT_NOTES = [
-  "C",
-  "C#",
-  "D",
-  "D#",
-  "E",
-  "F",
-  "F#",
-  "G",
-  "G#",
-  "A",
-  "A#",
-  "B",
-] as const;
-
-export type RootNote = (typeof ROOT_NOTES)[number];
-
-/** Tam kalite ızgarası: 6 sütun × 6 satır (referans düzenine uygun) */
-const CHORD_QUALITIES = [
-  "Major",
-  "Minor",
-  "7",
-  "m7",
-  "maj7",
-  "dim",
-  "dim7",
-  "aug",
-  "sus2",
-  "sus4",
-  "6",
-  "m6",
-  "9",
-  "m9",
-  "add9",
-  "7sus4",
-  "m7b5",
-  "7#9",
-  "7b9",
-  "9b5",
-  "13",
-  "maj9",
-  "m11",
-  "11",
-  "maj11",
-  "m13",
-  "maj13",
-  "6/9",
-  "aug7",
-  "7b5",
-  "7#5",
-  "mMaj7",
-  "add11",
-  "add4",
-  "5",
-  "9#11",
-] as const;
-
-export type ChordQuality = (typeof CHORD_QUALITIES)[number];
-
-const CHORD_VARIATIONS = [1, 2, 3, 4] as const;
-export type ChordVariation = (typeof CHORD_VARIATIONS)[number];
+/** Üstten alta: ince → kalın (yüksek mi → kalın Mi) — görsel satır 0 = tel 1 */
+const STRING_NAMES = ["E", "B", "G", "D", "A", "E"] as const;
 
 const FRET_COUNT = 16;
 const STRING_COUNT = 6;
-
-/** Üstten alta: ince → kalın (yüksek mi → kalın Mi) */
-const STRING_NAMES = ["E", "B", "G", "D", "A", "E"] as const;
 
 const INLAY_SINGLE_FRETS = [3, 5, 7, 9, 15] as const;
 const INLAY_DOUBLE_FRET = 12;
 
 const FRET_COL_STYLE = { gridTemplateColumns: "repeat(16, minmax(1.6rem, 1fr))" } as const;
 
-function FretboardVisual({
+const btnSelected =
+  "bg-[#FFB800] text-zinc-950 shadow-sm ring-1 ring-amber-500/60";
+const btnRootIdle =
+  "bg-bg text-foreground ring-1 ring-border hover:bg-surface hover:ring-zinc-500/35";
+
+/** Görsel satır s (0=ince E) → frets/fingers dizin i (0=kalın E) */
+function stringRowToDataIndex(s: number): number {
+  return STRING_COUNT - 1 - s;
+}
+
+function fretsForVisualRow(frets: string, s: number): string {
+  const i = stringRowToDataIndex(s);
+  return frets[i] ?? "x";
+}
+
+function fingerForVisualRow(fingers: string, s: number): string {
+  const i = stringRowToDataIndex(s);
+  return fingers[i] ?? "0";
+}
+
+/** Veri sırası (0=kalın): perde değerleri */
+function parseFretLine(frets: string): Array<"open" | "mute" | number> {
+  return Array.from({ length: STRING_COUNT }, (_, i) => parseFretChar(frets[i] ?? "x"));
+}
+
+/**
+ * Parmak barre’si tek parça: bu perdede basılan tellerin en kalından en inceye
+ * tüm aralığı (örn. 335553 → 0…5). Ortadaki teller başka perdede olsa da çubuk kesintisiz.
+ */
+function barreStringSpan(
+  fretsParsed: Array<"open" | "mute" | number>,
+  barreFret: number
+): { from: number; to: number } | null {
+  const hit = fretsParsed
+    .map((v, i) => (v === barreFret ? i : -1))
+    .filter((i) => i >= 0);
+  if (hit.length === 0) return null;
+  return { from: Math.min(...hit), to: Math.max(...hit) };
+}
+
+function ChordDiagram({
+  chord,
+  positionIndex,
   embedded = false,
-  variation = 1,
 }: {
+  chord: GuitarChordDef | null;
+  positionIndex: number;
   embedded?: boolean;
-  variation?: ChordVariation;
 }) {
+  const position: GuitarChordPosition | null =
+    chord?.positions[positionIndex] ?? chord?.positions[0] ?? null;
+
   const shell = embedded
     ? "overflow-x-auto bg-bg/40 px-2 pb-2 pt-1.5"
     : "overflow-x-auto rounded-2xl border border-border bg-surface/80 p-2 shadow-inner";
+
+  if (!chord || !position) {
+    return (
+      <div className={shell}>
+        <p className="py-8 text-center text-sm text-muted">
+          Bu kök ve kalite için gitar pozisyonu bulunamadı.
+        </p>
+      </div>
+    );
+  }
+
+  const fretsParsed = parseFretLine(position.frets);
+  const barreSpan =
+    position.barres != null ? barreStringSpan(fretsParsed, position.barres) : null;
+
+  let barreStyle: CSSProperties | null = null;
+  if (position.barres != null && barreSpan) {
+    const sTop = STRING_COUNT - 1 - barreSpan.to;
+    const sBot = STRING_COUNT - 1 - barreSpan.from;
+    const topPct = ((sTop + sBot) / 2 + 0.5) / STRING_COUNT;
+    const heightPct = (sBot - sTop + 1) / STRING_COUNT;
+    barreStyle = {
+      left: `calc(((${position.barres} + 0.5) / ${FRET_COUNT}) * 100%)`,
+      top: `${topPct * 100}%`,
+      height: `${heightPct * 100}%`,
+      transform: "translate(-50%, -50%)",
+    };
+  }
 
   return (
     <div className={shell}>
@@ -92,7 +113,7 @@ function FretboardVisual({
         <div className="flex items-end gap-1.5 sm:gap-2">
           <div className="flex w-6 shrink-0 flex-col justify-end sm:w-7" aria-hidden />
           <div
-            className="grid min-w-0 flex-1 text-center text-[0.6rem] font-semibold tabular-nums text-zinc-400 sm:text-[0.65rem]"
+            className="relative grid min-w-0 flex-1 text-center text-[0.6rem] font-semibold tabular-nums text-zinc-400 sm:text-[0.65rem]"
             style={FRET_COL_STYLE}
           >
             {Array.from({ length: FRET_COUNT }, (_, f) => (
@@ -102,10 +123,7 @@ function FretboardVisual({
         </div>
 
         <div className="flex gap-1.5 sm:gap-2">
-          <div
-            className="flex w-6 shrink-0 flex-col sm:w-7"
-            aria-label="Tel isimleri"
-          >
+          <div className="flex w-6 shrink-0 flex-col sm:w-7" aria-label="Tel isimleri">
             {STRING_NAMES.map((name, s) => (
               <div
                 key={`${name}-${s}`}
@@ -145,10 +163,72 @@ function FretboardVisual({
               );
             })}
 
-            <div
-              className="pointer-events-none absolute inset-0 z-[2]"
-              aria-hidden
-            >
+            {/* Barre: parmak noktalarıyla aynı çap (w) ve stil; rounded-full → uçlar yuvarlak */}
+            {barreStyle ? (
+              <div
+                className="pointer-events-none absolute z-[4] w-[1.35rem] rounded-full bg-amber-400 shadow-md ring-1 ring-amber-600/50 sm:w-6"
+                style={barreStyle}
+              />
+            ) : null}
+
+            {/* Parmak / açık / susturma */}
+            {Array.from({ length: STRING_COUNT }, (_, s) => {
+              const ch = fretsForVisualRow(position.frets, s);
+              const v = parseFretChar(ch);
+              const fChar = fingerForVisualRow(position.fingers, s);
+              const showFinger = fChar && fChar !== "0";
+
+              if (v === "mute") {
+                return (
+                  <div
+                    key={`dot-${s}-mute`}
+                    className="pointer-events-none absolute z-[5] flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[0.65rem] font-bold text-zinc-300 sm:h-5 sm:w-5 sm:text-xs"
+                    style={{
+                      left: `calc((0 + 0.5) / ${FRET_COUNT} * 100%)`,
+                      top: `calc(${(s + 0.5) / STRING_COUNT} * 100%)`,
+                    }}
+                  >
+                    ×
+                  </div>
+                );
+              }
+
+              if (v === "open") {
+                return (
+                  <div
+                    key={`dot-${s}-open`}
+                    className="pointer-events-none absolute z-[5] flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-stone-200/90 text-[0.55rem] font-bold text-stone-100 sm:h-5 sm:w-5 sm:text-[0.65rem]"
+                    style={{
+                      left: `calc((0 + 0.5) / ${FRET_COUNT} * 100%)`,
+                      top: `calc(${(s + 0.5) / STRING_COUNT} * 100%)`,
+                    }}
+                  >
+                    O
+                  </div>
+                );
+              }
+
+              const atBarre = position.barres != null && v === position.barres;
+
+              if (atBarre) {
+                return null;
+              }
+
+              return (
+                <div
+                  key={`dot-${s}-fret-${v}`}
+                  className="pointer-events-none absolute z-[5] flex h-[1.35rem] w-[1.35rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-amber-400 text-[0.6rem] font-bold text-zinc-950 shadow-md ring-1 ring-amber-600/50 sm:h-6 sm:w-6 sm:text-xs"
+                  style={{
+                    left: `calc((${v} + 0.5) / ${FRET_COUNT} * 100%)`,
+                    top: `calc(${(s + 0.5) / STRING_COUNT} * 100%)`,
+                  }}
+                >
+                  {showFinger ? fChar : ""}
+                </div>
+              );
+            })}
+
+            <div className="pointer-events-none absolute inset-0 z-[2]" aria-hidden>
               {INLAY_SINGLE_FRETS.map((fret) => (
                 <div
                   key={fret}
@@ -177,22 +257,26 @@ function FretboardVisual({
         </div>
 
         <p className="pl-7 text-center text-[0.65rem] leading-tight text-muted sm:pl-8">
-          Görsel önizleme — 6 tel, perdeler 0–15 · Varyasyon {variation}/4
+          chords-db · Perdeler 0–15 (a–f = 10–15) · Pozisyon {positionIndex + 1}/{chord.positions.length}
+          {position.capo ? " · kapo" : ""}
         </p>
       </div>
     </div>
   );
 }
 
-const btnSelected =
-  "bg-[#FFB800] text-zinc-950 shadow-sm ring-1 ring-amber-500/60";
-const btnRootIdle =
-  "bg-bg text-foreground ring-1 ring-border hover:bg-surface hover:ring-zinc-500/35";
-
 export function ChordLibraryExplorer() {
-  const [root, setRoot] = useState<RootNote>("C");
-  const [quality, setQuality] = useState<ChordQuality>("Major");
-  const [variation, setVariation] = useState<ChordVariation>(1);
+  const [root, setRoot] = useState<GuitarRootDbKey>("C");
+  const [suffix, setSuffix] = useState<GuitarQualitySuffix>("major");
+  const [variation, setVariation] = useState(1);
+
+  const chord = useMemo(() => getGuitarChord(root, suffix), [root, suffix]);
+
+  const maxVar = chord?.positions.length ?? 1;
+  const safeVariation = Math.min(Math.max(1, variation), maxVar);
+
+  const selectedLabel = GUITAR_QUALITY_OPTIONS.find((q) => q.suffix === suffix)?.label ?? suffix;
+  const rootLabel = GUITAR_ROOT_ENTRIES.find((r) => r.dbKey === root)?.label ?? root;
 
   return (
     <div className="space-y-3">
@@ -202,12 +286,13 @@ export function ChordLibraryExplorer() {
       >
         <div className="relative border-b border-border px-3 py-2 pr-[5.25rem] sm:pr-[5.75rem]">
           <div
-            className="absolute right-2 top-2 z-10 flex gap-0.5 sm:gap-1"
+            className="absolute right-2 top-2 z-10 flex flex-wrap justify-end gap-0.5 sm:gap-1"
             role="group"
-            aria-label="Akor varyasyonu"
+            aria-label="Akor pozisyonu"
           >
-            {CHORD_VARIATIONS.map((v) => {
-              const selected = v === variation;
+            {Array.from({ length: maxVar }, (_, i) => {
+              const v = i + 1;
+              const selected = v === safeVariation;
               return (
                 <button
                   key={v}
@@ -228,28 +313,31 @@ export function ChordLibraryExplorer() {
               Seçili akor
             </p>
             <p className="text-xl font-bold leading-tight tracking-tight text-foreground sm:text-2xl">
-              {root} {quality}
+              {suffix === "major" ? rootLabel : `${rootLabel} ${selectedLabel}`}
             </p>
           </div>
         </div>
-        <FretboardVisual embedded variation={variation} />
+        <ChordDiagram chord={chord} positionIndex={safeVariation - 1} embedded />
       </section>
 
       <section aria-label="Kök nota seçimi">
         <div className="flex flex-wrap justify-center gap-1 rounded-2xl border border-border bg-surface/90 p-2 sm:gap-1.5 sm:p-2.5">
-          {ROOT_NOTES.map((n) => {
-            const selected = n === root;
+          {GUITAR_ROOT_ENTRIES.map(({ dbKey, label }) => {
+            const selected = dbKey === root;
             return (
               <button
-                key={n}
+                key={dbKey}
                 type="button"
-                onClick={() => setRoot(n)}
+                onClick={() => {
+                  setRoot(dbKey);
+                  setVariation(1);
+                }}
                 className={[
                   "min-h-8 min-w-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-9 sm:min-w-9 sm:text-[0.8125rem]",
                   selected ? btnSelected : btnRootIdle,
                 ].join(" ")}
               >
-                {n}
+                {label}
               </button>
             );
           })}
@@ -258,19 +346,22 @@ export function ChordLibraryExplorer() {
 
       <section aria-label="Akor kalitesi seçimi">
         <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border bg-surface/90 p-2 sm:grid-cols-6 sm:gap-1.5 sm:p-2.5">
-          {CHORD_QUALITIES.map((q) => {
-            const selected = q === quality;
+          {GUITAR_QUALITY_OPTIONS.map(({ label, suffix: suf }) => {
+            const selected = suf === suffix;
             return (
               <button
-                key={q}
+                key={suf}
                 type="button"
-                onClick={() => setQuality(q)}
+                onClick={() => {
+                  setSuffix(suf);
+                  setVariation(1);
+                }}
                 className={[
                   "rounded-lg px-2 py-1.5 text-center text-xs font-medium transition-colors sm:py-2",
                   selected ? btnSelected : "border border-border bg-bg text-foreground hover:border-zinc-500/45",
                 ].join(" ")}
               >
-                {q}
+                {label}
               </button>
             );
           })}
