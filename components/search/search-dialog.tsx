@@ -37,42 +37,40 @@ type SearchResponse = {
 };
 
 export function SearchDialog() {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  // Dropdown'ın açık/kapalı durumu
+  const [isOpen, setIsOpen] = useState(false);
 
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const openDialog = useCallback(() => {
-    setOpen(true);
-    dialogRef.current?.showModal();
-    setTimeout(() => inputRef.current?.focus(), 50);
+  // Dışarı tıklanınca dropdown'ı kapat
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const closeDialog = useCallback(() => {
-    setOpen(false);
-    dialogRef.current?.close();
-    setQuery("");
-    setResults(null);
-    setActiveIndex(-1);
-  }, []);
-
+  // Ctrl+K kısayolu
   useEffect(() => {
     function onKeyDown(e: globalThis.KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
-        if (open) closeDialog();
-        else openDialog();
+        inputRef.current?.focus();
       }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, openDialog, closeDialog]);
+  }, []);
 
   const fetchResults = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -81,6 +79,7 @@ export function SearchDialog() {
       return;
     }
     setLoading(true);
+    setIsOpen(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
       if (res.ok) {
@@ -98,6 +97,9 @@ export function SearchDialog() {
   const onQueryChange = useCallback(
     (val: string) => {
       setQuery(val);
+      if (val.length >= 2) setIsOpen(true);
+      else setIsOpen(false);
+
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => fetchResults(val), 300);
     },
@@ -130,9 +132,16 @@ export function SearchDialog() {
         }))
       : [];
 
-  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     const totalItems = allItems.length > 0 ? allItems.length : popularItems.length;
-    if (totalItems === 0) return;
+    
+    if (e.key === "Escape") {
+      setIsOpen(false);
+      inputRef.current?.blur();
+      return;
+    }
+
+    if (!isOpen || totalItems === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -145,11 +154,9 @@ export function SearchDialog() {
       const items = allItems.length > 0 ? allItems : popularItems;
       const item = items[activeIndex];
       if (item) {
-        closeDialog();
+        setIsOpen(false);
         window.location.href = item.href;
       }
-    } else if (e.key === "Escape") {
-      closeDialog();
     }
   }
 
@@ -161,106 +168,64 @@ export function SearchDialog() {
   }, [activeIndex]);
 
   return (
-    <>
-    <button
-        type="button"
-        onClick={openDialog}
-        // py-2 yerine py-3 yaptık (yukarıdan aşağıdan kalınlaştırdı)
-        // rounded-lg yerine rounded-xl yaptık (köşeleri daha şık kıvrımlı oldu)
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm text-muted shadow-sm transition hover:border-accent hover:text-foreground hover:bg-surface/80"
-        aria-label="Ara (Ctrl+K)"
-      >
-        <div className="flex items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <span>Şarkı veya sanatçı ara...</span>
-        </div>
-        <kbd className="rounded border border-border bg-bg px-2 py-0.5 font-mono text-[10px] text-muted shadow-sm">
-          Ctrl+K
-        </kbd>
-      </button>
-
-      <dialog
-        ref={dialogRef}
-        className="fixed inset-0 z-50 m-0 h-full w-full max-w-none bg-transparent p-0 backdrop:bg-black/50"
-        onClose={closeDialog}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) closeDialog();
-        }}
-        aria-label="Arama"
-      >
-        <div
-          className="mx-auto mt-[10vh] w-full max-w-xl rounded-2xl border border-border bg-bg shadow-2xl"
-          role="search"
-          onKeyDown={onKeyDown}
+    <div ref={containerRef} className="relative w-full">
+      {/* Doğrudan yazılabilir arama kutusu */}
+      <div className="relative flex items-center w-full">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="absolute left-3 md:left-4 text-muted shrink-0"
+          aria-hidden="true"
         >
-          <div className="flex items-center border-b border-border px-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0 text-muted"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              ref={inputRef}
-              type="search"
-              className="flex-1 bg-transparent px-3 py-4 text-foreground outline-none placeholder:text-muted"
-              placeholder="Şarkı veya sanatçı ara…"
-              value={query}
-              onChange={(e) => onQueryChange(e.target.value)}
-              role="combobox"
-              aria-expanded={allItems.length > 0 || popularItems.length > 0}
-              aria-autocomplete="list"
-              aria-controls="search-listbox"
-              aria-activedescendant={
-                activeIndex >= 0 ? `search-item-${activeIndex}` : undefined
-              }
-            />
-            {loading ? (
-              <span className="text-xs text-muted" aria-live="polite">
-                Aranıyor…
-              </span>
-            ) : null}
-            <button
-              type="button"
-              onClick={closeDialog}
-              className="ml-2 rounded px-2 py-1 text-xs text-muted hover:text-foreground"
-              aria-label="Kapat"
-            >
-              ESC
-            </button>
-          </div>
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
 
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          onFocus={() => {
+            if (query.length >= 2) setIsOpen(true);
+          }}
+          placeholder="Şarkı veya sanatçı ara..."
+          className="w-full rounded-xl border border-border bg-surface py-3 pl-10 pr-16 md:pl-12 md:pr-20 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-controls="search-dropdown"
+          aria-activedescendant={activeIndex >= 0 ? `search-item-${activeIndex}` : undefined}
+        />
+
+        {loading ? (
+          <div className="absolute right-3 flex items-center justify-center">
+             <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-accent"></div>
+          </div>
+        ) : (
+          <kbd className="absolute right-3 hidden rounded border border-border bg-bg px-2 py-0.5 font-mono text-[10px] text-muted shadow-sm md:inline">
+            Ctrl+K
+          </kbd>
+        )}
+      </div>
+
+      {/* Sonuçların gösterildiği açılır liste (Dropdown) */}
+      {isOpen && (query.length >= 2) && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-bg shadow-xl">
           <ul
             ref={listRef}
-            id="search-listbox"
+            id="search-dropdown"
             role="listbox"
-            className="max-h-[50vh] overflow-y-auto p-2"
+            className="max-h-[60vh] overflow-y-auto p-2"
           >
-            {/* Main results */}
+            {/* Şarkı ve Sanatçı Sonuçları */}
             {allItems.map((item, i) => (
               <li
                 key={`${item.type}-${item.href}`}
@@ -275,7 +240,7 @@ export function SearchDialog() {
               >
                 <Link
                   href={item.href}
-                  onClick={closeDialog}
+                  onClick={() => setIsOpen(false)}
                   className="block"
                   tabIndex={-1}
                 >
@@ -285,13 +250,11 @@ export function SearchDialog() {
               </li>
             ))}
 
-            {/* Empty: popular artists + CTA */}
-            {results?.empty && popularItems.length > 0 ? (
+            {/* Sonuç Yoksa Popüler Sanatçılar */}
+            {results?.empty && popularItems.length > 0 && (
               <>
                 <li className="px-3 py-2 text-xs font-medium text-muted">
-                  {query.length >= 2
-                    ? "Sonuç bulunamadı. Popüler sanatçılar:"
-                    : "Popüler sanatçılar"}
+                  Sonuç bulunamadı. Popüler sanatçılar:
                 </li>
                 {popularItems.map((item, i) => (
                   <li
@@ -307,7 +270,7 @@ export function SearchDialog() {
                   >
                     <Link
                       href={item.href}
-                      onClick={closeDialog}
+                      onClick={() => setIsOpen(false)}
                       className="block"
                       tabIndex={-1}
                     >
@@ -316,27 +279,27 @@ export function SearchDialog() {
                     </Link>
                   </li>
                 ))}
-                <li className="mt-2 border-t border-border px-3 pt-3 pb-1">
+                <li className="mt-2 border-t border-border px-3 pb-1 pt-3">
                   <Link
                     href="/katki"
-                    onClick={closeDialog}
+                    onClick={() => setIsOpen(false)}
                     className="text-sm font-medium text-accent hover:underline"
                   >
                     Bu şarkı eksik mi? Katkıda bulunun &rarr;
                   </Link>
                 </li>
               </>
-            ) : null}
+            )}
 
-            {/* Idle state */}
-            {!results && !loading ? (
+            {/* Arıyor (Yükleniyor) ve Sonuç Yok Durumu */}
+            {!results && !loading && (
               <li className="px-3 py-6 text-center text-sm text-muted">
-                Şarkı veya sanatçı adı yazın (min. 2 karakter)
+                Aranıyor...
               </li>
-            ) : null}
+            )}
           </ul>
         </div>
-      </dialog>
-    </>
+      )}
+    </div>
   );
 }
