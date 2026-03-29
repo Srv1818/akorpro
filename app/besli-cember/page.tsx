@@ -4,11 +4,13 @@ import { PageHeader } from "@/components/content/page-header";
 
 export const metadata: Metadata = {
   title: "5'li çember",
-  description: "5'li çember ve tonal merkez — Preview store ile fretboard (akor modu) aynı state'i paylaşır.",
+  description:
+    "Doğal, harmonik ve melodik ana dizilerin 21 modu — Tonal.js ile diyatonik üçlüler ve 5'li çember vurgusu.",
   alternates: { canonical: "/besli-cember" },
   openGraph: {
     title: "5'li çember",
-    description: "5'li çember ve tonal merkez — Preview store ile fretboard (akor modu) aynı state'i paylaşır.",
+    description:
+      "Doğal, harmonik ve melodik ana dizilerin 21 modu — Tonal.js ile diyatonik üçlüler ve 5'li çember.",
     url: "/besli-cember",
   },
 };
@@ -18,7 +20,7 @@ export default function BesliCemberPage() {
     <>
       <PageHeader
         title="5'li çember"
-        description="Tıklama → tonal merkez güncellenir; fretboard majör üçlü vurgusu aynı Zustand store üzerinden okunur (ARCHITECTURE Faz 1)."
+        description="Ana dizi (doğal / harmonik / melodik) ve mod seçimi Tonal.js ile hesaplanır; çemberde diyatonik vurgu, yan panellerde Roma rakamları."
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <BesliCemberTools />

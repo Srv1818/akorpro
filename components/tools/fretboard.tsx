@@ -9,6 +9,8 @@ type Props = {
   mode: "chord" | "scale";
   maxFret?: number;
   className?: string;
+  /** Varsa (ör. 5'li çember modu), `chord` modunda majör üçlü yerine bu perdeler vurgulanır */
+  pitchClassHighlight?: ReadonlySet<number> | null;
 };
 
 function pitchClassAtFret(stringIndex: number, fret: number): number {
@@ -17,14 +19,15 @@ function pitchClassAtFret(stringIndex: number, fret: number): number {
   return (open + fret) % 12;
 }
 
-function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
+function FretboardInner({ mode, maxFret = 12, className = "", pitchClassHighlight = null }: Props) {
   const tonal = usePreviewToolsStore((s) => s.tonalCenterIndex);
   const scaleId = usePreviewToolsStore((s) => s.selectedScaleId);
 
   const activePcs = useMemo(() => {
+    if (pitchClassHighlight && pitchClassHighlight.size > 0) return new Set(pitchClassHighlight);
     if (mode === "chord") return majorTriadPitchClasses(tonal);
     return gamlarCatalogAndTonicToPitchClassSet(tonal, scaleId);
-  }, [mode, tonal, scaleId]);
+  }, [mode, tonal, scaleId, pitchClassHighlight]);
 
   const strings = 6;
   const nutW = 10;
@@ -37,7 +40,13 @@ function FretboardInner({ mode, maxFret = 12, className = "" }: Props) {
   return (
     <div className={className}>
       <p className="mb-2 text-xs text-muted">
-        Fretboard ({mode === "chord" ? "akor — majör üçlü" : "gam — seçilen dizin + tonal merkez"}) · tel 1 üstte
+        Fretboard (
+        {pitchClassHighlight && pitchClassHighlight.size > 0
+          ? "seçilen mod dizisi"
+          : mode === "chord"
+            ? "akor — majör üçlü"
+            : "gam — seçilen dizin + tonal merkez"}
+        ) · tel 1 üstte
       </p>
       <svg
         width={w}
