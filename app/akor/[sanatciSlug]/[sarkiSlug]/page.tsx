@@ -151,7 +151,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
         )}
 
         <nav className="mt-10 flex flex-wrap gap-4 text-sm">
-          <Link href="/kesfet" className="text-accent hover:underline">
+          <Link href="/" className="text-accent hover:underline">
             Keşfet
           </Link>
           <Link href="/gitar-akorlari" className="text-accent hover:underline">

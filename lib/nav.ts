@@ -4,7 +4,7 @@ import { chordPath, previewPath } from "@/lib/paths";
 const previewDemo = previewPath("duman", "kufi");
 
 export const mainNav = [
-  { href: "/kesfet", label: "Keşfet" },
+  { href: "/", label: "Keşfet" },
   { href: "/gitar-akorlari", label: "Şarkılar" },
   { href: "/akor-kutuphanesi", label: "Kütüphane" },
   { href: "/gamlar", label: "Gamlar" },
@@ -14,7 +14,7 @@ export const mainNav = [
 ] as const;
 
 export const footerNav = [
-  { href: "/kesfet", label: "Keşfet" },
+  { href: "/", label: "Keşfet" },
   { href: "/gitar-akorlari", label: "Tüm şarkılar" },
   { href: "/arama", label: "Arama" },
   { href: "/akor-kutuphanesi", label: "Akor kütüphanesi" },

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSessionUser } from "@/lib/auth/server-session";
 import { getAdminAuth } from "@/lib/firebase/admin";
-import { sessionRateLimiter } from "@/lib/security/rate-limit";
+import { customTokenRateLimiter } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  */
 export async function GET(request: Request) {
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (!sessionRateLimiter.check(clientIp)) {
+  if (!customTokenRateLimiter.check(clientIp)) {
     return NextResponse.json({ error: "Çok fazla istek." }, { status: 429 });
   }
 

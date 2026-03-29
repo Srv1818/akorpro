@@ -21,6 +21,7 @@ function isValidTag(tag: string): boolean {
 const ALLOWED_PATH_PATTERNS = [
   /^\/akor\/[\w-]+\/[\w-]+$/,
   /^\/sanatci\/[\w-]+$/,
+  /^\/$/,
   /^\/kesfet$/,
   /^\/gitar-akorlari$/,
   /^\/preview\/[\w-]+\/[\w-]+$/,

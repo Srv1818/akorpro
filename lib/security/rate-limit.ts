@@ -57,8 +57,11 @@ export function rateLimiter({ windowMs, max }: RateLimiterOptions) {
   };
 }
 
+/** POST /api/auth/session — oturum çerezi oluşturma (giriş). */
+export const sessionPostRateLimiter = rateLimiter({ windowMs: 60_000, max: 40 });
+
 /**
- * Pre-configured limiter for the session endpoint.
- * 10 requests per minute per IP.
+ * GET /api/auth/custom-token — sayfada çok bileşen tetikleyebilir; session ile aynı sayaç
+ * paylaşılırsa giriş POST’u 429 alır.
  */
-export const sessionRateLimiter = rateLimiter({ windowMs: 60_000, max: 10 });
+export const customTokenRateLimiter = rateLimiter({ windowMs: 60_000, max: 120 });

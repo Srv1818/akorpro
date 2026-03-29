@@ -8,7 +8,43 @@ import { getClientAuth } from "@/lib/firebase/client";
 /**
  * HTTP-only oturum çerezi varken Firebase Auth bazen boş kalır; Firestore kuralları
  * `request.auth` istediği için `/api/auth/custom-token` ile istemci oturumu eşitlenir.
+ *
+ * Aynı sayfada çok sayıda bileşen bu hook’u kullandığı için senkron tek bir Promise
+ * üzerinden paylaşılır; aksi halde `/api/auth/custom-token` ve rate limit taşar.
  */
+let sessionToFirebaseSync: Promise<void> | null = null;
+
+async function syncHttpSessionToFirebaseOnce(): Promise<void> {
+  const auth = getClientAuth();
+  await auth.authStateReady();
+  if (auth.currentUser) return;
+
+  if (!sessionToFirebaseSync) {
+    sessionToFirebaseSync = (async () => {
+      try {
+        const meRes = await fetch("/api/auth/me", { credentials: "include" });
+        if (!meRes.ok) return;
+        const meData = (await meRes.json()) as { user: unknown };
+        if (!meData.user) return;
+
+        const res = await fetch("/api/auth/custom-token", { credentials: "include" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { token?: string };
+        if (data.token) {
+          const { signInWithCustomToken } = await import("firebase/auth");
+          await signInWithCustomToken(auth, data.token);
+        }
+      } catch {
+        /* ağ / yapılandırma */
+      } finally {
+        sessionToFirebaseSync = null;
+      }
+    })();
+  }
+
+  await sessionToFirebaseSync;
+}
+
 export function useFirebaseUidFromSession(): string | null | undefined {
   const [firebaseUid, setFirebaseUid] = useState<string | null | undefined>(undefined);
 
@@ -24,20 +60,9 @@ export function useFirebaseUidFromSession(): string | null | undefined {
 
     void (async () => {
       try {
-        await auth.authStateReady();
-        if (cancelled) return;
-        if (!auth.currentUser) {
-          const res = await fetch("/api/auth/custom-token", { credentials: "include" });
-          if (res.ok) {
-            const data = (await res.json()) as { token?: string };
-            if (data.token) {
-              const { signInWithCustomToken } = await import("firebase/auth");
-              await signInWithCustomToken(auth, data.token);
-            }
-          }
-        }
+        await syncHttpSessionToFirebaseOnce();
       } catch {
-        /* ağ / yapılandırma */
+        /* sync içinde yutuldu */
       }
       if (cancelled) return;
       setFirebaseUid(auth.currentUser?.uid ?? null);

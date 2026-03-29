@@ -19,7 +19,7 @@ export default function NotFound() {
         <Link href="/gitar-akorlari" className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-surface">
           Tüm şarkılar
         </Link>
-        <Link href="/kesfet" className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-surface">
+        <Link href="/" className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-surface">
           Keşfet
         </Link>
       </div>

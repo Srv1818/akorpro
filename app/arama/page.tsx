@@ -110,7 +110,7 @@ export default async function AramaPage({ searchParams }: Props) {
         )}
 
         <p className="mt-10 text-center text-sm">
-          <Link href="/kesfet" className="text-accent hover:underline">
+          <Link href="/" className="text-accent hover:underline">
             Keşfet
           </Link>
         </p>
