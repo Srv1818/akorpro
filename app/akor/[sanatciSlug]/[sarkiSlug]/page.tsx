@@ -3,11 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/content/page-header";
 import { CoverImage } from "@/components/content/cover-image";
+import { ChordReturnLink } from "@/components/content/chord-return-link";
 import { SongCard } from "@/components/content/song-card";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { getSongBySlugs, getSongsByArtist, getAllApprovedSongs } from "@/lib/firestore/songs";
 import { chordPath, previewPath } from "@/lib/paths";
+import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
 import { songJsonLd } from "@/lib/seo/structured-data";
 
 /** ISR: 1 hour (see lib/cache/tags.ts TTL.SONG_DETAIL) */
@@ -16,6 +18,7 @@ export const dynamicParams = true;
 
 type Props = {
   params: Promise<{ sanatciSlug: string; sarkiSlug: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 };
 
 export async function generateStaticParams() {
@@ -43,8 +46,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function AkorSongPage({ params }: Props) {
+export default async function AkorSongPage({ params, searchParams }: Props) {
   const { sanatciSlug, sarkiSlug } = await params;
+  const sp = await searchParams;
+  const rawReturn = typeof sp.returnTo === "string" ? sp.returnTo : undefined;
+  const listReturnHref = safeInternalReturnPath(rawReturn);
+
   const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) notFound();
 
@@ -101,6 +108,12 @@ export default async function AkorSongPage({ params }: Props) {
         }
       />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+        {listReturnHref ? (
+          <ChordReturnLink
+            href={listReturnHref}
+            label={listReturnHref.startsWith("/calma-listeleri") ? "Listeye dön" : "Geri dön"}
+          />
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Link
             href={previewPath(song.artistSlug, song.slug)}

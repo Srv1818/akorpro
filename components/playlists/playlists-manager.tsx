@@ -1,6 +1,17 @@
 "use client";
 
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  Check,
+  ChevronRight,
+  PencilLine,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   addDoc,
@@ -33,6 +44,11 @@ const PLAYLIST_SCHEMA_VERSION = 1;
 type PlaylistRow = { id: string; data: PlaylistDoc };
 
 type ItemRow = { id: string; data: PlaylistItemDoc };
+
+function chordHrefWithPlaylistReturn(artistSlug: string, songSlug: string, playlistId: string): string {
+  const returnTo = `/calma-listeleri?p=${encodeURIComponent(playlistId)}`;
+  return `${chordPath(artistSlug, songSlug)}?returnTo=${encodeURIComponent(returnTo)}`;
+}
 
 function formatError(err: unknown): string {
   if (err && typeof err === "object" && "code" in err) {
@@ -151,21 +167,52 @@ async function deletePlaylistAndItems(uid: string, playlistId: string): Promise<
 
 export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
   const firebaseUid = useFirebaseUidFromSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const pParam = searchParams.get("p");
+
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
+  const [playlistListReady, setPlaylistListReady] = useState(false);
   const [itemsByPlaylist, setItemsByPlaylist] = useState<Record<string, ItemRow[]>>({});
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState<Record<string, string>>({});
+  /** Yeniden adlandır tıklanınca açılan düzenleme alanı (tek seferde bir liste) */
+  const [renamingPlaylistId, setRenamingPlaylistId] = useState<string | null>(null);
+
+  const openPlaylistId =
+    pParam && playlists.some((pl) => pl.id === pParam) ? pParam : null;
+
+  const setOpenPlaylist = useCallback(
+    (id: string | null) => {
+      const path = pathname || "/calma-listeleri";
+      if (id) {
+        router.replace(`${path}?p=${encodeURIComponent(id)}`, { scroll: false });
+      } else {
+        router.replace(path, { scroll: false });
+      }
+    },
+    [pathname, router],
+  );
+
+  useEffect(() => {
+    if (!pParam || !playlistListReady) return;
+    if (!playlists.some((pl) => pl.id === pParam)) {
+      router.replace(pathname || "/calma-listeleri", { scroll: false });
+    }
+  }, [pParam, playlists, playlistListReady, pathname, router]);
 
   useEffect(() => {
     if (firebaseUid === undefined || firebaseUid === null) return;
+    setPlaylistListReady(false);
     const db = getClientFirestore();
     const q = query(collection(db, "users", firebaseUid, "playlists"), orderBy("updatedAt", "desc"));
     const unsub = onSnapshot(
       q,
       (snap) => {
+        setPlaylistListReady(true);
         setPlaylists(
           snap.docs.map((d) => ({
             id: d.id,
@@ -173,20 +220,21 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
           })),
         );
       },
-      (err) => setError(formatError(err)),
+      (err) => {
+        setPlaylistListReady(true);
+        setError(formatError(err));
+      },
     );
     return () => unsub();
   }, [firebaseUid]);
 
-  const expanded = expandedId;
-
   useEffect(() => {
-    if (!firebaseUid || !expanded) {
+    if (!firebaseUid || !openPlaylistId) {
       return;
     }
     const db = getClientFirestore();
     const q = query(
-      collection(db, "users", firebaseUid, "playlists", expanded, "items"),
+      collection(db, "users", firebaseUid, "playlists", openPlaylistId, "items"),
       orderBy("order", "asc"),
     );
     const unsub = onSnapshot(
@@ -194,7 +242,7 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
       (snap) => {
         setItemsByPlaylist((prev) => ({
           ...prev,
-          [expanded]: snap.docs.map((d) => ({
+          [openPlaylistId]: snap.docs.map((d) => ({
             id: d.id,
             data: d.data() as PlaylistItemDoc,
           })),
@@ -203,7 +251,7 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
       (err) => setError(formatError(err)),
     );
     return () => unsub();
-  }, [firebaseUid, expanded]);
+  }, [firebaseUid, openPlaylistId]);
 
   const onCreate = useCallback(async () => {
     if (!firebaseUid || !newName.trim()) return;
@@ -243,6 +291,7 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
           delete next[playlistId];
           return next;
         });
+        setRenamingPlaylistId((id) => (id === playlistId ? null : id));
       } catch (e) {
         setError(formatError(e));
       } finally {
@@ -260,14 +309,15 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
       setError(null);
       try {
         await deletePlaylistAndItems(firebaseUid, playlistId);
-        if (expandedId === playlistId) setExpandedId(null);
+        if (openPlaylistId === playlistId) setOpenPlaylist(null);
+        setRenamingPlaylistId((id) => (id === playlistId ? null : id));
       } catch (e) {
         setError(formatError(e));
       } finally {
         setBusy(false);
       }
     },
-    [firebaseUid, expandedId],
+    [firebaseUid, openPlaylistId, setOpenPlaylist],
   );
 
   const onAddSong = useCallback(
@@ -391,6 +441,227 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
     );
   }
 
+  const detailRow = openPlaylistId ? playlists.find((pl) => pl.id === openPlaylistId) : null;
+  const waitingUrlPlaylist = Boolean(pParam) && !playlistListReady;
+
+  if (waitingUrlPlaylist) {
+    return (
+      <div className="space-y-6">
+        {error ? (
+          <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <p className="text-center text-sm text-muted" aria-live="polite">
+          Liste açılıyor…
+        </p>
+      </div>
+    );
+  }
+
+  if (detailRow) {
+    const row = detailRow;
+    const rawItems = itemsByPlaylist[row.id];
+    const itemsKnown = rawItems !== undefined;
+    const items = rawItems ?? [];
+    const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
+    const countLabel =
+      !itemsKnown ? "Şarkılar yükleniyor…" : sortedItems.length === 0 ? "Henüz şarkı yok" : `${sortedItems.length} şarkı`;
+
+    return (
+      <div className="space-y-6">
+        {error ? (
+          <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={() => setOpenPlaylist(null)}
+          className="inline-flex items-center gap-2 py-1 text-sm font-normal text-accent transition hover:text-accent-muted focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
+          Listelere dön
+        </button>
+
+        <article className="rounded-xl border border-border bg-surface p-4 shadow-sm ring-1 ring-accent/20">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-lg font-semibold text-foreground">{row.data.name}</h2>
+              <p className="mt-0.5 text-xs text-muted">{countLabel}</p>
+            </div>
+            <div
+              className="flex flex-col gap-2 sm:shrink-0 sm:items-end"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              role="presentation"
+            >
+              {renamingPlaylistId === row.id ? (
+                <div className="rounded-xl border border-border bg-bg p-3 shadow-sm">
+                  <label htmlFor={`rename-playlist-${row.id}`} className="mb-1.5 block text-xs font-medium text-muted">
+                    Yeni ad
+                  </label>
+                  <input
+                    id={`rename-playlist-${row.id}`}
+                    autoFocus
+                    aria-label="Yeni liste adı"
+                    value={renameDraft[row.id] ?? row.data.name}
+                    onChange={(e) => setRenameDraft((r) => ({ ...r, [row.id]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void onRename(row.id);
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setRenamingPlaylistId(null);
+                        setRenameDraft((r) => {
+                          const next = { ...r };
+                          delete next[row.id];
+                          return next;
+                        });
+                      }
+                    }}
+                    maxLength={120}
+                    className="mb-3 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
+                  />
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      disabled={busy || !(renameDraft[row.id] ?? row.data.name).trim()}
+                      onClick={() => void onRename(row.id)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-accent/50 text-accent transition hover:bg-accent/10 disabled:opacity-50"
+                      aria-label="Yeni adı uygula"
+                      title="Uygula"
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setRenamingPlaylistId(null);
+                        setRenameDraft((r) => {
+                          const next = { ...r };
+                          delete next[row.id];
+                          return next;
+                        });
+                      }}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted transition hover:bg-surface hover:text-foreground disabled:opacity-50"
+                      aria-label="İptal"
+                      title="İptal"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              {renamingPlaylistId !== row.id ? (
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setRenamingPlaylistId((cur) => {
+                        if (cur && cur !== row.id) {
+                          setRenameDraft((r) => {
+                            const next = { ...r };
+                            delete next[cur];
+                            return next;
+                          });
+                        }
+                        return row.id;
+                      });
+                      setRenameDraft((r) => ({ ...r, [row.id]: row.data.name }));
+                    }}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/50 text-accent transition hover:bg-accent/10 disabled:opacity-50"
+                    aria-label="Yeniden adlandır"
+                    title="Yeniden adlandır"
+                  >
+                    <PencilLine className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onDeletePlaylist(row.id)}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-500/40 text-red-200 transition hover:bg-red-500/10 disabled:opacity-50"
+                    aria-label="Listeyi sil"
+                    title="Sil"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="mb-4">
+              <PlaylistSongSearch disabled={busy} busy={busy} onAdd={(s) => void onAddSong(row.id, s)} />
+            </div>
+            {sortedItems.length === 0 ? (
+              <p className="text-sm text-muted">Bu listede henüz şarkı yok. Yukarıdan arayıp ekleyin.</p>
+            ) : (
+              <ol className="space-y-2" aria-label={`${row.data.name} şarkı sırası`}>
+                {sortedItems.map((it, pos, arr) => {
+                  const href = chordHrefWithPlaylistReturn(it.data.artistSlug, it.data.songSlug, row.id);
+                  const openLabel = `${it.data.title} akor sayfasını aç`;
+                  return (
+                    <li
+                      key={it.id}
+                      className="relative flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg px-3 py-2.5 shadow-sm"
+                    >
+                      <Link
+                        href={href}
+                        className="absolute inset-0 z-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        aria-label={openLabel}
+                      />
+                      <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2 pointer-events-none">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface text-xs font-medium text-muted">
+                          {pos + 1}
+                        </span>
+                        <span className="min-w-0 truncate font-medium text-accent">{it.data.title}</span>
+                      </div>
+                      <div className="relative z-10 flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={busy || pos === 0}
+                          onClick={() => void onMoveItem(row.id, it.id, -1)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg text-foreground hover:bg-surface disabled:opacity-40"
+                          aria-label="Yukarı taşı"
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy || pos >= arr.length - 1}
+                          onClick={() => void onMoveItem(row.id, it.id, 1)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg text-foreground hover:bg-surface disabled:opacity-40"
+                          aria-label="Aşağı taşı"
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void onRemoveItem(row.id, it.id)}
+                          className="rounded-lg bg-bg px-2 py-1.5 text-xs text-muted hover:bg-red-500/10 hover:text-red-200 disabled:opacity-50"
+                        >
+                          Kaldır
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        </article>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {error ? (
@@ -399,143 +670,171 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-end">
-        <div className="min-w-0 flex-1">
-          <label htmlFor="new-playlist-name" className="block text-xs font-medium text-muted">
-            Yeni liste adı
-          </label>
-          <input
-            id="new-playlist-name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            maxLength={120}
-            placeholder="Örn. Akşam provası"
-            className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
-          />
+      <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <label htmlFor="new-playlist-name" className="block text-xs font-medium text-muted">
+              Yeni liste adı
+            </label>
+            <input
+              id="new-playlist-name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              maxLength={120}
+              placeholder="Örn. Akşam provası"
+              className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={busy || !newName.trim()}
+            onClick={() => void onCreate()}
+            className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition hover:bg-accent-muted disabled:opacity-50"
+          >
+            Liste oluştur
+          </button>
         </div>
-        <button
-          type="button"
-          disabled={busy || !newName.trim()}
-          onClick={() => void onCreate()}
-          className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition hover:bg-accent-muted disabled:opacity-50"
-        >
-          Liste oluştur
-        </button>
       </div>
 
       {playlists.length === 0 ? (
         <p className="text-center text-sm text-muted">Henüz liste yok. Yukarıdan bir tane oluşturun.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {playlists.map((row) => {
-            const isOpen = expandedId === row.id;
-            const items = itemsByPlaylist[row.id] ?? [];
+            const rawItems = itemsByPlaylist[row.id];
+            const itemsKnown = rawItems !== undefined;
+            const items = rawItems ?? [];
+            const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
+            const countLabel = !itemsKnown
+              ? "Açarak şarkıları düzenleyin"
+              : sortedItems.length === 0
+                ? "Henüz şarkı yok"
+                : `${sortedItems.length} şarkı`;
+
             return (
-              <li key={row.id} className="rounded-2xl border border-border bg-bg">
-                <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 flex-1">
+              <li key={row.id}>
+                <article className="rounded-xl border border-border bg-surface p-4 shadow-sm transition hover:border-accent/30">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                     <button
                       type="button"
-                      onClick={() => setExpandedId(isOpen ? null : row.id)}
-                      className="text-left text-base font-medium text-foreground hover:underline"
+                      className="flex min-w-0 flex-1 items-start gap-3 rounded-lg p-1 text-left -m-1 outline-none ring-accent/30 transition hover:bg-bg focus-visible:ring-2"
+                      onClick={() => setOpenPlaylist(row.id)}
                     >
-                      {row.data.name}
-                      <span className="ml-2 text-xs font-normal text-muted">
-                        {isOpen ? "▲ gizle" : "▼ şarkılar"}
+                      <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted" aria-hidden />
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-foreground">{row.data.name}</span>
+                        <span className="mt-0.5 block text-xs text-muted">{countLabel}</span>
                       </span>
                     </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <input
-                      aria-label={`Yeni ad: ${row.data.name}`}
-                      value={renameDraft[row.id] ?? row.data.name}
-                      onChange={(e) => setRenameDraft((r) => ({ ...r, [row.id]: e.target.value }))}
-                      className="min-w-[8rem] flex-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground sm:max-w-xs"
-                    />
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void onRename(row.id)}
-                      className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground hover:bg-surface/80 disabled:opacity-50"
-                    >
-                      Adı kaydet
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void onDeletePlaylist(row.id)}
-                      className="rounded-lg border border-red-500/40 px-3 py-1.5 text-sm text-red-200 hover:bg-red-500/10 disabled:opacity-50"
-                    >
-                      Sil
-                    </button>
-                  </div>
-                </div>
 
-                {isOpen ? (
-                  <div className="border-t border-border px-4 py-4">
-                    <div className="mb-4">
-                      <PlaylistSongSearch
-                        disabled={busy}
-                        busy={busy}
-                        onAdd={(s) => void onAddSong(row.id, s)}
-                      />
-                    </div>
-                    {items.length === 0 ? (
-                      <p className="text-sm text-muted">Bu listede henüz şarkı yok.</p>
-                    ) : (
-                      <ol className="space-y-2">
-                        {[...items]
-                          .sort((a, b) => a.data.order - b.data.order)
-                          .map((it, pos, arr) => (
-                            <li
-                              key={it.id}
-                              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
+                    <div
+                      className="flex flex-col gap-2 sm:shrink-0 sm:items-end"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      role="presentation"
+                    >
+                      {renamingPlaylistId === row.id ? (
+                        <div className="rounded-xl border border-border bg-bg p-3 shadow-sm">
+                          <label
+                            htmlFor={`rename-playlist-${row.id}`}
+                            className="mb-1.5 block text-xs font-medium text-muted"
+                          >
+                            Yeni ad
+                          </label>
+                          <input
+                            id={`rename-playlist-${row.id}`}
+                            autoFocus
+                            aria-label="Yeni liste adı"
+                            value={renameDraft[row.id] ?? row.data.name}
+                            onChange={(e) => setRenameDraft((r) => ({ ...r, [row.id]: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void onRename(row.id);
+                              }
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                setRenamingPlaylistId(null);
+                                setRenameDraft((r) => {
+                                  const next = { ...r };
+                                  delete next[row.id];
+                                  return next;
+                                });
+                              }
+                            }}
+                            maxLength={120}
+                            className="mb-3 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
+                          />
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              disabled={busy || !(renameDraft[row.id] ?? row.data.name).trim()}
+                              onClick={() => void onRename(row.id)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-accent/50 text-accent transition hover:bg-accent/10 disabled:opacity-50"
+                              aria-label="Yeni adı uygula"
+                              title="Uygula"
                             >
-                              <div className="min-w-0 flex-1">
-                                <Link
-                                  href={chordPath(it.data.artistSlug, it.data.songSlug)}
-                                  className="font-medium text-accent underline-offset-2 hover:underline"
-                                >
-                                  {it.data.title}
-                                </Link>
-                                <span className="ml-2 text-xs text-muted">
-                                  #{pos + 1}/{arr.length}
-                                </span>
-                              </div>
-                              <div className="flex shrink-0 flex-wrap items-center gap-1">
-                                <button
-                                  type="button"
-                                  disabled={busy || pos === 0}
-                                  onClick={() => void onMoveItem(row.id, it.id, -1)}
-                                  className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-bg disabled:opacity-40"
-                                  aria-label="Yukarı taşı"
-                                >
-                                  ↑
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={busy || pos >= arr.length - 1}
-                                  onClick={() => void onMoveItem(row.id, it.id, 1)}
-                                  className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-bg disabled:opacity-40"
-                                  aria-label="Aşağı taşı"
-                                >
-                                  ↓
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={busy}
-                                  onClick={() => void onRemoveItem(row.id, it.id)}
-                                  className="text-xs text-muted hover:text-red-200 disabled:opacity-50"
-                                >
-                                  Kaldır
-                                </button>
-                              </div>
-                            </li>
-                          ))}
-                      </ol>
-                    )}
+                              <Check className="h-3.5 w-3.5" aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                setRenamingPlaylistId(null);
+                                setRenameDraft((r) => {
+                                  const next = { ...r };
+                                  delete next[row.id];
+                                  return next;
+                                });
+                              }}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted transition hover:bg-surface hover:text-foreground disabled:opacity-50"
+                              aria-label="İptal"
+                              title="İptal"
+                            >
+                              <X className="h-3.5 w-3.5" aria-hidden />
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                      {renamingPlaylistId !== row.id ? (
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => {
+                              setRenamingPlaylistId((cur) => {
+                                if (cur && cur !== row.id) {
+                                  setRenameDraft((r) => {
+                                    const next = { ...r };
+                                    delete next[cur];
+                                    return next;
+                                  });
+                                }
+                                return row.id;
+                              });
+                              setRenameDraft((r) => ({ ...r, [row.id]: row.data.name }));
+                            }}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/50 text-accent transition hover:bg-accent/10 disabled:opacity-50"
+                            aria-label="Yeniden adlandır"
+                            title="Yeniden adlandır"
+                          >
+                            <PencilLine className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => void onDeletePlaylist(row.id)}
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-500/40 text-red-200 transition hover:bg-red-500/10 disabled:opacity-50"
+                            aria-label="Listeyi sil"
+                            title="Sil"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                ) : null}
+                </article>
               </li>
             );
           })}

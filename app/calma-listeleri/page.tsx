@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { PlaylistsManager } from "@/components/playlists/playlists-manager";
 import { PageHeader } from "@/components/content/page-header";
 import { getServerSessionUser } from "@/lib/auth/server-session";
@@ -22,13 +23,9 @@ export default async function CalmaListeleriPage() {
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         {user ? (
-          <div className="space-y-6">
-            <p className="text-center text-sm text-muted">
-              Hesap:{" "}
-              <span className="font-medium text-foreground">{user.email ?? user.uid}</span>
-            </p>
+          <Suspense fallback={<p className="text-center text-sm text-muted">Listeler yükleniyor…</p>}>
             <PlaylistsManager serverUid={user.uid} />
-          </div>
+          </Suspense>
         ) : (
           <div className="rounded-2xl border border-border bg-surface p-8 text-center">
             <p className="text-sm text-muted">
