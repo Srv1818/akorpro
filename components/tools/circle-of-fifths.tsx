@@ -177,25 +177,73 @@ function polarXY(cx: number, cy: number, r: number, deg: number) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Highlight logic                                                    */
+/*  Highlight: yalnızca panelde listelenen maj / min / dim akorlarının dilimleri */
 /* ------------------------------------------------------------------ */
 
-function diatonicCo5Indices(majorKeyIdx: number): Set<number> {
-  const s = new Set<number>();
-  for (let offset = -1; offset <= 5; offset++) {
-    s.add(((majorKeyIdx + offset) % 12 + 12) % 12);
+function co5IndexForRootPc(rootPc: number): number | null {
+  for (let i = 0; i < 12; i++) {
+    if (Note.get(CO5_LABELS[i]).chroma === rootPc) return i;
   }
-  return s;
+  return null;
 }
 
-function wedgeHighlight(idx: number, majorKeyIdx: number, diatonic: Set<number>): number {
-  if (!diatonic.has(idx)) return 0;
-  const dist = Math.abs(((idx - majorKeyIdx + 6) % 12) - 6);
-  if (dist === 0) return 1.0;
-  if (dist <= 1) return 0.85;
-  if (dist <= 2) return 0.65;
-  if (dist <= 3) return 0.5;
-  return 0.35;
+function chordEntryRootPc(symbol: string): number | null {
+  const c = Chord.get(symbol);
+  if (c.empty || c.tonic == null) return null;
+  return Note.get(c.tonic).chroma;
+}
+
+/** Dış halka: majör anahtar adı; orta: minör etiket; iç: o majör gamın vii°’si — panel akoru hangi halkada yazılıysa o dilimde vurgu. */
+type RingHighlights = { outer: Set<number>; mid: Set<number>; inner: Set<number> };
+
+function co5IndexForMinorPanelChord(symbol: string): number | null {
+  const pc = chordEntryRootPc(symbol);
+  if (pc == null) return null;
+  for (let i = 0; i < 12; i++) {
+    const c = Chord.get(CO5_MINOR_LABELS[i]);
+    if (!c.empty && c.tonic && Note.get(c.tonic).chroma === pc) return i;
+  }
+  return null;
+}
+
+function co5IndexForDimPanelChord(symbol: string): number | null {
+  const pc = chordEntryRootPc(symbol);
+  if (pc == null) return null;
+  for (let i = 0; i < 12; i++) {
+    const t6 = Key.majorKey(CO5_LABELS[i]).triads[6];
+    if (!t6) continue;
+    const c = Chord.get(t6);
+    if (c.empty || !c.tonic) continue;
+    if (Note.get(c.tonic).chroma === pc) return i;
+  }
+  return null;
+}
+
+function ringHighlightsFromChordEntries(entries: ChordEntry[]): RingHighlights {
+  const outer = new Set<number>();
+  const mid = new Set<number>();
+  const inner = new Set<number>();
+  for (const e of entries) {
+    if (e.panel === "major") {
+      const pc = chordEntryRootPc(e.symbol);
+      if (pc == null) continue;
+      const idx = co5IndexForRootPc(pc);
+      if (idx != null) outer.add(idx);
+    } else if (e.panel === "minor") {
+      const idx = co5IndexForMinorPanelChord(e.symbol);
+      if (idx != null) mid.add(idx);
+    } else {
+      const idx = co5IndexForDimPanelChord(e.symbol);
+      if (idx != null) inner.add(idx);
+    }
+  }
+  return { outer, mid, inner };
+}
+
+function ringHighlight(ring: "outer" | "mid" | "inner", idx: number, majorKeyIdx: number, hl: RingHighlights): number {
+  const set = ring === "outer" ? hl.outer : ring === "mid" ? hl.mid : hl.inner;
+  if (!set.has(idx)) return 0;
+  return ring === "outer" && idx === majorKeyIdx ? 1 : 0.9;
 }
 
 /* ------------------------------------------------------------------ */
@@ -310,11 +358,13 @@ function CircleSVG({
   size,
   majorKeyIdx,
   mode,
+  ringHighlights,
   onWedgeClick,
 }: {
   size: number;
   majorKeyIdx: number;
   mode: ScaleMode;
+  ringHighlights: RingHighlights;
   onWedgeClick: (idx: number, ring: "outer" | "inner") => void;
 }) {
   const cx = size / 2, cy = size / 2;
@@ -322,8 +372,6 @@ function CircleSVG({
   const rMid = rOuter * 0.72;
   const rInner = rMid * 0.65;
   const hubR = rInner * 0.72;
-
-  const diatonic = useMemo(() => diatonicCo5Indices(majorKeyIdx), [majorKeyIdx]);
 
   const minorTonic = useMemo(() => relativeMinorName(CO5_LABELS[majorKeyIdx]), [majorKeyIdx]);
   const centerLabel = useMemo(() => {
@@ -344,17 +392,21 @@ function CircleSVG({
         const endDeg = startDeg + 30;
         const midDeg = startDeg + 15;
 
-        const hl = wedgeHighlight(i, majorKeyIdx, diatonic);
+        const hlO = ringHighlight("outer", i, majorKeyIdx, ringHighlights);
+        const hlM = ringHighlight("mid", i, majorKeyIdx, ringHighlights);
+        const hlI = ringHighlight("inner", i, majorKeyIdx, ringHighlights);
         const majLabel = CO5_LABELS[i];
         const minLabel = CO5_MINOR_LABELS[i];
         const dimKey = Key.majorKey(majLabel);
         const dimTriad = dimKey.triads[6] ?? "";
         const dimLabel = formatSym(dimTriad);
 
-        const outerFill = hl > 0 ? `rgba(217,161,12,${0.12 + hl * 0.25})` : "rgba(63,63,70,0.25)";
-        const midFill = hl > 0 ? `rgba(180,140,20,${0.08 + hl * 0.18})` : "rgba(63,63,70,0.18)";
-        const innerFill = hl > 0 ? `rgba(140,110,20,${0.06 + hl * 0.14})` : "rgba(63,63,70,0.12)";
-        const stroke = hl > 0.7 ? "rgba(251,191,36,0.7)" : "rgba(63,63,70,0.5)";
+        const outerFill = hlO > 0 ? `rgba(217,161,12,${0.12 + hlO * 0.25})` : "rgba(63,63,70,0.25)";
+        const midFill = hlM > 0 ? `rgba(180,140,20,${0.08 + hlM * 0.18})` : "rgba(63,63,70,0.18)";
+        const innerFill = hlI > 0 ? `rgba(140,110,20,${0.06 + hlI * 0.14})` : "rgba(63,63,70,0.12)";
+        const strokeO = hlO > 0.7 ? "rgba(251,191,36,0.7)" : "rgba(63,63,70,0.5)";
+        const strokeM = hlM > 0.7 ? "rgba(251,191,36,0.7)" : "rgba(63,63,70,0.5)";
+        const strokeI = hlI > 0.7 ? "rgba(251,191,36,0.7)" : "rgba(63,63,70,0.5)";
 
         const pOuter = wedgePath(cx, cy, rMid, rOuter, startDeg, endDeg);
         const pMid = wedgePath(cx, cy, rInner, rMid, startDeg, endDeg);
@@ -370,23 +422,23 @@ function CircleSVG({
 
         return (
           <g key={i}>
-            <path d={pOuter} fill={outerFill} stroke={stroke} strokeWidth={0.6} className="cursor-pointer hover:brightness-125 transition-all" onClick={() => onWedgeClick(i, "outer")} />
-            <path d={pMid} fill={midFill} stroke={stroke} strokeWidth={0.5} className="cursor-pointer hover:brightness-125 transition-all" onClick={() => onWedgeClick(i, "inner")} />
-            <path d={pInner} fill={innerFill} stroke={stroke} strokeWidth={0.4} />
+            <path d={pOuter} fill={outerFill} stroke={strokeO} strokeWidth={0.6} className="cursor-pointer hover:brightness-125 transition-all" onClick={() => onWedgeClick(i, "outer")} />
+            <path d={pMid} fill={midFill} stroke={strokeM} strokeWidth={0.5} className="cursor-pointer hover:brightness-125 transition-all" onClick={() => onWedgeClick(i, "inner")} />
+            <path d={pInner} fill={innerFill} stroke={strokeI} strokeWidth={0.4} />
 
             <text x={oPos.x} y={oPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-bold"
-              style={{ fontSize: outerFontSize, fill: hl > 0 ? `rgba(255,245,200,${0.6 + hl * 0.4})` : "rgba(161,161,170,0.7)" }}>
+              style={{ fontSize: outerFontSize, fill: hlO > 0 ? `rgba(255,245,200,${0.6 + hlO * 0.4})` : "rgba(161,161,170,0.7)" }}>
               {majLabel}
             </text>
             <text x={mPos.x} y={mPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-semibold"
-              style={{ fontSize: midFontSize, fill: hl > 0 ? `rgba(220,230,200,${0.5 + hl * 0.4})` : "rgba(161,161,170,0.55)" }}>
+              style={{ fontSize: midFontSize, fill: hlM > 0 ? `rgba(220,230,200,${0.5 + hlM * 0.4})` : "rgba(161,161,170,0.55)" }}>
               {minLabel}
             </text>
             <text x={iPos.x} y={iPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-semibold"
-              style={{ fontSize: innerFontSize, fill: hl > 0 ? `rgba(255,200,200,${0.4 + hl * 0.4})` : "rgba(161,161,170,0.4)" }}>
+              style={{ fontSize: innerFontSize, fill: hlI > 0 ? `rgba(255,200,200,${0.4 + hlI * 0.4})` : "rgba(161,161,170,0.4)" }}>
               {dimLabel}
             </text>
           </g>
@@ -436,6 +488,12 @@ function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
   }, []);
 
   const chords = useMemo(() => buildChords(CO5_LABELS[majorKeyIdx], mode), [majorKeyIdx, mode]);
+  const ringHighlights = useMemo(() => {
+    if (mode === "harmonic" || mode === "melodic") {
+      return ringHighlightsFromChordEntries(buildChords(CO5_LABELS[majorKeyIdx], "natural"));
+    }
+    return ringHighlightsFromChordEntries(chords);
+  }, [majorKeyIdx, mode, chords]);
 
   const majorChords = useMemo(() => chords.filter((c) => c.panel === "major"), [chords]);
   const minorChords = useMemo(() => chords.filter((c) => c.panel === "minor"), [chords]);
@@ -444,7 +502,13 @@ function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
   if (variant === "widget") {
     return (
       <div className={className}>
-        <CircleSVG size={svgSize} majorKeyIdx={majorKeyIdx} mode={mode} onWedgeClick={handleWedgeClick} />
+        <CircleSVG
+          size={svgSize}
+          majorKeyIdx={majorKeyIdx}
+          mode={mode}
+          ringHighlights={ringHighlights}
+          onWedgeClick={handleWedgeClick}
+        />
       </div>
     );
   }
@@ -461,7 +525,13 @@ function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
 
         {/* Circle */}
         <div className="order-1 flex shrink-0 justify-center lg:order-2">
-          <CircleSVG size={svgSize} majorKeyIdx={majorKeyIdx} mode={mode} onWedgeClick={handleWedgeClick} />
+          <CircleSVG
+            size={svgSize}
+            majorKeyIdx={majorKeyIdx}
+            mode={mode}
+            ringHighlights={ringHighlights}
+            onWedgeClick={handleWedgeClick}
+          />
         </div>
 
         {/* Right panel - MINOR chords */}
