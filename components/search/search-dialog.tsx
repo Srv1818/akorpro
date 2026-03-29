@@ -162,29 +162,33 @@ export function SearchDialog() {
 
   return (
     <>
-      <button
+    <button
         type="button"
         onClick={openDialog}
-        className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-muted transition hover:border-accent/50 hover:text-foreground"
+        // py-2 yerine py-3 yaptık (yukarıdan aşağıdan kalınlaştırdı)
+        // rounded-lg yerine rounded-xl yaptık (köşeleri daha şık kıvrımlı oldu)
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm text-muted shadow-sm transition hover:border-accent hover:text-foreground hover:bg-surface/80"
         aria-label="Ara (Ctrl+K)"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
-        <span className="hidden sm:inline">Ara…</span>
-        <kbd className="hidden rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted sm:inline">
+        <div className="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <span>Şarkı veya sanatçı ara...</span>
+        </div>
+        <kbd className="rounded border border-border bg-bg px-2 py-0.5 font-mono text-[10px] text-muted shadow-sm">
           Ctrl+K
         </kbd>
       </button>

@@ -10,37 +10,57 @@ export function SiteNavbar() {
 
   return (
     <header id="ana-menu" className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-md" role="banner">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-foreground"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm text-accent-foreground">
-            AP
-          </span>
-          <span className="hidden sm:inline">AkorPro</span>
-        </Link>
+      {/* Kapsayıcıyı flex-col (alt alta sıralama) yaptık ki iki satır oluşturabilelim */}
+      <div className="mx-auto flex flex-col max-w-6xl px-4 sm:px-6 lg:px-8">
+        
+        {/* --- 1. SATIR: Logo, Arama Çubuğu, Sağ Menü --- */}
+        <div className="flex h-14 sm:h-16 items-center justify-between gap-4">
+          
+          {/* SOL: Logo */}
+          <Link
+            href="/"
+            className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-foreground"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm text-accent-foreground">
+              AP
+            </span>
+            <span className="hidden sm:inline">AkorPro</span>
+          </Link>
 
-        <div className="hidden flex-1 justify-center overflow-x-auto md:flex">
-          <nav className="flex shrink-0 items-center gap-0.5 lg:gap-1" aria-label="Ana menü">
+          {/* ORTA: Arama Çubuğu (Genişletilmiş ve tam ortalanmış) */}
+          <div className="hidden md:flex flex-1 justify-center px-4 max-w-2xl">
+            <div className="w-full">
+              <SearchDialog />
+            </div>
+          </div>
+
+          {/* SAĞ: Tema, Kullanıcı Çıkış ve Mobil Menü */}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Mobilde arama çubuğunu gizlememek için sadece telefonda burada gösteriyoruz */}
+            <div className="md:hidden flex items-center">
+              <SearchDialog />
+            </div>
+            <ThemeToggle />
+            <AuthHeaderActions />
+            <MobileNav items={items} />
+          </div>
+        </div>
+
+        {/* --- 2. SATIR: Menü Linkleri (Görseldeki gibi alt kısma ortalandı) --- */}
+        <div className="hidden md:flex w-full justify-center overflow-x-auto pb-3 pt-1">
+          <nav className="flex shrink-0 items-center gap-1 sm:gap-2" aria-label="Ana menü">
             {items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="whitespace-nowrap rounded-lg px-2 py-2 text-sm font-medium text-muted transition hover:bg-surface hover:text-foreground lg:px-3"
+                className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-surface hover:text-foreground"
               >
                 {item.label}
               </Link>
             ))}
           </nav>
         </div>
-
-        <div className="ml-auto flex shrink-0 items-center gap-2 md:ml-0">
-          <SearchDialog />
-          <ThemeToggle />
-          <AuthHeaderActions />
-          <MobileNav items={items} />
-        </div>
+        
       </div>
     </header>
   );

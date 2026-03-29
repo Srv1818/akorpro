@@ -1,97 +1,55 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/content/page-header";
-import { ContributorBadge } from "@/components/contribution/contributor-badge";
-import { SongCard } from "@/components/content/song-card";
-import { getContributorProfile } from "@/lib/firestore/contributor-profiles";
-import { getAdminFirestore } from "@/lib/firebase/admin";
-import type { SongDoc } from "@/lib/types/firestore";
+import { getServerSessionUser } from "@/lib/auth/server-session";
+import { redirect } from "next/navigation";
+import { Mail } from "lucide-react";
 
-type Props = {
+export default async function ProfilPage({
+  params,
+}: {
   params: Promise<{ uid: string }>;
-};
+}) {
+  const resolvedParams = await params;
+  const sessionUser = await getServerSessionUser();
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { uid } = await params;
-  const profile = await getContributorProfile(uid);
-  const title = profile ? `${profile.displayName} — Katkıcı profili` : "Katkıcı profili";
-  const url = `/profil/${uid}`;
-  return {
-    title,
-    robots: { index: true, follow: true },
-    alternates: { canonical: url },
-    openGraph: { title, url },
-  };
-}
-
-export default async function ContributorProfilePage({ params }: Props) {
-  const { uid } = await params;
-  const profile = await getContributorProfile(uid);
-
-  const db = getAdminFirestore();
-  let contributedSongs: (SongDoc & { id: string })[] = [];
-  let songCount = 0;
-
-  if (db) {
-    const snap = await db
-      .collection("songs")
-      .where("moderationStatus", "==", "approved")
-      .where("contributorIds", "array-contains", uid)
-      .orderBy("title")
-      .get();
-    contributedSongs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
-    songCount = contributedSongs.length;
+  // Güvenlik: Kullanıcı giriş yapmamışsa veya başkasının ID'sine bakmaya çalışıyorsa geri gönder
+  if (!sessionUser || sessionUser.uid !== resolvedParams.uid) {
+    redirect("/giris");
   }
 
-  if (!profile && songCount === 0) notFound();
-
-  const displayName = profile?.displayName ?? `Katkıcı ${uid.slice(0, 6)}`;
-  const approvedCount = profile?.approvedCount ?? songCount;
-  const verified = profile?.verified ?? false;
+  const email = sessionUser.email || "E-posta bulunamadı";
+  const userInitial = email.charAt(0).toUpperCase();
 
   return (
-    <>
-      <PageHeader title={displayName} />
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-4">
-          <ContributorBadge
-            displayName={displayName}
-            approvedCount={approvedCount}
-            verified={verified}
-          />
-          {verified ? (
-            <span className="text-xs text-green-600 dark:text-green-400">Moderatör onaylı katkıcı</span>
-          ) : null}
+    <div className="container mx-auto px-4 py-12 max-w-2xl">
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
+        
+        {/* Üst Renkli Banner */}
+        <div className="h-28 bg-accent/20"></div>
+        
+        {/* Profil İçeriği */}
+        <div className="px-6 pb-8 sm:px-10">
+          {/* Yuvarlak Avatar */}
+          <div className="-mt-12 mb-6 inline-flex h-24 w-24 items-center justify-center rounded-full border-4 border-surface bg-accent text-3xl font-bold text-accent-foreground shadow-sm">
+            {userInitial}
+          </div>
+          
+          <h1 className="mb-6 text-2xl font-bold text-foreground">Profil Bilgileri</h1>
+          
+          <div className="grid gap-4">
+            
+            {/* E-posta Kutusu */}
+            <div className="flex items-center gap-4 rounded-xl border border-border/50 bg-bg p-4 transition hover:bg-bg/80">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface">
+                <Mail className="h-5 w-5 text-muted" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted">E-posta Adresi</p>
+                <p className="truncate font-medium text-foreground" title={email}>{email}</p>
+              </div>
+            </div>
+
+          </div>
         </div>
-
-        {profile?.bio ? (
-          <p className="mt-4 text-sm text-muted">{profile.bio}</p>
-        ) : null}
-
-        {songCount > 0 ? (
-          <section className="mt-8">
-            <h2 className="text-lg font-semibold text-foreground">
-              Katkıda bulunduğu şarkılar ({songCount})
-            </h2>
-            <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {contributedSongs.map((song) => (
-                <li key={song.id}>
-                  <SongCard song={song} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : (
-          <p className="mt-8 text-sm text-muted">Henüz onaylanmış katkı yok.</p>
-        )}
-
-        <p className="mt-10 text-sm">
-          <Link href="/katki" className="text-accent hover:underline">
-            Siz de katkıda bulunun &rarr;
-          </Link>
-        </p>
       </div>
-    </>
+    </div>
   );
 }
