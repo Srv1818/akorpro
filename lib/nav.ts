@@ -6,7 +6,7 @@ const previewDemo = previewPath("duman", "kufi");
 export const mainNav = [
   { href: "/", label: "Keşfet" },
   { href: "/gitar-akorlari", label: "Şarkılar" },
-  { href: "/akor-kutuphanesi", label: "Kütüphane" },
+  { href: "/akor-kutuphanesi", label: "Akorlar" },
   { href: "/gamlar", label: "Gamlar" },
   { href: "/besli-cember", label: "5'li Çember" },
   { href: "/calma-listeleri", label: "Listeler" },
@@ -17,7 +17,7 @@ export const footerNav = [
   { href: "/", label: "Keşfet" },
   { href: "/gitar-akorlari", label: "Tüm şarkılar" },
   { href: "/arama", label: "Arama" },
-  { href: "/akor-kutuphanesi", label: "Akor kütüphanesi" },
+  { href: "/akor-kutuphanesi", label: "Akorlar" },
   { href: "/gamlar", label: "Gamlar" },
   { href: "/besli-cember", label: "5'li çember" },
   { href: "/calma-listeleri", label: "Çalma listeleri" },

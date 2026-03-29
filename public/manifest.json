@@ -1,7 +1,7 @@
 {
   "name": "AkorPro — Gitar akorları ve müzik araçları",
   "short_name": "AkorPro",
-  "description": "Şarkı akorları, kütüphane, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern platform.",
+  "description": "Şarkı akorları, akorlar, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern platform.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fafafa",

@@ -8,7 +8,7 @@ const adminNav = [
   { href: "/admin/sarkilar", label: "Şarkılar" },
   { href: "/admin/sanatcilar", label: "Sanatçılar" },
   { href: "/admin/moderasyon", label: "Moderasyon" },
-  { href: "/admin/akor-kutuphanesi", label: "Kütüphane" },
+  { href: "/admin/akor-kutuphanesi", label: "Akorlar" },
   { href: "/admin/import", label: "İçe aktar" },
 ];
 

@@ -158,7 +158,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
             Tüm şarkılar
           </Link>
           <Link href="/akor-kutuphanesi" className="text-accent hover:underline">
-            Akor kütüphanesi
+            Akorlar
           </Link>
         </nav>
       </div>

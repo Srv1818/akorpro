@@ -11,7 +11,7 @@ export function SiteJsonLd() {
         url: SITE_URL,
         inLanguage: "tr",
         description:
-          "Şarkı akorları, kütüphane, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform.",
+          "Şarkı akorları, akorlar, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform.",
         potentialAction: {
           "@type": "SearchAction",
           target: {

@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     template: "%s · AkorPro",
   },
   description:
-    "Şarkı akorları, kütüphane, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform. Topluluk ve erişilebilirlik odaklı.",
+    "Şarkı akorları, akorlar, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform. Topluluk ve erişilebilirlik odaklı.",
   openGraph: {
     type: "website",
     locale: "tr_TR",
