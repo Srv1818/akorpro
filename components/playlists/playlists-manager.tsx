@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   addDoc,
   collection,
@@ -16,9 +16,17 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import type { PlaylistDoc, PlaylistItemDoc } from "@/lib/types/playlist";
+import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
 import { chordPath } from "@/lib/paths";
-import { mockSongs } from "@/data/mock/songs";
-import { getClientAuth, getClientFirestore } from "@/lib/firebase/client";
+import { getClientFirestore } from "@/lib/firebase/client";
+
+type ApiSearchSong = {
+  id: string;
+  title: string;
+  slug: string;
+  artistSlug: string;
+  artistName: string;
+};
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
@@ -28,9 +36,102 @@ type ItemRow = { id: string; data: PlaylistItemDoc };
 
 function formatError(err: unknown): string {
   if (err && typeof err === "object" && "code" in err) {
-    return String((err as { code: string }).code);
+    const code = String((err as { code: string }).code);
+    if (code === "permission-denied") {
+      return [
+        "Firestore erişimi reddedildi.",
+        "Çıkış yapıp Google ile yeniden giriş yapın.",
+        "Firebase Console’da App Check → Firestore zorlaması açıksa .env.local içinde NEXT_PUBLIC_RECAPTCHA_SITE_KEY ekleyin veya geliştirmede zorlamayı kapatın.",
+      ].join(" ");
+    }
+    return code;
   }
   return "Bilinmeyen hata";
+}
+
+function PlaylistSongSearch({
+  disabled,
+  busy,
+  onAdd,
+}: {
+  disabled: boolean;
+  busy: boolean;
+  onAdd: (song: ApiSearchSong) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<ApiSearchSong[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = q.trim();
+    if (t.length < 2) {
+      setResults([]);
+      setLocalError(null);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setLoading(true);
+      setLocalError(null);
+      void fetch(`/api/search?q=${encodeURIComponent(t)}`)
+        .then(async (r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json() as Promise<{ songs?: ApiSearchSong[] }>;
+        })
+        .then((data) => setResults(data.songs ?? []))
+        .catch(() => {
+          setResults([]);
+          setLocalError("Arama yapılamadı. Tekrar deneyin.");
+        })
+        .finally(() => setLoading(false));
+    }, 320);
+    return () => window.clearTimeout(id);
+  }, [q]);
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor="playlist-song-search" className="text-xs text-muted">
+        Şarkı ara ve listeye ekle
+      </label>
+      <input
+        id="playlist-song-search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        disabled={disabled || busy}
+        placeholder="En az 2 harf (şarkı veya sanatçı adı)"
+        autoComplete="off"
+        className="w-full max-w-xl rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
+      />
+      {localError ? <p className="text-xs text-red-200">{localError}</p> : null}
+      {loading ? <p className="text-xs text-muted">Aranıyor…</p> : null}
+      {!loading && q.trim().length >= 2 && results.length === 0 && !localError ? (
+        <p className="text-xs text-muted">Sonuç yok.</p>
+      ) : null}
+      {results.length > 0 ? (
+        <ul className="max-h-48 overflow-y-auto rounded-lg border border-border bg-surface text-sm">
+          {results.map((s) => (
+            <li
+              key={s.id}
+              className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 last:border-b-0"
+            >
+              <span className="min-w-0 text-foreground">
+                <span className="font-medium">{s.title}</span>
+                <span className="text-muted"> — {s.artistName}</span>
+              </span>
+              <button
+                type="button"
+                disabled={disabled || busy}
+                onClick={() => onAdd(s)}
+                className="shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
+              >
+                Ekle
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 async function deletePlaylistAndItems(uid: string, playlistId: string): Promise<void> {
@@ -49,7 +150,7 @@ async function deletePlaylistAndItems(uid: string, playlistId: string): Promise<
 }
 
 export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
-  const [firebaseUid, setFirebaseUid] = useState<string | null | undefined>(undefined);
+  const firebaseUid = useFirebaseUidFromSession();
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
   const [itemsByPlaylist, setItemsByPlaylist] = useState<Record<string, ItemRow[]>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -57,14 +158,6 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    const auth = getClientAuth();
-    const unsub = auth.onAuthStateChanged((u) => {
-      setFirebaseUid(u?.uid ?? null);
-    });
-    return () => unsub();
-  }, []);
 
   useEffect(() => {
     if (firebaseUid === undefined || firebaseUid === null) return;
@@ -111,11 +204,6 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
     );
     return () => unsub();
   }, [firebaseUid, expanded]);
-
-  const songOptions = useMemo(
-    () => mockSongs.map((s) => ({ value: s.id, label: `${s.artistName} — ${s.title}` })),
-    [],
-  );
 
   const onCreate = useCallback(async () => {
     if (!firebaseUid || !newName.trim()) return;
@@ -183,15 +271,18 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
   );
 
   const onAddSong = useCallback(
-    async (playlistId: string, songId: string) => {
+    async (playlistId: string, song: ApiSearchSong) => {
       if (!firebaseUid) return;
-      const song = mockSongs.find((s) => s.id === songId);
-      if (!song) return;
       setBusy(true);
       setError(null);
       try {
         const db = getClientFirestore();
         const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistId, "items");
+        const allItems = await getDocs(itemsCol);
+        if (allItems.docs.some((d) => (d.data() as PlaylistItemDoc).songId === song.id)) {
+          setError("Bu şarkı zaten bu listede.");
+          return;
+        }
         const existing = await getDocs(query(itemsCol, orderBy("order", "desc")));
         const top = existing.docs[0]?.data() as PlaylistItemDoc | undefined;
         const nextOrder = typeof top?.order === "number" ? top.order + 1 : 0;
@@ -213,6 +304,40 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
       }
     },
     [firebaseUid],
+  );
+
+  const onMoveItem = useCallback(
+    async (playlistId: string, itemId: string, delta: -1 | 1) => {
+      if (!firebaseUid) return;
+      const items = itemsByPlaylist[playlistId] ?? [];
+      const sorted = [...items].sort((a, b) => a.data.order - b.data.order);
+      const idx = sorted.findIndex((i) => i.id === itemId);
+      const j = idx + delta;
+      if (idx < 0 || j < 0 || j >= sorted.length) return;
+      const a = sorted[idx]!;
+      const b = sorted[j]!;
+      const orderA = a.data.order;
+      const orderB = b.data.order;
+      setBusy(true);
+      setError(null);
+      try {
+        const db = getClientFirestore();
+        const batch = writeBatch(db);
+        const refA = doc(db, "users", firebaseUid, "playlists", playlistId, "items", a.id);
+        const refB = doc(db, "users", firebaseUid, "playlists", playlistId, "items", b.id);
+        batch.update(refA, { order: orderB });
+        batch.update(refB, { order: orderA });
+        await batch.commit();
+        await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistId), {
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        setError(formatError(e));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [firebaseUid, itemsByPlaylist],
   );
 
   const onRemoveItem = useCallback(
@@ -348,57 +473,65 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
 
                 {isOpen ? (
                   <div className="border-t border-border px-4 py-4">
-                    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <label htmlFor={`add-song-${row.id}`} className="text-xs text-muted">
-                        Mock kütüphaneden şarkı ekle
-                      </label>
-                      <select
-                        id={`add-song-${row.id}`}
-                        defaultValue=""
+                    <div className="mb-4">
+                      <PlaylistSongSearch
                         disabled={busy}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          e.target.value = "";
-                          if (v) void onAddSong(row.id, v);
-                        }}
-                        className="max-w-md rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
-                      >
-                        <option value="">Şarkı seçin…</option>
-                        {songOptions.map((o) => (
-                          <option key={o.value} value={o.value}>
-                            {o.label}
-                          </option>
-                        ))}
-                      </select>
+                        busy={busy}
+                        onAdd={(s) => void onAddSong(row.id, s)}
+                      />
                     </div>
                     {items.length === 0 ? (
                       <p className="text-sm text-muted">Bu listede henüz şarkı yok.</p>
                     ) : (
                       <ol className="space-y-2">
-                        {items.map((it) => (
-                          <li
-                            key={it.id}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <Link
-                                href={chordPath(it.data.artistSlug, it.data.songSlug)}
-                                className="font-medium text-accent underline-offset-2 hover:underline"
-                              >
-                                {it.data.title}
-                              </Link>
-                              <span className="ml-2 text-xs text-muted">#{it.data.order}</span>
-                            </div>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => void onRemoveItem(row.id, it.id)}
-                              className="shrink-0 text-xs text-muted hover:text-red-200 disabled:opacity-50"
+                        {[...items]
+                          .sort((a, b) => a.data.order - b.data.order)
+                          .map((it, pos, arr) => (
+                            <li
+                              key={it.id}
+                              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2"
                             >
-                              Kaldır
-                            </button>
-                          </li>
-                        ))}
+                              <div className="min-w-0 flex-1">
+                                <Link
+                                  href={chordPath(it.data.artistSlug, it.data.songSlug)}
+                                  className="font-medium text-accent underline-offset-2 hover:underline"
+                                >
+                                  {it.data.title}
+                                </Link>
+                                <span className="ml-2 text-xs text-muted">
+                                  #{pos + 1}/{arr.length}
+                                </span>
+                              </div>
+                              <div className="flex shrink-0 flex-wrap items-center gap-1">
+                                <button
+                                  type="button"
+                                  disabled={busy || pos === 0}
+                                  onClick={() => void onMoveItem(row.id, it.id, -1)}
+                                  className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-bg disabled:opacity-40"
+                                  aria-label="Yukarı taşı"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy || pos >= arr.length - 1}
+                                  onClick={() => void onMoveItem(row.id, it.id, 1)}
+                                  className="rounded border border-border px-2 py-1 text-xs text-foreground hover:bg-bg disabled:opacity-40"
+                                  aria-label="Aşağı taşı"
+                                >
+                                  ↓
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => void onRemoveItem(row.id, it.id)}
+                                  className="text-xs text-muted hover:text-red-200 disabled:opacity-50"
+                                >
+                                  Kaldır
+                                </button>
+                              </div>
+                            </li>
+                          ))}
                       </ol>
                     )}
                   </div>

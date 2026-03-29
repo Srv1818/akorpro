@@ -22,8 +22,9 @@ import { AutoScrollButton, MetronomeButton, CopyButton, PrintButton } from "@/co
 import { mockScales } from "@/data/mock/scales";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
+import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
-import { getClientAuth, getClientFirestore } from "@/lib/firebase/client";
+import { getClientFirestore } from "@/lib/firebase/client";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 
 const OVERRIDE_SCHEMA_VERSION = 1;
@@ -70,7 +71,7 @@ export function PreviewClient({
   const fromUrl = Number(searchParams.get("transpose") ?? "0");
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
 
-  const [firebaseUid, setFirebaseUid] = useState<string | null | undefined>(undefined);
+  const firebaseUid = useFirebaseUidFromSession();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
@@ -101,22 +102,6 @@ export function PreviewClient({
   useEffect(() => {
     hydrateReadyRef.current = false;
   }, [songId, firebaseUid]);
-
-  useEffect(() => {
-    if (!getFirebasePublicConfig()) {
-      setFirebaseUid(null);
-      return;
-    }
-    try {
-      const auth = getClientAuth();
-      const unsub = auth.onAuthStateChanged((u) => {
-        setFirebaseUid(u?.uid ?? null);
-      });
-      return () => unsub();
-    } catch {
-      setFirebaseUid(null);
-    }
-  }, []);
 
   useEffect(() => {
     if (firebaseUid === undefined || firebaseUid === null || !songId) return;

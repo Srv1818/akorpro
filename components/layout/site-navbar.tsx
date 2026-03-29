@@ -14,9 +14,7 @@ export function SiteNavbar() {
       <div className="mx-auto flex flex-col max-w-6xl px-4 sm:px-6 lg:px-8">
         
         {/* --- 1. SATIR: Logo, Arama Çubuğu, Sağ Menü --- */}
-        <div className="flex h-14 sm:h-16 items-center justify-between gap-4">
-          
-          {/* SOL: Logo */}
+        <div className="flex h-14 sm:h-16 items-center gap-2 sm:gap-3 md:gap-4">
           <Link
             href="/"
             className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-foreground"
@@ -27,19 +25,19 @@ export function SiteNavbar() {
             <span className="hidden sm:inline">AkorPro</span>
           </Link>
 
-          {/* ORTA: Arama Çubuğu (Genişletilmiş ve tam ortalanmış) */}
-          <div className="hidden md:flex flex-1 justify-center px-4 max-w-2xl">
-            <div className="w-full">
+          {/* Masaüstü arama — orta sütun yalnızca bu blokta flex-1 (taşma yok) */}
+          <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex md:px-4">
+            <div className="w-full max-w-2xl">
               <SearchDialog />
             </div>
           </div>
 
-          {/* SAĞ: Tema, Kullanıcı Çıkış ve Mobil Menü */}
+          {/* Mobil arama — sağ ikon grubunun dışında flex-1; aksi halde shrink-0 içinde genişlik hesaplanmaz ve üst üste binebilir */}
+          <div className="min-w-0 flex-1 md:hidden">
+            <SearchDialog />
+          </div>
+
           <div className="flex shrink-0 items-center gap-2">
-            {/* Mobilde arama çubuğunu gizlememek için sadece telefonda burada gösteriyoruz */}
-            <div className="md:hidden flex items-center">
-              <SearchDialog />
-            </div>
             <ThemeToggle />
             <AuthHeaderActions />
             <MobileNav items={items} />

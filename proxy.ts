@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { verifyFirebaseJwt } from "@/lib/auth/verify-firebase-jwt";
+import { getAdminAuth } from "@/lib/firebase/admin";
 
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const AUTH_ROUTES = ["/calma-listeleri", "/katki", "/admin"];
@@ -55,8 +56,14 @@ export async function proxy(request: NextRequest) {
     if (projectId) {
       const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
       if (!token) return redirectToLogin(request, csp);
+      const adminAuth = getAdminAuth();
       try {
-        await verifyFirebaseJwt(token, projectId);
+        if (adminAuth) {
+          /** Giriş API’si `createSessionCookie` üretir; ID token JWKS ile doğrulanamaz. */
+          await adminAuth.verifySessionCookie(token, true);
+        } else {
+          await verifyFirebaseJwt(token, projectId);
+        }
       } catch {
         return redirectToLogin(request, csp);
       }

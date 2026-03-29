@@ -168,9 +168,9 @@ export function SearchDialog() {
   }, [activeIndex]);
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative isolate z-0 w-full max-w-full min-w-0">
       {/* Doğrudan yazılabilir arama kutusu */}
-      <div className="relative flex items-center w-full">
+      <div className="relative z-0 flex w-full min-w-0 items-center">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -181,7 +181,7 @@ export function SearchDialog() {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="absolute left-3 md:left-4 text-muted shrink-0"
+          className="pointer-events-none absolute left-3 shrink-0 text-muted md:left-4"
           aria-hidden="true"
         >
           <circle cx="11" cy="11" r="8" />
@@ -198,7 +198,7 @@ export function SearchDialog() {
             if (query.length >= 2) setIsOpen(true);
           }}
           placeholder="Şarkı veya sanatçı ara..."
-          className="w-full rounded-xl border border-border bg-surface py-3 pl-10 pr-16 md:pl-12 md:pr-20 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
+          className="min-w-0 w-full rounded-xl border border-border bg-surface py-3 pl-10 pr-16 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent md:pl-12 md:pr-20"
           role="combobox"
           aria-expanded={isOpen}
           aria-controls="search-dropdown"
@@ -206,19 +206,19 @@ export function SearchDialog() {
         />
 
         {loading ? (
-          <div className="absolute right-3 flex items-center justify-center">
-             <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-accent"></div>
+          <div className="pointer-events-none absolute right-3 flex items-center justify-center">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted border-t-accent" />
           </div>
         ) : (
-          <kbd className="absolute right-3 hidden rounded border border-border bg-bg px-2 py-0.5 font-mono text-[10px] text-muted shadow-sm md:inline">
+          <kbd className="pointer-events-none absolute right-3 hidden rounded border border-border bg-bg px-2 py-0.5 font-mono text-[10px] text-muted shadow-sm md:inline">
             Ctrl+K
           </kbd>
         )}
       </div>
 
       {/* Sonuçların gösterildiği açılır liste (Dropdown) */}
-      {isOpen && (query.length >= 2) && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-bg shadow-xl">
+      {isOpen && query.length >= 2 && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-border bg-bg shadow-xl">
           <ul
             ref={listRef}
             id="search-dropdown"

@@ -1,4 +1,12 @@
-export function PageHeader({ title, description }: { title: string; description?: string }) {
-  // Bileşen artık hiçbir şey ekrana çizmeyecek (görünmez olacak)
+import type { ReactNode } from "react";
+
+export type PageHeaderProps = {
+  title: string;
+  description?: ReactNode;
+  leading?: ReactNode;
+};
+
+/** Şu an görünür başlık kullanılmıyor; prop’lar sayfa/metadata tutarlılığı için korunur. */
+export function PageHeader(_props: PageHeaderProps) {
   return null;
 }
