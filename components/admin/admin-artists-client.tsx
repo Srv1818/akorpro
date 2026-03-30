@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { useMemo, useState, useEffect, useCallback, type FormEvent } from "react";
+import { slugify } from "@/lib/seo/slug";
 
 type Artist = {
   id: string;
@@ -16,6 +17,17 @@ export function AdminArtistsClient() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [msg, setMsg] = useState("");
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugDirty, setSlugDirty] = useState(false);
+
+  const nextSlug = useMemo(() => slugify(name), [name]);
+
+  useEffect(() => {
+    if (!showForm) return;
+    if (slugDirty) return;
+    setSlug(nextSlug);
+  }, [nextSlug, showForm, slugDirty]);
 
   const fetchArtists = useCallback(async () => {
     setLoading(true);
@@ -40,7 +52,13 @@ export function AdminArtistsClient() {
     const res = await fetch("/api/admin/artists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await res.json();
     setMsg(res.ok ? `Oluşturuldu: ${data.id}` : (data.error ?? "Hata."));
-    if (res.ok) { setShowForm(false); fetchArtists(); }
+    if (res.ok) {
+      setShowForm(false);
+      setName("");
+      setSlug("");
+      setSlugDirty(false);
+      fetchArtists();
+    }
   }
 
   async function onDelete(id: string) {
@@ -63,8 +81,27 @@ export function AdminArtistsClient() {
 
       {showForm ? (
         <form onSubmit={onSubmit} className="mb-6 grid gap-3 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2">
-          <input name="name" placeholder="Sanatçı adı *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="slug" placeholder="Slug *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
+          <input
+            name="name"
+            placeholder="Sanatçı adı *"
+            required
+            value={name}
+            onChange={(e) => setName(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="slug"
+            placeholder="Slug *"
+            required
+            value={slug}
+            onChange={(e) => { setSlugDirty(true); setSlug(e.currentTarget.value); }}
+            onBlur={() => {
+              const v = slugify(slug);
+              setSlug(v);
+              setSlugDirty(true);
+            }}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
           <input name="genre" placeholder="Tür" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
           <input name="imageUrl" placeholder="Görsel URL" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
           <input name="songCount" type="number" placeholder="Şarkı sayısı" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />

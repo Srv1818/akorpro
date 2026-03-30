@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { useMemo, useState, useEffect, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import { chordPath } from "@/lib/paths";
+import { slugify } from "@/lib/seo/slug";
 
 type Song = {
   id: string;
@@ -25,6 +26,25 @@ export function AdminSongsClient() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [title, setTitle] = useState("");
+  const [songSlug, setSongSlug] = useState("");
+  const [songSlugDirty, setSongSlugDirty] = useState(false);
+  const [artistName, setArtistName] = useState("");
+  const [artistSlug, setArtistSlug] = useState("");
+  const [artistSlugDirty, setArtistSlugDirty] = useState(false);
+
+  const nextSongSlug = useMemo(() => slugify(title), [title]);
+  const nextArtistSlug = useMemo(() => slugify(artistName), [artistName]);
+
+  useEffect(() => {
+    if (!showForm) return;
+    if (!songSlugDirty) setSongSlug(nextSongSlug);
+  }, [nextSongSlug, showForm, songSlugDirty]);
+
+  useEffect(() => {
+    if (!showForm) return;
+    if (!artistSlugDirty) setArtistSlug(nextArtistSlug);
+  }, [nextArtistSlug, showForm, artistSlugDirty]);
 
   const fetchSongs = useCallback(async () => {
     setLoading(true);
@@ -54,7 +74,17 @@ export function AdminSongsClient() {
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await res.json();
     setMsg(res.ok ? (editId ? "Güncellendi." : `Oluşturuldu: ${data.id}`) : (data.error ?? "Hata."));
-    if (res.ok) { setShowForm(false); setEditId(null); fetchSongs(); }
+    if (res.ok) {
+      setShowForm(false);
+      setEditId(null);
+      setTitle("");
+      setSongSlug("");
+      setSongSlugDirty(false);
+      setArtistName("");
+      setArtistSlug("");
+      setArtistSlugDirty(false);
+      fetchSongs();
+    }
   }
 
   async function onDelete(id: string) {
@@ -75,17 +105,68 @@ export function AdminSongsClient() {
       {msg ? <p className="mb-4 rounded-lg bg-surface p-3 text-sm text-foreground">{msg}</p> : null}
 
       <div className="mb-4 flex gap-2">
-        <button type="button" onClick={() => { setShowForm(!showForm); setEditId(null); }} className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted">
+        <button
+          type="button"
+          onClick={() => {
+            setShowForm(!showForm);
+            setEditId(null);
+            setTitle("");
+            setSongSlug("");
+            setSongSlugDirty(false);
+            setArtistName("");
+            setArtistSlug("");
+            setArtistSlugDirty(false);
+          }}
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
+        >
           {showForm ? "Formu kapat" : "Yeni şarkı"}
         </button>
       </div>
 
       {showForm ? (
         <form onSubmit={onSubmit} className="mb-6 grid gap-3 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2">
-          <input name="title" placeholder="Başlık *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="slug" placeholder="Slug *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="artistName" placeholder="Sanatçı adı *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="artistSlug" placeholder="Sanatçı slug *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
+          <input
+            name="title"
+            placeholder="Başlık *"
+            required
+            value={title}
+            onChange={(e) => setTitle(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="slug"
+            placeholder="Slug *"
+            required
+            value={songSlug}
+            onChange={(e) => { setSongSlugDirty(true); setSongSlug(e.currentTarget.value); }}
+            onBlur={() => {
+              const v = slugify(songSlug);
+              setSongSlug(v);
+              setSongSlugDirty(true);
+            }}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="artistName"
+            placeholder="Sanatçı adı *"
+            required
+            value={artistName}
+            onChange={(e) => setArtistName(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="artistSlug"
+            placeholder="Sanatçı slug *"
+            required
+            value={artistSlug}
+            onChange={(e) => { setArtistSlugDirty(true); setArtistSlug(e.currentTarget.value); }}
+            onBlur={() => {
+              const v = slugify(artistSlug);
+              setArtistSlug(v);
+              setArtistSlugDirty(true);
+            }}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
           <input name="originalKey" placeholder="Ton (Am, Em…) *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
           <select name="difficulty" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm">
             <option value="">Zorluk *</option>
@@ -112,7 +193,20 @@ export function AdminSongsClient() {
             <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground">
               {editId ? "Güncelle" : "Oluştur"}
             </button>
-            <button type="button" onClick={() => { setShowForm(false); setEditId(null); }} className="rounded-lg border border-border px-4 py-2 text-sm text-muted">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setEditId(null);
+                setTitle("");
+                setSongSlug("");
+                setSongSlugDirty(false);
+                setArtistName("");
+                setArtistSlug("");
+                setArtistSlugDirty(false);
+              }}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-muted"
+            >
               İptal
             </button>
           </div>
