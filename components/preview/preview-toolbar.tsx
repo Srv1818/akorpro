@@ -152,7 +152,7 @@ export function MetronomeButton({
           onClick={() => onActiveChange(!active)}
           aria-pressed={active}
           aria-label={active ? "Metronom durdur" : "Metronom başlat"}
-          className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
             active
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground hover:border-accent/50"

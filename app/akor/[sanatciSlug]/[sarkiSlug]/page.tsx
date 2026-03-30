@@ -124,9 +124,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
           />
         ) : null}
         <div className="flex flex-wrap gap-2">
-          {song.timeSignature ? (
-            <span className="self-center text-xs text-muted">Ölçü: {song.timeSignature}</span>
-          ) : null}
+          {null}
           {song.tuning && song.tuning !== "Standard" ? (
             <span className="self-center text-xs text-muted">Akort: {song.tuning}</span>
           ) : null}
@@ -139,13 +137,28 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
             </div>
           }
         >
-          <PreviewShell instanceKey={song.id} initialTranspose={initialTranspose} initialScaleId="ionian">
+          <PreviewShell
+            instanceKey={song.id}
+            initialTranspose={initialTranspose}
+            initialScaleId={
+              song.keyMode === "major"
+                ? "ionian"
+                : song.keyMode === "natural"
+                  ? "aeolian"
+                  : song.keyMode === "harmonic"
+                    ? "harmonic-minor"
+                    : song.keyMode === "melodic"
+                      ? "melodic-minor"
+                      : "ionian"
+            }
+          >
             <PreviewClient
               songId={song.id}
               songTitle={song.title}
               artistSlug={song.artistSlug}
               songSlug={song.slug}
               originalKey={song.originalKey}
+              keyMode={song.keyMode}
               chordBody={song.chordBody}
               tempo={song.tempo}
               timeSignature={song.timeSignature}

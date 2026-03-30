@@ -112,13 +112,28 @@ export default async function PreviewPage({ params, searchParams }: Props) {
           </Link>
         </p>
         <Suspense fallback={<PreviewFallback />}>
-          <PreviewShell instanceKey={song.id} initialTranspose={initialTranspose} initialScaleId="ionian">
+          <PreviewShell
+            instanceKey={song.id}
+            initialTranspose={initialTranspose}
+            initialScaleId={
+              song.keyMode === "major"
+                ? "ionian"
+                : song.keyMode === "natural"
+                  ? "aeolian"
+                  : song.keyMode === "harmonic"
+                    ? "harmonic-minor"
+                    : song.keyMode === "melodic"
+                      ? "melodic-minor"
+                      : "ionian"
+            }
+          >
             <PreviewClient
               songId={song.id}
               songTitle={song.title}
               artistSlug={song.artistSlug}
               songSlug={song.slug}
               originalKey={song.originalKey}
+              keyMode={song.keyMode}
               chordBody={song.chordBody}
               tempo={song.tempo}
               timeSignature={song.timeSignature}

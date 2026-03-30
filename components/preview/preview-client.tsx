@@ -17,11 +17,12 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
-import { AutoScrollButton, MetronomeButton, CopyButton, PrintButton } from "@/components/preview/preview-toolbar";
+import { AutoScrollButton, MetronomeButton } from "@/components/preview/preview-toolbar";
 import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
 import { FloatingWidgetDock } from "@/components/layout/floating-widget-dock";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
+import type { KeyMode } from "@/lib/types/content";
 import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { getClientFirestore } from "@/lib/firebase/client";
@@ -36,6 +37,7 @@ type Props = {
   artistSlug: string;
   songSlug: string;
   originalKey: string;
+  keyMode?: KeyMode;
   chordBody: string;
   tempo?: number | string;
   timeSignature?: string;
@@ -93,12 +95,26 @@ function transposeChordBodyText(text: string, semitones: number): string {
   });
 }
 
+function keyModeToLabel(mode: KeyMode | undefined, originalKey: string): string {
+  if (mode === "major") return "Majör";
+  if (mode === "natural") return "Doğal Minör";
+  if (mode === "harmonic") return "Harmonik Minör";
+  if (mode === "melodic") return "Melodik Minör";
+
+  // Backwards-compat: keyMode yoksa orijinal ton ismine göre tahmin.
+  const k = originalKey.trim().toLowerCase();
+  if (k.endsWith("maj")) return "Majör";
+  if (k.endsWith("m")) return "Doğal Minör";
+  return "Majör";
+}
+
 export function PreviewClient({
   songId,
   songTitle,
   artistSlug,
   songSlug,
   originalKey,
+  keyMode,
   chordBody,
   tempo,
   timeSignature,
@@ -546,7 +562,7 @@ export function PreviewClient({
               type="button"
               onClick={() => setActiveWidget((w) => (w === "circle" ? null : "circle"))}
               aria-pressed={activeWidget === "circle"}
-              className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                 activeWidget === "circle"
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -558,7 +574,7 @@ export function PreviewClient({
               type="button"
               onClick={() => setActiveWidget((w) => (w === "gamlar" ? null : "gamlar"))}
               aria-pressed={activeWidget === "gamlar"}
-              className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
                 activeWidget === "gamlar"
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -578,42 +594,39 @@ export function PreviewClient({
               onTimeSignatureChange={setMetronomeTimeSignature}
               showControls={false}
             />
+            <AutoScrollButton />
           </div>
         </div>
-        <div className="flex flex-col gap-2 sm:items-end">
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <button
-              type="button"
-              disabled={!canSave || saveState === "saving"}
-              onClick={() => void onSave()}
-              title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
-            </button>
-            {firebaseUid === undefined ? (
-              <span className="text-sm text-muted">Oturum kontrol ediliyor…</span>
-            ) : firebaseUid === null ? (
-              <Link
-                href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
-              >
-                Giriş (Kaydet için)
-              </Link>
-            ) : (
-              null
-            )}
+        <div className="flex flex-wrap items-center justify-end gap-1.5 text-[11px] text-muted">
+          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+            Ton: <span className="font-mono text-foreground">{originalKey}</span>
+          </div>
+          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+            BPM:{" "}
+            <span className="font-mono text-foreground">
+              {tempo ?? "-"}
+            </span>
+          </div>
+          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+            Ölçü:{" "}
+            <span className="font-mono text-foreground">
+              {timeSignature ?? "-"}
+            </span>
+          </div>
+          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+            Mod:{" "}
+            <span className="font-mono text-foreground">
+              {keyModeToLabel(keyMode, originalKey)}
+            </span>
           </div>
 
-          {playlists.length === 0 && firebaseUid && !sessionMismatch ? (
-            <p className="mt-2 text-sm text-muted">
-              Liste oluşturmak için{" "}
-              <Link href="/calma-listeleri" className="text-accent underline-offset-2 hover:underline">
-                çalma listeleri
-              </Link>{" "}
-              sayfasına gidin.
-            </p>
-          ) : null}
+          <button
+            type="button"
+            onClick={resetOriginal}
+            className="rounded-lg border border-border bg-bg px-2 py-1 text-[11px] font-medium text-foreground hover:bg-surface"
+          >
+            Orijinale dön
+          </button>
         </div>
       </div>
 
@@ -655,49 +668,66 @@ export function PreviewClient({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
-        <span className="text-sm text-muted" id="transpose-label">Transpoze:</span>
-        <div className="flex flex-wrap items-center gap-1" aria-describedby="transpose-label">
-          {Array.from({ length: 12 }, (_, pc) => {
-            const label = PC_TO_NAME[pc];
-            const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
-            const isActive = semitones === delta;
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
+          <span className="text-sm text-muted" id="transpose-label">Transpoze:</span>
+          <div className="flex flex-wrap items-center gap-1" aria-describedby="transpose-label">
+            {Array.from({ length: 12 }, (_, pc) => {
+              const label = PC_TO_NAME[pc];
+              const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
+              const isActive = semitones === delta;
 
-            return (
-              <button
-                key={pc}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => replaceTranspose(delta)}
-                className={`select-none inline-flex min-w-[2.5rem] justify-center rounded-md border px-1.5 py-1 text-xs font-medium leading-none transition ${
-                  isActive
-                    ? "border-accent bg-accent text-accent-foreground"
-                    : "border-border bg-bg text-foreground hover:border-accent/50"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={pc}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => replaceTranspose(delta)}
+                  className={`select-none inline-flex min-w-[2.5rem] justify-center rounded-md border px-1.5 py-1 text-xs font-medium leading-none transition ${
+                    isActive
+                      ? "border-accent bg-accent text-accent-foreground"
+                      : "border-border bg-bg text-foreground hover:border-accent/50"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={resetOriginal}
-          className="ml-auto rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
-        >
-          Orijinale dön
-        </button>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            disabled={!canSave || saveState === "saving"}
+            onClick={() => void onSave()}
+            title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
+          </button>
+          {firebaseUid === undefined ? (
+            <span className="text-sm text-muted">Oturum kontrol ediliyor…</span>
+          ) : firebaseUid === null ? (
+            <Link
+              href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface"
+            >
+              Giriş (Kaydet için)
+            </Link>
+          ) : null}
+        </div>
       </div>
 
-      <p className="mt-3 text-xs text-muted" aria-live="polite">
-        Görüntülenen transpoze:{" "}
-        <span className="font-mono text-foreground">
-          {semitones === 0 ? "0" : semitones > 0 ? `+${semitones}` : semitones} yarım ton
-        </span>
-        {semitones !== 0 ? (
-          <span className="block sm:inline sm:pl-2">· Parametreli URL kanonik değildir (ARCHITECTURE).</span>
-        ) : null}
-      </p>
+      {playlists.length === 0 && firebaseUid && !sessionMismatch ? (
+        <p className="mt-2 text-right text-sm text-muted">
+          Liste oluşturmak için{" "}
+          <Link href="/calma-listeleri" className="text-accent underline-offset-2 hover:underline">
+            çalma listeleri
+          </Link>{" "}
+          sayfasına gidin.
+        </p>
+      ) : null}
 
       <div aria-live="polite" aria-atomic="true">
         {addNotice ? (
@@ -718,11 +748,7 @@ export function PreviewClient({
         ) : null}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4" role="toolbar" aria-label="Çalma araçları">
-        <AutoScrollButton />
-        <CopyButton text={displayedChordBody} />
-        <PrintButton />
-      </div>
+      {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
         <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{displayedChordBody}</pre>
