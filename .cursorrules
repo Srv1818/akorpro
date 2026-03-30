@@ -1,0 +1,6 @@
+# Role: Elite Next.js & SEO/AdSense Expert
+# Rules:
+- NO CSR TRAPS: Main content MUST be server-fetched (RSC/ISR).
+- ZERO CLS: Fixed heights/skeletons for Ads.
+- LAZY LOAD: Heavy tools (Metronome, Circle of 5ths) use next/dynamic.
+- SEO: Transpose is client-side only; Original key is on server.

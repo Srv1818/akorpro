@@ -30,6 +30,11 @@ import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { getClientFirestore } from "@/lib/firebase/client";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
+import {
+  parseTonicFromOriginalKey,
+  signedSemitoneDelta,
+  transposeChordBodyText,
+} from "@/lib/music/transpose";
 
 const OVERRIDE_SCHEMA_VERSION = 1;
 
@@ -79,48 +84,6 @@ function parsePlaylistIdFromReturnTo(value: string | null): string | null {
       return m[1]?.trim() ? m[1].trim() : null;
     }
   }
-}
-
-function parseTonicFromOriginalKey(key: string): string {
-  const k = key.trim();
-  // Örn: "Am" -> "A", "Em" -> "E", "Cmaj" -> "C"
-  if (k.toLowerCase().endsWith("maj")) return k.slice(0, -3).trim();
-  if (k.length > 1 && k.toLowerCase().endsWith("m")) return k.slice(0, -1).trim();
-  return k;
-}
-
-function signedSemitoneDelta(fromPc: number, toPc: number): number {
-  const raw = (toPc - fromPc + 12) % 12;
-  return raw > 6 ? raw - 12 : raw; // [-6..+5]
-}
-
-function transposeChordToken(token: string, semitones: number): string {
-  // Basit akor formatı: Root + opsiyonel kalite (m, maj, dim, aug, sus2, sus4) + opsiyonel sayı (7, 9 vb.)
-  // Örn: Cm, Am, A7, Bb, F#, Dm7
-  const m = token.match(/^([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?$/i);
-  if (!m) return token;
-  const root = m[1];
-  const quality = m[2] ?? "";
-  const digits = m[3] ?? "";
-
-  const rootPc = noteNameToPitchClass(root);
-  if (rootPc === null) return token;
-
-  const newPc = (rootPc + semitones + 120) % 12;
-  const newRoot = PC_TO_NAME[newPc];
-  return `${newRoot}${quality}${digits}`;
-}
-
-function transposeChordBodyText(text: string, semitones: number): string {
-  if (!text) return text;
-  if (!Number.isFinite(semitones) || semitones === 0) return text;
-
-  const chordTokenRegex = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
-
-  return text.replace(chordTokenRegex, (full, root: string, quality: string | undefined, digits: string | undefined) => {
-    const suffix = `${quality ?? ""}${digits ?? ""}`;
-    return transposeChordToken(`${root}${suffix}`, semitones);
-  });
 }
 
 function keyModeToLabel(mode: KeyMode | undefined, originalKey: string): string {
