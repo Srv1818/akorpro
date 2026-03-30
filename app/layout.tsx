@@ -34,26 +34,40 @@ export const viewport: Viewport = {
   themeColor: "#22c55e",
 };
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: {
-    default: "AkorPro — Gitar akorları ve müzik araçları",
-    template: "%s · AkorPro",
-  },
-  description:
-    "Şarkı akorları, akorlar, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform. Topluluk ve erişilebilirlik odaklı.",
-  openGraph: {
-    type: "website",
-    locale: "tr_TR",
-    siteName,
-  },
-  twitter: {
-    card: "summary_large_image",
-  },
-  alternates: {
-    canonical: "/",
-  },
-};
+/** Geçici: içerik hazır olana kadar (ör. 2–3 gün) `.env` → BLOCK_SEARCH_INDEXING=true */
+export async function generateMetadata(): Promise<Metadata> {
+  const blockSearchIndexing = process.env.BLOCK_SEARCH_INDEXING === "true";
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: {
+      default: "AkorPro — Gitar akorları ve müzik araçları",
+      template: "%s · AkorPro",
+    },
+    description:
+      "Şarkı akorları, akorlar, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform. Topluluk ve erişilebilirlik odaklı.",
+    ...(blockSearchIndexing
+      ? {
+          robots: {
+            index: false,
+            follow: false,
+            googleBot: { index: false, follow: false },
+          },
+        }
+      : {}),
+    openGraph: {
+      type: "website",
+      locale: "tr_TR",
+      siteName,
+    },
+    twitter: {
+      card: "summary_large_image",
+    },
+    alternates: {
+      canonical: "/",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,
