@@ -1,5 +1,11 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { assertEnvOrWarn } = await import("./lib/security/validate-env");
+    assertEnvOrWarn();
+
+    const { assertNoClientSecrets } = await import("./lib/security/check-env-safety");
+    assertNoClientSecrets();
+
     await import("./sentry.server.config");
   }
 

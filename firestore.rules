@@ -1,5 +1,11 @@
 rules_version = '2';
 
+/* ═══════════════════════════════════════════════════════
+   PRODUCTION RULES — AkorPro
+   Tüm yazma/silme işlemleri isSignedIn() + owner/admin.
+   Anonim yazma yok. Catch-all deny.
+   ═══════════════════════════════════════════════════════ */
+
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {
@@ -10,106 +16,108 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** Custom claim `admin` (boolean) — Console / Admin SDK ile atanır. */
     function isAdmin() {
       return isSignedIn() && request.auth.token.admin == true;
     }
 
-    /**
-     * Rate limit: son yazımdan bu yana en az `seconds` saniye geçmiş olmalı.
-     * Yeni doküman (create) her zaman kabul edilir.
-     */
     function rateLimitWrite(seconds) {
       return !exists(resource)
         || !("updatedAt" in resource.data)
         || request.time > resource.data.updatedAt + duration.value(seconds, 's');
     }
 
-    /* ---- Şarkılar (songs) ---- */
+    /** Kullanıcı yazımlarında alan sayısını sınırla (veri kirliliği önlemi). */
+    function fieldCountOk(max) {
+      return request.resource.data.keys().size() <= max;
+    }
+
+    /* ── Şarkılar ── */
     match /songs/{songId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /* ---- Sanatçılar (artists) ---- */
+    /* ── Sanatçılar ── */
     match /artists/{artistId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /* ---- Keşfet (discover) ---- */
+    /* ── Keşfet ── */
     match /discover/{section} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /* ---- Kullanıcı: çalma listeleri ---- */
-    match /users/{userId}/playlists/{playlistId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) && rateLimitWrite(2)) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
-    }
-
-    match /users/{userId}/playlists/{playlistId}/items/{itemId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) && rateLimitWrite(1)) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
-    }
-
-    /* ---- Kullanıcı: songOverrides ---- */
-    match /users/{userId}/songOverrides/{songId} {
-      allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) && rateLimitWrite(2)) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin();
-    }
-
-    /* ---- Contributions (user-submitted content) ---- */
-    match /contributions/{contribId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
-        && request.resource.data.contributorUid == request.auth.uid
-        && request.resource.data.status == "pending";
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /* ---- Contributor profiles ---- */
-    match /contributor_profiles/{uid} {
-      allow read: if true;
-      allow create: if isOwner(uid);
-      allow update: if (isOwner(uid) && rateLimitWrite(5)) || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /* ---- Chord library (admin-only writes) ---- */
+    /* ── Akor kütüphanesi ── */
     match /chord_library/{chordId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /* ---- Scales collection (admin-only writes) ---- */
+    /* ── Gamlar ── */
     match /scales/{scaleId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    /* ---- Admin audit log (server-side write only) ---- */
+    /* ── Kullanıcı profili ── */
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId) && fieldCountOk(10);
+      allow update: if (isOwner(userId) && rateLimitWrite(5) && fieldCountOk(10)) || isAdmin();
+      allow delete: if false;
+    }
+
+    /* ── Çalma listeleri ── */
+    match /users/{userId}/playlists/{playlistId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && fieldCountOk(10);
+      allow update: if (isOwner(userId) && rateLimitWrite(2) && fieldCountOk(10)) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users/{userId}/playlists/{playlistId}/items/{itemId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && fieldCountOk(8);
+      allow update: if (isOwner(userId) && rateLimitWrite(1) && fieldCountOk(8)) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    /* ── Kullanıcı: songOverrides ── */
+    match /users/{userId}/songOverrides/{songId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && fieldCountOk(6);
+      allow update: if (isOwner(userId) && rateLimitWrite(2) && fieldCountOk(6)) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    /* ── Katkılar (contributions) ── */
+    match /contributions/{contribId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.contributorUid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && fieldCountOk(15);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ── Katkıcı profilleri ── */
+    match /contributor_profiles/{uid} {
+      allow read: if true;
+      allow create: if isOwner(uid) && fieldCountOk(8);
+      allow update: if (isOwner(uid) && rateLimitWrite(5) && fieldCountOk(8)) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ── Admin audit log (yalnızca server-side Admin SDK yazar) ── */
     match /admin_audit/{logId} {
       allow read: if isAdmin();
       allow write: if false;
     }
 
-    /** users/{userId} kök dokümanı — profil alanları. */
-    match /users/{userId} {
-      allow read: if true;
-      allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) && rateLimitWrite(5)) || isAdmin();
-      allow delete: if false;
-    }
-
+    /* ── Catch-all: tanımsız her şeyi reddet ── */
     match /{document=**} {
       allow read, write: if false;
     }
