@@ -65,6 +65,18 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
 
   const sessionUser = await getServerSessionUser();
   const artistSongs = await getSongsByArtist(sanatciSlug);
+  const prevSong = (() => {
+    const idx = artistSongs.findIndex((s) => s.slug === sarkiSlug);
+    if (idx <= 0) return null;
+    const p = artistSongs[idx - 1];
+    return p ?? null;
+  })();
+  const nextSong = (() => {
+    const idx = artistSongs.findIndex((s) => s.slug === sarkiSlug);
+    if (idx === -1) return null;
+    const n = artistSongs[idx + 1];
+    return n ?? null;
+  })();
   const related = artistSongs
     .filter((s) => s.slug !== sarkiSlug)
     .slice(0, 6);
@@ -163,6 +175,16 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
               tempo={song.tempo}
               timeSignature={song.timeSignature}
               serverUid={sessionUser?.uid ?? null}
+              prevSong={
+                prevSong
+                  ? { title: prevSong.title, href: chordPath(prevSong.artistSlug, prevSong.slug) }
+                  : null
+              }
+              nextSong={
+                nextSong
+                  ? { title: nextSong.title, href: chordPath(nextSong.artistSlug, nextSong.slug) }
+                  : null
+              }
             />
           </PreviewShell>
         </Suspense>

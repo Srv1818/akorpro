@@ -50,6 +50,11 @@ function chordHrefWithPlaylistReturn(artistSlug: string, songSlug: string, playl
   return `${chordPath(artistSlug, songSlug)}?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
+function chordHrefWithPlaylistReturnAndScene(artistSlug: string, songSlug: string, playlistId: string): string {
+  const returnTo = `/calma-listeleri?p=${encodeURIComponent(playlistId)}`;
+  return `${chordPath(artistSlug, songSlug)}?returnTo=${encodeURIComponent(returnTo)}&scene=1`;
+}
+
 function formatError(err: unknown): string {
   if (err && typeof err === "object" && "code" in err) {
     const code = String((err as { code: string }).code);
@@ -467,6 +472,10 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
     const sortedItems = [...items].sort((a, b) => a.data.order - b.data.order);
     const countLabel =
       !itemsKnown ? "Şarkılar yükleniyor…" : sortedItems.length === 0 ? "Henüz şarkı yok" : `${sortedItems.length} şarkı`;
+    const first = sortedItems[0]?.data ?? null;
+    const sceneHref = first
+      ? chordHrefWithPlaylistReturnAndScene(first.artistSlug, first.songSlug, row.id)
+      : null;
 
     return (
       <div className="space-y-6">
@@ -497,6 +506,21 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
               onKeyDown={(e) => e.stopPropagation()}
               role="presentation"
             >
+              <Link
+                href={sceneHref ?? "#"}
+                aria-disabled={!sceneHref}
+                onClick={(e) => {
+                  if (!sceneHref) e.preventDefault();
+                }}
+                className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/25 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+                  sceneHref
+                    ? "border border-white/10 bg-gradient-to-r from-blue-600 via-sky-500 to-red-600 hover:from-blue-500 hover:via-sky-400 hover:to-red-500"
+                    : "cursor-not-allowed border border-border bg-surface/60 text-muted shadow-none opacity-60"
+                }`}
+                title={sceneHref ? "Sahne modunu 1. şarkıdan başlat" : "Listede şarkı yok"}
+              >
+                Sahne Modu
+              </Link>
               {renamingPlaylistId === row.id ? (
                 <div className="rounded-xl border border-border bg-bg p-3 shadow-sm">
                   <label htmlFor={`rename-playlist-${row.id}`} className="mb-1.5 block text-xs font-medium text-muted">

@@ -15,6 +15,8 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
+  limit,
 } from "firebase/firestore";
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { AutoScrollButton, MetronomeButton } from "@/components/preview/preview-toolbar";
@@ -42,6 +44,8 @@ type Props = {
   tempo?: number | string;
   timeSignature?: string;
   serverUid: string | null;
+  prevSong?: { title: string; href: string } | null;
+  nextSong?: { title: string; href: string } | null;
 };
 
 type PlaylistRow = { id: string; name: string };
@@ -51,6 +55,29 @@ function formatError(err: unknown): string {
     return String((err as { code: string }).code);
   }
   return "Bilinmeyen hata";
+}
+
+function parsePlaylistIdFromReturnTo(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    // Supported formats (from playlists-manager):
+    // returnTo=/calma-listeleri?p=<playlistId>
+    // (returnTo itself is URL-encoded in the chord link)
+    const url = new URL(value, "http://local");
+    if (!url.pathname.startsWith("/calma-listeleri")) return null;
+    const p = url.searchParams.get("p");
+    return p && p.trim() ? p.trim() : null;
+  } catch {
+    // Fallback: handle plain string without URL parsing
+    const m = value.match(/\/calma-listeleri\b[^#]*[?&]p=([^&]+)/);
+    if (!m) return null;
+    try {
+      const decoded = decodeURIComponent(m[1] ?? "");
+      return decoded.trim() ? decoded.trim() : null;
+    } catch {
+      return m[1]?.trim() ? m[1].trim() : null;
+    }
+  }
 }
 
 function parseTonicFromOriginalKey(key: string): string {
@@ -119,6 +146,8 @@ export function PreviewClient({
   tempo,
   timeSignature,
   serverUid,
+  prevSong = null,
+  nextSong = null,
 }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -179,6 +208,11 @@ export function PreviewClient({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveAndAddOpen, setSaveAndAddOpen] = useState(false);
 
+  const [playlistNextSong, setPlaylistNextSong] = useState<{ title: string; href: string } | null>(null);
+  const [playlistNextLoading, setPlaylistNextLoading] = useState(false);
+  const [playlistPosition, setPlaylistPosition] = useState<{ index1: number; total: number } | null>(null);
+  const [playlistPrevSong, setPlaylistPrevSong] = useState<{ title: string; href: string } | null>(null);
+
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
   const [addBusy, setAddBusy] = useState(false);
@@ -194,6 +228,118 @@ export function PreviewClient({
     // (İstersen daha sonra useMemo ile optimize edebiliriz.)
     return transposeChordBodyText(chordBody, semitones);
   })();
+
+  const sceneParam = searchParams.get("scene");
+  const sceneParamActive = sceneParam === "1" || sceneParam === "true";
+
+  const replaceSceneParam = useCallback(
+    (next: boolean) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next) params.set("scene", "1");
+      else params.delete("scene");
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const prevSongHref = (() => {
+    const effectivePrev = playlistPrevSong ?? prevSong;
+    if (!effectivePrev?.href) return null;
+    const params = new URLSearchParams();
+    const t = searchParams.get("transpose");
+    const returnTo = searchParams.get("returnTo");
+    if (t) params.set("transpose", t);
+    if (returnTo) params.set("returnTo", returnTo);
+    if (sceneMode || sceneParamActive) params.set("scene", "1");
+    const qs = params.toString();
+    return qs ? `${effectivePrev.href}?${qs}` : effectivePrev.href;
+  })();
+
+  const nextSongHref = (() => {
+    const effectiveNext = playlistNextSong ?? nextSong;
+    if (!effectiveNext?.href) return null;
+    const params = new URLSearchParams();
+    const t = searchParams.get("transpose");
+    const returnTo = searchParams.get("returnTo");
+    if (t) params.set("transpose", t);
+    if (returnTo) params.set("returnTo", returnTo);
+    if (sceneMode || sceneParamActive) params.set("scene", "1");
+    const qs = params.toString();
+    return qs ? `${effectiveNext.href}?${qs}` : effectiveNext.href;
+  })();
+
+  useEffect(() => {
+    if (sceneParamActive) setSceneMode(true);
+    // Intentionally one-way: if URL removes scene, we don't force-close (user may close via UI)
+  }, [sceneParamActive]);
+
+  useEffect(() => {
+    // If opened from a playlist (returnTo includes playlistId), pick next by playlist order.
+    const rawReturnTo = searchParams.get("returnTo");
+    const decodedReturnTo = rawReturnTo ? (() => {
+      try {
+        return decodeURIComponent(rawReturnTo);
+      } catch {
+        return rawReturnTo;
+      }
+    })() : null;
+    const playlistId = parsePlaylistIdFromReturnTo(decodedReturnTo);
+
+    if (!playlistId) {
+      setPlaylistNextSong(null);
+      setPlaylistNextLoading(false);
+      setPlaylistPosition(null);
+      setPlaylistPrevSong(null);
+      return;
+    }
+    if (!firebaseUid || !getFirebasePublicConfig()) {
+      // Can't compute playlist order without client Firestore access.
+      setPlaylistNextSong(null);
+      setPlaylistNextLoading(false);
+      setPlaylistPosition(null);
+      setPlaylistPrevSong(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPlaylistNextLoading(true);
+    void (async () => {
+      try {
+        const db = getClientFirestore();
+        const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistId, "items");
+        const snap = await getDocs(query(itemsCol, orderBy("order", "asc")));
+        if (cancelled) return;
+        const items = snap.docs.map((d) => d.data() as { songId?: unknown; title?: unknown; artistSlug?: unknown; songSlug?: unknown });
+        const idx = items.findIndex((it) => typeof it.songId === "string" && it.songId === songId);
+        const prev = idx > 0 ? items[idx - 1] : null;
+        const next = idx >= 0 ? items[idx + 1] : null;
+        setPlaylistPosition(idx >= 0 ? { index1: idx + 1, total: items.length } : null);
+        if (prev && typeof prev.artistSlug === "string" && typeof prev.songSlug === "string" && typeof prev.title === "string") {
+          setPlaylistPrevSong({ title: prev.title, href: `/akor/${prev.artistSlug}/${prev.songSlug}` });
+        } else {
+          setPlaylistPrevSong(null);
+        }
+        if (next && typeof next.artistSlug === "string" && typeof next.songSlug === "string" && typeof next.title === "string") {
+          setPlaylistNextSong({ title: next.title, href: `/akor/${next.artistSlug}/${next.songSlug}` });
+        } else {
+          setPlaylistNextSong(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setPlaylistNextSong(null);
+          setPlaylistPosition(null);
+          setPlaylistPrevSong(null);
+        }
+      } finally {
+        if (!cancelled) setPlaylistNextLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [firebaseUid, searchParams, songId]);
 
   useEffect(() => {
     if (!activeWidget) return;
@@ -211,6 +357,23 @@ export function PreviewClient({
       document.body.style.overflow = prevOverflow;
     };
   }, [activeWidget]);
+
+  useEffect(() => {
+    if (!sceneMode) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSceneMode(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [sceneMode]);
 
   /**
    * Sync URL param → store, but only when the value genuinely differs from what
@@ -431,22 +594,39 @@ export function PreviewClient({
     try {
       const db = getClientFirestore();
       const itemsCol = collection(db, "users", firebaseUid, "playlists", selectedPlaylistId, "items");
-      const existing = await getDocs(query(itemsCol, orderBy("order", "desc")));
-      const top = existing.docs[0]?.data() as { order?: unknown } | undefined;
-      const nextOrder = typeof top?.order === "number" ? top.order + 1 : 0;
-      await addDoc(itemsCol, {
-        order: nextOrder,
-        songId,
-        title: songTitle,
-        artistSlug,
-        songSlug,
-        transposeSemitones: semitones,
-        createdAt: serverTimestamp(),
-      });
+      const dupeSnap = await getDocs(query(itemsCol, where("songId", "==", songId), limit(1)));
+
+      if (!dupeSnap.empty) {
+        const existingRef = doc(itemsCol, dupeSnap.docs[0].id);
+        await updateDoc(existingRef, {
+          title: songTitle,
+          artistSlug,
+          songSlug,
+          transposeSemitones: semitones,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        const existing = await getDocs(query(itemsCol, orderBy("order", "desc"), limit(1)));
+        const top = existing.docs[0]?.data() as { order?: unknown } | undefined;
+        const nextOrder = typeof top?.order === "number" ? top.order + 1 : 0;
+        await addDoc(itemsCol, {
+          order: nextOrder,
+          songId,
+          title: songTitle,
+          artistSlug,
+          songSlug,
+          transposeSemitones: semitones,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
       await updateDoc(doc(db, "users", firebaseUid, "playlists", selectedPlaylistId), {
         updatedAt: serverTimestamp(),
       });
-      setAddNotice({ variant: "success", message: "Şarkı listeye eklendi." });
+      setAddNotice({
+        variant: "success",
+        message: dupeSnap.empty ? "Şarkı listeye eklendi." : "Listede vardı; güncellendi.",
+      });
       setSaveAndAddOpen(false);
     } catch (e) {
       setAddNotice({ variant: "error", message: formatError(e) });
@@ -476,6 +656,116 @@ export function PreviewClient({
 
   return (
     <div className={sceneMode ? "rounded-2xl ring-2 ring-accent ring-offset-2 ring-offset-bg" : ""}>
+      {sceneMode ? (
+        <div
+          className="fixed inset-0 z-[70] bg-black/95 p-4 sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Sahne modu"
+          onMouseDown={() => {
+            setSceneMode(false);
+            replaceSceneParam(false);
+          }}
+        >
+          <div
+            className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-2xl shadow-black/40"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{songTitle}</p>
+                <p className="truncate text-xs text-white/60">
+                  {originalKey}
+                  {playlistPosition ? (
+                    <>
+                      <span className="mx-2 text-white/30">•</span>
+                      <span className="text-white/70">Liste: {playlistPosition.index1}/{playlistPosition.total}</span>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!prevSongHref || playlistNextLoading}
+                  onClick={() => {
+                    if (!prevSongHref) return;
+                    router.push(prevSongHref);
+                  }}
+                  className="rounded-lg border border-white/10 bg-gradient-to-r from-red-600 via-sky-500 to-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:from-red-500 hover:via-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={
+                    playlistNextLoading
+                      ? "Liste sırası yükleniyor…"
+                      : prevSongHref
+                        ? `Önceki: ${(playlistPrevSong ?? prevSong)?.title ?? ""}`
+                        : "Önceki şarkı yok"
+                  }
+                >
+                  {playlistNextLoading ? (
+                    "Önceki…"
+                  ) : prevSongHref ? (
+                    <span className="inline-flex max-w-[14rem] items-center gap-1">
+                      <span className="shrink-0">←</span>
+                      <span className="shrink-0">Önceki:</span>
+                      <span className="min-w-0 truncate text-white/90">
+                        {(playlistPrevSong ?? prevSong)?.title ?? ""}
+                      </span>
+                    </span>
+                  ) : (
+                    "← Önceki"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={!nextSongHref || playlistNextLoading}
+                  onClick={() => {
+                    if (!nextSongHref) return;
+                    router.push(nextSongHref);
+                  }}
+                  className="rounded-lg border border-white/10 bg-gradient-to-r from-blue-600 via-sky-500 to-red-600 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:from-blue-500 hover:via-sky-400 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={
+                    playlistNextLoading
+                      ? "Liste sırası yükleniyor…"
+                      : nextSongHref
+                        ? `Sıradaki: ${(playlistNextSong ?? nextSong)?.title ?? ""}`
+                        : "Sıradaki şarkı yok"
+                  }
+                >
+                  {playlistNextLoading ? (
+                    "Sıradaki…"
+                  ) : nextSongHref ? (
+                    <span className="inline-flex max-w-[14rem] items-center gap-1">
+                      <span className="shrink-0">Sıradaki:</span>
+                      <span className="min-w-0 truncate text-white/90">
+                        {(playlistNextSong ?? nextSong)?.title ?? ""}
+                      </span>
+                      <span className="shrink-0">→</span>
+                    </span>
+                  ) : (
+                    "Sıradaki →"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSceneMode(false);
+                    replaceSceneParam(false);
+                  }}
+                  className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                >
+                  Çık (Esc)
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 sm:p-6">
+              <pre className="whitespace-pre-wrap font-sans text-base leading-loose text-white sm:text-lg sm:leading-loose">
+                {displayedChordBody}
+              </pre>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {sessionMismatch ? (
         <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
           Sunucu oturumu ile tarayıcı Firebase oturumu eşleşmiyor. Çıkış yapıp yeniden giriş yapın.
@@ -596,6 +886,26 @@ export function PreviewClient({
             />
             <AutoScrollButton />
           </div>
+        </div>
+        <div className="hidden flex-1 justify-center sm:flex">
+          <button
+            type="button"
+            onClick={() => {
+              setSceneMode((v) => {
+                const next = !v;
+                replaceSceneParam(next);
+                return next;
+              });
+            }}
+            aria-pressed={sceneMode}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+              sceneMode
+                ? "border border-white/20 bg-gradient-to-r from-blue-500 via-sky-500 to-red-500 shadow-lg shadow-blue-500/20 ring-2 ring-red-300/50 hover:from-blue-400 hover:via-sky-400 hover:to-red-400"
+                : "border border-white/10 bg-gradient-to-r from-blue-600 via-sky-500 to-red-600 shadow-lg shadow-sky-500/25 hover:from-blue-500 hover:via-sky-400 hover:to-red-500"
+            }`}
+          >
+            Sahne Modu
+          </button>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5 text-[11px] text-muted">
           <div className="rounded-lg border border-border bg-surface px-2 py-1">
