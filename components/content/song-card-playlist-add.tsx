@@ -336,12 +336,12 @@ export function SongCardPlaylistAdd({ song }: { song: SongSummary }) {
           if (!open) setNotice(null);
         }}
         disabled={firebaseUid === undefined}
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface/95 text-accent shadow-sm backdrop-blur-sm transition hover:border-accent/40 hover:bg-bg disabled:opacity-50"
+        className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface/95 text-accent shadow-sm backdrop-blur-sm transition hover:border-accent/40 hover:bg-bg disabled:opacity-50"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Çalma listesine ekle"
       >
-        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+        <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
       </button>
 
       {mounted && panel ? createPortal(panel, document.body) : null}
