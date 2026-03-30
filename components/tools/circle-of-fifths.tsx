@@ -326,29 +326,56 @@ function ChordPanel({
 }) {
   if (entries.length === 0) return null;
 
-  const isHorizontal = side === "bottom";
+  // Sol panel elemanlarını sağa (çembere yakın), sağ ve alt panelleri ise sola yaslıyoruz.
+  const containerAlign = side === "left" ? "items-end" : "items-start";
 
   return (
-    <div className={`flex flex-col ${side === "right" ? "items-end" : side === "bottom" ? "items-center" : "items-start"}`}>
-      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted">{title}</p>
-      <div className={`flex ${isHorizontal ? "flex-row flex-wrap justify-center gap-3" : "flex-col gap-2"}`}>
-        {entries.map((e) => (
-          <div key={e.roman} className={`flex items-center gap-2 ${side === "left" ? "flex-row-reverse" : "flex-row"}`}>
-            {e.alteration && (
-              <div className={`flex items-center gap-1 ${side === "left" ? "flex-row-reverse" : "flex-row"}`}>
-                <span className="text-cyan-400">
-                  {side === "left" ? "←" : "→"}
-                </span>
-                <span className="max-w-[200px] text-[9px] leading-tight text-cyan-400">{e.alteration}</span>
+    <div className={`flex flex-col ${containerAlign}`}>
+      {/* Başlık: Sadece alt paneldeyken ortalanması daha şık durur */}
+      <p className={`mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted ${side === "bottom" ? "w-full text-center" : ""}`}>
+        {title}
+      </p>
+      
+      {/* Bütün panellerdeki akorları (Dim dahil) kesinlikle alt alta (flex-col) diziyoruz */}
+      <div className="flex flex-col gap-2">
+        {entries.map((e) => {
+          // 1. SOL PANEL (Majör): Açıklama sola uzar -> [Metin] [Ok] [Akor]
+          if (side === "left") {
+            return (
+              <div key={e.roman} className="flex items-center justify-end gap-2">
+                {e.alteration && (
+                  <div className="flex items-center gap-1 text-cyan-400">
+                    <span className="max-w-[200px] text-[9px] leading-tight text-right">
+                      {e.alteration}
+                    </span>
+                    <span>←</span>
+                  </div>
+                )}
+                <ChordBadge entry={e} side={side} />
               </div>
-            )}
-            <ChordBadge entry={e} side={side} />
-          </div>
-        ))}
+            );
+          }
+
+          // 2. SAĞ (Minör) ve ALT (Dim) PANELLER: Açıklama sağa uzar -> [Akor] [Ok] [Metin]
+          return (
+            <div key={e.roman} className="flex items-center justify-start gap-2">
+              <ChordBadge entry={e} side={side} />
+              {e.alteration && (
+                <div className="flex items-center gap-1 text-cyan-400">
+                  <span>→</span>
+                  <span className="max-w-[200px] text-[9px] leading-tight text-left">
+                    {e.alteration}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  The Circle SVG                                                     */
