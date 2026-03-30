@@ -19,6 +19,7 @@ import {
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { AutoScrollButton, MetronomeButton, CopyButton, PrintButton } from "@/components/preview/preview-toolbar";
 import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
+import { FloatingWidgetDock } from "@/components/layout/floating-widget-dock";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
 import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
@@ -35,6 +36,8 @@ type Props = {
   songSlug: string;
   originalKey: string;
   chordBody: string;
+  tempo?: number | string;
+  timeSignature?: string;
   serverUid: string | null;
 };
 
@@ -54,6 +57,8 @@ export function PreviewClient({
   songSlug,
   originalKey,
   chordBody,
+  tempo,
+  timeSignature,
   serverUid,
 }: Props) {
   const searchParams = useSearchParams();
@@ -65,6 +70,36 @@ export function PreviewClient({
   const setTransposeSemitones = usePreviewToolsStore((s) => s.setTransposeSemitones);
   const resetTonalAndTranspose = usePreviewToolsStore((s) => s.resetTonalAndTranspose);
   const [activeWidget, setActiveWidget] = useState<null | "circle" | "gamlar">(null);
+
+  const initialBpm =
+    typeof tempo === "number"
+      ? Number.isFinite(tempo)
+        ? tempo
+        : undefined
+      : typeof tempo === "string"
+        ? (() => {
+            const n = Number(tempo);
+            return Number.isFinite(n) ? n : undefined;
+          })()
+        : undefined;
+
+  const initialTimeSignature = typeof timeSignature === "string" && timeSignature.trim() ? timeSignature : undefined;
+
+  const initialBpmNumber = initialBpm ?? 120;
+  const initialTimeSignatureValue = initialTimeSignature ?? "4/4";
+
+  const [metronomeActive, setMetronomeActive] = useState(false);
+  const [metronomeOpen, setMetronomeOpen] = useState(false);
+  const [metronomeBpm, setMetronomeBpm] = useState(initialBpmNumber);
+  const [metronomeTimeSignature, setMetronomeTimeSignature] = useState(initialTimeSignatureValue);
+
+  useEffect(() => {
+    // Yeni şarkıya geçildiğinde metronomu "orijinal" tempo/ölçüyle sıfırla.
+    setMetronomeActive(false);
+    setMetronomeOpen(false);
+    setMetronomeBpm(initialBpmNumber);
+    setMetronomeTimeSignature(initialTimeSignatureValue);
+  }, [songId, initialBpmNumber, initialTimeSignatureValue]);
 
   const fromUrl = Number(searchParams.get("transpose") ?? "0");
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
@@ -216,8 +251,18 @@ export function PreviewClient({
   const resetOriginal = useCallback(() => {
     resetTonalAndTranspose();
     urlTransposeRef.current = 0;
+    setMetronomeActive(false);
+    setMetronomeOpen(false);
+    setMetronomeBpm(initialBpmNumber);
+    setMetronomeTimeSignature(initialTimeSignatureValue);
     router.replace(pathname, { scroll: false });
-  }, [pathname, resetTonalAndTranspose, router]);
+  }, [
+    pathname,
+    resetTonalAndTranspose,
+    router,
+    initialBpmNumber,
+    initialTimeSignatureValue,
+  ]);
 
   const onSave = useCallback(async () => {
     setSaveMessage(null);
@@ -410,6 +455,18 @@ export function PreviewClient({
           >
             Gamlar
           </button>
+          <MetronomeButton
+            active={metronomeActive}
+            onActiveChange={(next) => {
+              setMetronomeActive(next);
+              setMetronomeOpen(next);
+            }}
+            bpm={metronomeBpm}
+            onBpmChange={setMetronomeBpm}
+            timeSignature={metronomeTimeSignature}
+            onTimeSignatureChange={setMetronomeTimeSignature}
+            showControls={false}
+          />
         </div>
         <p className="text-xs text-muted">
           Butonlarla widget’ları açıp ton/gam tiplerini etkileşimli seçebilirsiniz.
@@ -549,7 +606,6 @@ export function PreviewClient({
 
       <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4" role="toolbar" aria-label="Çalma araçları">
         <AutoScrollButton />
-        <MetronomeButton bpm={typeof originalKey === "string" ? undefined : undefined} />
         <CopyButton text={chordBody} />
         <PrintButton />
       </div>
@@ -557,6 +613,24 @@ export function PreviewClient({
       <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
         <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{chordBody}</pre>
       </article>
+
+      <div className="print:hidden">
+        <FloatingWidgetDock open={metronomeOpen} zClassName={activeWidget ? "z-60" : "z-40"}>
+          <MetronomeButton
+            active={metronomeActive}
+            onActiveChange={(next) => {
+              setMetronomeActive(next);
+              setMetronomeOpen(next);
+            }}
+            bpm={metronomeBpm}
+            onBpmChange={setMetronomeBpm}
+            timeSignature={metronomeTimeSignature}
+            onTimeSignatureChange={setMetronomeTimeSignature}
+            showToggle={false}
+            showControls={true}
+          />
+        </FloatingWidgetDock>
+      </div>
     </div>
   );
 }

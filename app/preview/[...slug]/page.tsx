@@ -120,6 +120,8 @@ export default async function PreviewPage({ params, searchParams }: Props) {
               songSlug={song.slug}
               originalKey={song.originalKey}
               chordBody={song.chordBody}
+              tempo={song.tempo}
+              timeSignature={song.timeSignature}
               serverUid={sessionUser?.uid ?? null}
             />
           </PreviewShell>
