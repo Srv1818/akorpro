@@ -34,7 +34,7 @@ export function SiteNavbar() {
 
           {/* Mobil arama — sağ ikon grubunun dışında flex-1; aksi halde shrink-0 içinde genişlik hesaplanmaz ve üst üste binebilir */}
           <div className="min-w-0 flex-1 md:hidden">
-            <SearchDialog />
+            <SearchDialog placeholder="Ara" />
           </div>
 
           <div className="flex shrink-0 items-center gap-2">

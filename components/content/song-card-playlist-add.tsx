@@ -172,7 +172,7 @@ export function SongCardPlaylistAdd({ song }: { song: SongSummary }) {
           message: `“${listLabel}” listesine eklendi.`,
         });
         if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-        closeTimerRef.current = window.setTimeout(() => {
+        closeTimerRef.current = setTimeout(() => {
           closeTimerRef.current = null;
           setOpen(false);
         }, 1400);
@@ -220,7 +220,7 @@ export function SongCardPlaylistAdd({ song }: { song: SongSummary }) {
         message: `“${name}” listesine eklendi.`,
       });
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = setTimeout(() => {
         closeTimerRef.current = null;
         setOpen(false);
       }, 1400);
@@ -336,7 +336,7 @@ export function SongCardPlaylistAdd({ song }: { song: SongSummary }) {
           if (!open) setNotice(null);
         }}
         disabled={firebaseUid === undefined}
-        className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-surface/95 text-accent shadow-sm backdrop-blur-sm transition hover:border-accent/40 hover:bg-bg disabled:opacity-50"
+        className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface/95 text-accent shadow-sm backdrop-blur-sm transition hover:border-accent/40 hover:bg-bg disabled:opacity-50 sm:h-7 sm:w-7"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Çalma listesine ekle"

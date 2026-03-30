@@ -36,7 +36,11 @@ type SearchResponse = {
   empty: boolean;
 };
 
-export function SearchDialog() {
+type SearchDialogProps = {
+  placeholder?: string;
+};
+
+export function SearchDialog({ placeholder = "Şarkı veya sanatçı ara..." }: SearchDialogProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -197,8 +201,8 @@ export function SearchDialog() {
           onFocus={() => {
             if (query.length >= 2) setIsOpen(true);
           }}
-          placeholder="Şarkı veya sanatçı ara..."
-          className="min-w-0 w-full rounded-xl border border-border bg-surface py-3 pl-10 pr-16 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent md:pl-12 md:pr-20"
+          placeholder={placeholder}
+          className="min-w-0 w-full rounded-xl border border-border bg-surface py-3 pl-10 pr-10 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent md:pl-12 md:pr-20"
           role="combobox"
           aria-expanded={isOpen}
           aria-controls="search-dropdown"

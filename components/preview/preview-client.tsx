@@ -107,6 +107,32 @@ function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): Ke
   return "major";
 }
 
+/** Mobil Gamlar paneli: klavye yatay kullanıma uygun olsun diye ekranı yatay kilitle (destekleyen tarayıcılar). */
+const WIDGET_MOBILE_MAX = 640;
+
+type ScreenOrientationWithLock = ScreenOrientation & {
+  lock?: (orientation: "landscape" | "portrait" | string) => Promise<void>;
+  unlock?: () => void;
+};
+
+function tryLockGamlarLandscape() {
+  if (typeof window === "undefined") return;
+  if (window.innerWidth >= WIDGET_MOBILE_MAX) return;
+  const o = window.screen?.orientation as ScreenOrientationWithLock | undefined;
+  if (!o?.lock) return;
+  void o.lock("landscape").catch(() => {});
+}
+
+function unlockScreenOrientationIfPossible() {
+  if (typeof window === "undefined") return;
+  try {
+    const o = window.screen?.orientation as ScreenOrientationWithLock | undefined;
+    o?.unlock?.();
+  } catch {
+    /* noop */
+  }
+}
+
 export function PreviewClient({
   songId,
   songTitle,
@@ -371,42 +397,107 @@ export function PreviewClient({
   }, [openWidgets.circle, openWidgets.gamlar]);
 
   useEffect(() => {
-    const opened = (["circle", "gamlar"] as const).filter((id) => openWidgets[id]);
-    const pad = 32;
-    const maxWidth = Math.max(460, Math.min(window.innerWidth - pad, Math.floor(window.innerWidth * 0.66)));
-    const maxHeight = Math.max(340, Math.min(window.innerHeight - pad, Math.floor(window.innerHeight * 0.72)));
-    const minWidth = 340;
-    const minHeight = 260;
-    setWidgetSizes((prev) => {
-      const next = { ...prev };
+    if (!openWidgets.gamlar) return;
+    if (typeof window === "undefined" || window.innerWidth >= WIDGET_MOBILE_MAX) return;
+    tryLockGamlarLandscape();
+    return () => {
+      unlockScreenOrientationIfPossible();
+    };
+  }, [openWidgets.gamlar]);
+
+  useEffect(() => {
+    if (!openWidgets.circle && !openWidgets.gamlar) return;
+
+    const applyLayout = () => {
+      const opened = (["circle", "gamlar"] as const).filter((id) => openWidgets[id]);
+      if (opened.length === 0) return;
+
+      const isNarrow = window.innerWidth < WIDGET_MOBILE_MAX;
+
+      const computedSizes: Partial<Record<WidgetId, { width: number; height: number }>> = {};
       for (const id of opened) {
-        if (next[id]) continue;
-        const base = id === "gamlar" ? { width: 700, height: 500 } : { width: 700, height: 500 };
-        const width = Math.min(maxWidth, Math.max(minWidth, base.width));
-        const height = Math.min(maxHeight, Math.max(minHeight, base.height));
-        next[id] = {
-          width,
-          height,
-        };
-        setWidgetOffsets((prevOffsets) => {
-          const existing = prevOffsets[id];
-          if (existing.x !== 0 || existing.y !== 0) return prevOffsets;
-          const edgePad = 20;
-          const stackOffsetY = id === "gamlar" ? 12 : 0;
-          const x =
-            id === "gamlar"
-              ? Math.round(-(window.innerWidth / 2 - edgePad - width / 2))
-              : Math.round(window.innerWidth / 2 - edgePad - width / 2);
-          const y = Math.round(-(window.innerHeight / 2 - edgePad - height / 2) + stackOffsetY);
-          return { ...prevOffsets, [id]: { x, y } };
-        });
+        if (isNarrow) {
+          computedSizes[id] = { width: window.innerWidth, height: window.innerHeight };
+        } else {
+          const pad = 32;
+          const maxWidth = Math.max(460, Math.min(window.innerWidth - pad, Math.floor(window.innerWidth * 0.66)));
+          const maxHeight = Math.max(340, Math.min(window.innerHeight - pad, Math.floor(window.innerHeight * 0.72)));
+          const minWidth = 340;
+          const minHeight = 260;
+          const base = { width: 700, height: 500 };
+          const width = Math.min(maxWidth, Math.max(minWidth, base.width));
+          const height = Math.min(maxHeight, Math.max(minHeight, base.height));
+          computedSizes[id] = { width, height };
+        }
       }
-      return next;
-    });
+
+      setWidgetSizes((prev) => {
+        const next = { ...prev };
+        for (const id of opened) {
+          next[id] = computedSizes[id]!;
+        }
+        return next;
+      });
+
+      setWidgetOffsets((prev) => {
+        const next = { ...prev };
+        for (const id of opened) {
+          const size = computedSizes[id]!;
+          if (isNarrow) {
+            next[id] = { x: 0, y: 0 };
+            continue;
+          }
+          const existing = prev[id];
+          if (existing.x !== 0 || existing.y !== 0) {
+            const edgePad = 8;
+            const maxX = Math.max(0, window.innerWidth / 2 - size.width / 2 - edgePad);
+            const maxY = Math.max(0, window.innerHeight / 2 - size.height / 2 - edgePad);
+            next[id] = {
+              x: Math.max(-maxX, Math.min(maxX, existing.x)),
+              y: Math.max(-maxY, Math.min(maxY, existing.y)),
+            };
+          } else {
+            const edgePad = 20;
+            const stackOffsetY = id === "gamlar" ? 12 : 0;
+            const x =
+              id === "gamlar"
+                ? Math.round(-(window.innerWidth / 2 - edgePad - size.width / 2))
+                : Math.round(window.innerWidth / 2 - edgePad - size.width / 2);
+            const y = Math.round(-(window.innerHeight / 2 - edgePad - size.height / 2) + stackOffsetY);
+            next[id] = { x, y };
+          }
+        }
+        return next;
+      });
+    };
+
+    const prevOverflow = document.body.style.overflow;
+
+    const onResize = () => {
+      applyLayout();
+      if (window.innerWidth < WIDGET_MOBILE_MAX) {
+        document.body.style.overflow = "hidden";
+      } else {
+        document.body.style.overflow = prevOverflow || "";
+      }
+    };
+
+    applyLayout();
+    if (typeof document !== "undefined" && window.innerWidth < WIDGET_MOBILE_MAX) {
+      document.body.style.overflow = "hidden";
+    }
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      document.body.style.overflow = prevOverflow || "";
+    };
   }, [openWidgets.circle, openWidgets.gamlar]);
 
   const handleWidgetHeaderPointerDown = useCallback((widget: WidgetId, e: ReactPointerEvent<HTMLDivElement>) => {
     if (!openWidgets[widget]) return;
+    if (typeof window !== "undefined" && window.innerWidth < WIDGET_MOBILE_MAX) return;
     if (e.button !== 0) return;
     const target = e.target as HTMLElement | null;
     if (target?.closest("button,a,input,select,textarea")) return;
@@ -473,6 +564,7 @@ export function PreviewClient({
   const handleWidgetResizePointerDown = useCallback((widget: WidgetId, e: ReactPointerEvent<HTMLButtonElement>) => {
     const size = widgetSizes[widget];
     if (!openWidgets[widget] || !size) return;
+    if (typeof window !== "undefined" && window.innerWidth < WIDGET_MOBILE_MAX) return;
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
@@ -489,6 +581,7 @@ export function PreviewClient({
   }, [openWidgets, widgetSizes]);
 
   const handleWidgetResizePointerMove = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (typeof window !== "undefined" && window.innerWidth < WIDGET_MOBILE_MAX) return;
     const resize = widgetResizeRef.current;
     if (!resize.resizing || resize.pointerId !== e.pointerId || !resize.widget) return;
     const bounds = getWidgetBounds();
@@ -538,15 +631,32 @@ export function PreviewClient({
     document.body.style.overflow = "hidden";
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSceneMode(false);
+      if (e.key === "Escape") {
+        setSceneMode(false);
+        replaceSceneParam(false);
+      }
+    };
+
+    /** Mobilde belge kayarsa (overscroll, bazı tarayıcılarda body kilidine rağmen) sahne modundan çık. İçerikteki akor alanı ayrı scroll olduğu için çoğu cihazda window scroll tetiklenmez. */
+    const exitIfPageScrolled = () => {
+      if (typeof window === "undefined" || window.innerWidth >= WIDGET_MOBILE_MAX) return;
+      const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      const x = window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft || 0;
+      if (Math.abs(y) > 6 || Math.abs(x) > 6) {
+        setSceneMode(false);
+        replaceSceneParam(false);
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", exitIfPageScrolled, { passive: true });
+
     return () => {
       window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", exitIfPageScrolled);
       document.body.style.overflow = prevOverflow;
     };
-  }, [sceneMode]);
+  }, [replaceSceneParam, sceneMode]);
 
   /**
    * Sync URL param → store, but only when the value genuinely differs from what
@@ -932,15 +1042,16 @@ export function PreviewClient({
                     setSceneMode(false);
                     replaceSceneParam(false);
                   }}
-                  className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+                  className="hidden items-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
                 >
-                  Çık (Esc)
+                  <span>Çık</span>
+                  <span className="ml-1 text-[10px] text-white/60">(Esc)</span>
                 </button>
               </div>
             </div>
 
             <div className="flex-1 overflow-auto p-4 sm:p-6">
-              <pre className="whitespace-pre-wrap font-sans text-base leading-loose text-white sm:text-lg sm:leading-loose">
+              <pre className="overflow-x-auto whitespace-pre font-sans text-base leading-loose text-white sm:text-lg md:text-xl sm:leading-loose md:leading-loose">
                 {displayedChordBody}
               </pre>
             </div>
@@ -1026,14 +1137,14 @@ export function PreviewClient({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-2 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-start gap-x-1 gap-y-1.5">
             <button
               type="button"
               onClick={() => setOpenWidgets((w) => ({ ...w, circle: !w.circle }))}
               aria-pressed={openWidgets.circle}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+            className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
                 openWidgets.circle
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -1043,9 +1154,15 @@ export function PreviewClient({
             </button>
             <button
               type="button"
-              onClick={() => setOpenWidgets((w) => ({ ...w, gamlar: !w.gamlar }))}
+              onClick={() =>
+                setOpenWidgets((w) => {
+                  const opening = !w.gamlar;
+                  if (opening) tryLockGamlarLandscape();
+                  return { ...w, gamlar: opening };
+                })
+              }
               aria-pressed={openWidgets.gamlar}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+            className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
                 openWidgets.gamlar
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -1068,7 +1185,7 @@ export function PreviewClient({
             <AutoScrollButton />
           </div>
         </div>
-        <div className="hidden flex-1 justify-center sm:flex">
+        <div className="flex w-full justify-center sm:w-auto sm:flex-1">
           <button
             type="button"
             onClick={() => {
@@ -1079,7 +1196,7 @@ export function PreviewClient({
               });
             }}
             aria-pressed={sceneMode}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+            className={`w-full max-w-md rounded-lg px-3 py-2.5 text-xs font-semibold text-white transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:w-auto sm:max-w-none ${
               sceneMode
                 ? "border border-white/20 bg-gradient-to-r from-blue-500 via-sky-500 to-red-500 shadow-lg shadow-blue-500/20 ring-2 ring-red-300/50 hover:from-blue-400 hover:via-sky-400 hover:to-red-400"
                 : "border border-white/10 bg-gradient-to-r from-blue-600 via-sky-500 to-red-600 shadow-lg shadow-sky-500/25 hover:from-blue-500 hover:via-sky-400 hover:to-red-500"
@@ -1088,23 +1205,23 @@ export function PreviewClient({
             Sahne Modu
           </button>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5 text-[11px] text-muted">
-          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+        <div className="grid w-full grid-cols-2 gap-2 text-[11px] text-muted sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-1.5">
+          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             Ton: <span className="font-mono text-foreground">{originalKey}</span>
           </div>
-          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             BPM:{" "}
             <span className="font-mono text-foreground">
               {tempo ?? "-"}
             </span>
           </div>
-          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             Ölçü:{" "}
             <span className="font-mono text-foreground">
               {timeSignature ?? "-"}
             </span>
           </div>
-          <div className="rounded-lg border border-border bg-surface px-2 py-1">
+          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             Mod:{" "}
             <span className="font-mono text-foreground">
               {keyModeToLabel(keyMode, originalKey)}
@@ -1114,7 +1231,7 @@ export function PreviewClient({
           <button
             type="button"
             onClick={resetOriginal}
-            className="rounded-lg border border-border bg-bg px-2 py-1 text-[11px] font-medium text-foreground hover:bg-surface"
+            className="col-span-2 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface min-h-[44px] sm:col-span-1"
           >
             Orijinale dön
           </button>
@@ -1122,7 +1239,7 @@ export function PreviewClient({
       </div>
 
       {(openWidgets.circle || openWidgets.gamlar) ? (
-        <div className="pointer-events-none fixed inset-0 z-50 p-4">
+        <div className="pointer-events-none fixed inset-0 z-50 p-0 sm:p-4">
           {(["circle", "gamlar"] as const).map((widget) => {
             if (!openWidgets[widget]) return null;
             const widgetTitle = widgetTitleById[widget];
@@ -1134,7 +1251,7 @@ export function PreviewClient({
                 role="dialog"
                 aria-modal="false"
                 aria-label={widgetTitle}
-                className="pointer-events-auto absolute left-1/2 top-1/2 flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+                className="pointer-events-auto absolute left-1/2 top-1/2 flex max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden rounded-none border border-border bg-surface shadow-2xl sm:rounded-2xl"
                 style={{
                   width: size?.width,
                   height: size?.height,
@@ -1142,7 +1259,7 @@ export function PreviewClient({
                 }}
               >
                 <div
-                  className="flex cursor-move items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur"
+                  className="flex cursor-default items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur sm:cursor-move"
                   onPointerDown={(e) => handleWidgetHeaderPointerDown(widget, e)}
                   onPointerMove={handleWidgetHeaderPointerMove}
                   onPointerUp={handleWidgetHeaderPointerUp}
@@ -1180,7 +1297,7 @@ export function PreviewClient({
                 <button
                   type="button"
                   aria-label="Widget boyutunu değiştir"
-                  className="absolute bottom-1 right-1 h-5 w-5 cursor-se-resize rounded bg-border/40 hover:bg-border/70"
+                  className="absolute bottom-1 right-1 hidden h-5 w-5 cursor-se-resize rounded bg-border/40 hover:bg-border/70 sm:block"
                   onPointerDown={(e) => handleWidgetResizePointerDown(widget, e)}
                   onPointerMove={handleWidgetResizePointerMove}
                   onPointerUp={handleWidgetResizePointerUp}
@@ -1192,10 +1309,16 @@ export function PreviewClient({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
-          <span className="text-sm text-muted" id="transpose-label">Transpoze:</span>
-          <div className="flex flex-wrap items-center gap-1" aria-describedby="transpose-label">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <span className="shrink-0 text-sm text-muted" id="transpose-label">
+              Transpoze:
+            </span>
+            <div
+              className="grid w-full min-w-0 grid-cols-4 gap-1 sm:inline-flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:gap-1"
+              aria-describedby="transpose-label"
+            >
             {Array.from({ length: 12 }, (_, pc) => {
               const label = PC_TO_NAME[pc];
               const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
@@ -1207,7 +1330,7 @@ export function PreviewClient({
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => replaceTranspose(delta)}
-                  className={`select-none inline-flex min-w-[2.5rem] justify-center rounded-md border px-1.5 py-1 text-xs font-medium leading-none transition ${
+                  className={`select-none inline-flex min-h-[44px] w-full min-w-[44px] items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium leading-none transition sm:w-auto ${
                     isActive
                       ? "border-accent bg-accent text-accent-foreground"
                       : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -1217,25 +1340,26 @@ export function PreviewClient({
                 </button>
               );
             })}
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[12rem] sm:items-end">
           <button
             type="button"
             disabled={!canSave || saveState === "saving"}
             onClick={() => void onSave()}
             title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-accent px-3 py-2.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] sm:w-auto"
           >
             {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
           </button>
           {firebaseUid === undefined ? (
-            <span className="text-sm text-muted">Oturum kontrol ediliyor…</span>
+            <span className="text-center text-sm text-muted sm:text-right">Oturum kontrol ediliyor…</span>
           ) : firebaseUid === null ? (
             <Link
               href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface"
+              className="flex min-h-[44px] w-full items-center justify-center rounded-lg border border-border px-3 py-2.5 text-xs font-medium text-foreground hover:bg-surface sm:inline-flex sm:w-auto"
             >
               Giriş (Kaydet için)
             </Link>
@@ -1275,7 +1399,7 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
-        <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{displayedChordBody}</pre>
+        <pre className="overflow-x-auto whitespace-pre font-sans text-sm leading-loose text-foreground sm:text-base md:text-lg sm:leading-relaxed md:leading-relaxed">{displayedChordBody}</pre>
       </article>
 
       <div className="print:hidden">

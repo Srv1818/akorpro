@@ -26,17 +26,30 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
     <>
       <JsonLd data={jsonLd} />
-      <nav aria-label="Breadcrumb" className="mx-auto max-w-6xl px-4 pt-4 sm:px-6 lg:px-8">
-        <ol className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
+      <nav aria-label="Breadcrumb" className="mx-auto min-w-0 max-w-6xl px-4 pt-4 sm:px-6 lg:px-8">
+        <ol className="flex w-full min-w-0 max-w-full flex-nowrap items-baseline gap-x-2 overflow-x-auto overscroll-x-contain pb-1 text-sm leading-tight text-muted [-webkit-overflow-scrolling:touch]">
           {items.map((item, i) => (
-            <li key={item.href} className="flex items-center gap-1.5">
-              {i > 0 && <span aria-hidden>/</span>}
+            <li
+              key={`${item.href}-${i}`}
+              className="flex shrink-0 items-baseline gap-x-2"
+            >
+              {i > 0 ? (
+                <span className="shrink-0 select-none text-muted/50" aria-hidden>
+                  /
+                </span>
+              ) : null}
               {i === items.length - 1 ? (
-                <span className="text-foreground" aria-current="page">
+                <span
+                  className="whitespace-nowrap font-semibold text-foreground [font-synthesis:none]"
+                  aria-current="page"
+                >
                   {item.label}
                 </span>
               ) : (
-                <Link href={item.href} className="hover:text-accent hover:underline">
+                <Link
+                  href={item.href}
+                  className="whitespace-nowrap font-normal hover:text-accent hover:underline"
+                >
                   {item.label}
                 </Link>
               )}

@@ -15,7 +15,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(dark ? "light" : "dark")}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-foreground shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-foreground shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
       aria-label={mounted ? (dark ? "Açık temaya geç" : "Koyu temaya geç") : "Tema değiştir"}
       title={mounted ? (dark ? "Açık tema" : "Koyu tema") : "Tema değiştir"}
     >

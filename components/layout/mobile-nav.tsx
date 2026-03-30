@@ -28,7 +28,7 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
     <div className="md:hidden">
       <button
         type="button"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-foreground shadow-sm"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface text-foreground shadow-sm"
         aria-expanded={open}
         aria-controls={id}
         aria-label={open ? "Menüyü kapat" : "Menüyü aç"}
@@ -56,7 +56,7 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-surface"
+                  className="rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-surface min-h-[44px] flex items-center"
                   onClick={close}
                 >
                   {item.label}
