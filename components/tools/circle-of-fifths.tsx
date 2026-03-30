@@ -1,7 +1,7 @@
 "use client";
 
 import { Chord, Key, Note } from "tonal";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { CO5_LABELS, CO5_PITCH_CLASSES } from "@/lib/music/note-utils";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
@@ -258,6 +258,73 @@ function ringHighlight(ring: "outer" | "mid" | "inner", idx: number, majorKeyIdx
   return ring === "outer" && idx === majorKeyIdx ? 1 : 0.9;
 }
 
+/**
+ * Karanlık: yarı saydam dilimler koyu zeminde iyi çalışır.
+ * Aydınlık: yarı saydam gri + açık surface üst üste “silik” görünür — opak slate/zinc kullan.
+ */
+function co5Palette(isDark: boolean) {
+  if (isDark) {
+    return {
+      outerBase: "rgba(63,63,70,0.25)",
+      midBase: "rgba(63,63,70,0.18)",
+      innerBase: "rgba(63,63,70,0.12)",
+      strokeBase: "rgba(63,63,70,0.5)",
+      strokeHl: "rgba(251,191,36,0.75)",
+      outerHl: (hl: number) => `rgba(217,161,12,${0.12 + hl * 0.25})`,
+      midHl: (hl: number) => `rgba(180,140,20,${0.08 + hl * 0.18})`,
+      innerHl: (hl: number) => `rgba(140,110,20,${0.06 + hl * 0.14})`,
+      textOuterMuted: "rgba(161,161,170,0.7)",
+      textOuterHl: (hl: number) => `rgba(255,245,200,${0.6 + hl * 0.4})`,
+      textMidMuted: "rgba(161,161,170,0.55)",
+      textMidHl: (hl: number) => `rgba(220,230,200,${0.5 + hl * 0.4})`,
+      textInnerMuted: "rgba(161,161,170,0.4)",
+      textInnerHl: (hl: number) => `rgba(255,200,200,${0.4 + hl * 0.4})`,
+      strokeW: { outer: 0.6, mid: 0.5, inner: 0.4 },
+      rimStroke: 1,
+      rimStrokeCss: "var(--border)",
+      hubStrokeW: 1.5,
+    };
+  }
+
+  return {
+    outerBase: "rgb(203, 213, 225)",
+    midBase: "rgb(228, 228, 231)",
+    innerBase: "rgb(237, 237, 242)",
+    strokeBase: "rgb(82, 82, 91)",
+    strokeHl: "rgb(146, 64, 14)",
+    outerHl: (hl: number) => `rgba(251, 191, 36, ${0.42 + hl * 0.48})`,
+    midHl: (hl: number) => `rgba(252, 211, 77, ${0.5 + hl * 0.42})`,
+    innerHl: (hl: number) => `rgba(252, 165, 165, ${0.45 + hl * 0.45})`,
+    textOuterMuted: "rgb(24, 24, 27)",
+    textOuterHl: (_hl: number) => "rgb(69, 26, 3)",
+    textMidMuted: "rgb(39, 39, 42)",
+    textMidHl: (_hl: number) => "rgb(24, 24, 27)",
+    textInnerMuted: "rgb(63, 63, 70)",
+    textInnerHl: (_hl: number) => "rgb(127, 29, 29)",
+    strokeW: { outer: 1.15, mid: 1.05, inner: 0.95 },
+    rimStroke: 2.5,
+    rimStrokeCss: "rgb(113, 113, 122)",
+    hubStrokeW: 2.25,
+  };
+}
+
+/** next-themes `resolvedTheme` hidratasyon sırasında undefined olabiliyor; `html.dark` kaynak. */
+function useIsDarkHtmlClass(): boolean {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof document === "undefined") return () => {};
+      const el = document.documentElement;
+      const obs = new MutationObserver(() => {
+        onStoreChange();
+      });
+      obs.observe(el, { attributes: true, attributeFilter: ["class"] });
+      return () => obs.disconnect();
+    },
+    () => document.documentElement.classList.contains("dark"),
+    () => false,
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
@@ -273,7 +340,7 @@ function ModeTabBar({ mode, onChange }: { mode: ScaleMode; onChange: (m: ScaleMo
           className={`flex-1 rounded-lg px-2 py-2 text-xs font-semibold transition sm:text-sm ${
             mode === m.id
               ? "bg-accent text-accent-foreground shadow-sm"
-              : "text-muted hover:text-foreground"
+              : "text-zinc-700 hover:text-foreground dark:text-muted"
           }`}
         >
           {m.label}
@@ -286,7 +353,7 @@ function ModeTabBar({ mode, onChange }: { mode: ScaleMode; onChange: (m: ScaleMo
 function ChordBadge({ entry, side }: { entry: ChordEntry; side: "left" | "right" | "bottom" }) {
   const badgeBg = {
     major: "bg-amber-500 text-zinc-900",
-    minor: "bg-emerald-500 text-zinc-900",
+    minor: "bg-green-500 text-zinc-900",
     diminished: "bg-zinc-600 text-zinc-100",
     augmented: "bg-amber-500 text-zinc-900",
     dominant: "bg-amber-500 text-zinc-900",
@@ -294,12 +361,12 @@ function ChordBadge({ entry, side }: { entry: ChordEntry; side: "left" | "right"
   }[entry.quality];
 
   const romanColor = {
-    major: "text-amber-400",
-    minor: "text-emerald-400",
-    diminished: "text-zinc-400",
-    augmented: "text-amber-400",
-    dominant: "text-amber-400",
-    "half-dim": "text-zinc-400",
+    major: "text-amber-800 dark:text-amber-400",
+    minor: "text-green-800 dark:text-green-400",
+    diminished: "text-zinc-600 dark:text-zinc-400",
+    augmented: "text-amber-800 dark:text-amber-400",
+    dominant: "text-amber-800 dark:text-amber-400",
+    "half-dim": "text-zinc-600 dark:text-zinc-400",
   }[entry.quality];
 
   const badge = (
@@ -344,10 +411,12 @@ function ChordPanel({
   return (
     <div className={`flex flex-col ${containerAlign}`}>
       {/* Başlık: Sadece alt paneldeyken ortalanması daha şık durur */}
-      <p className={`mb-1.5 text-[10px] font-bold uppercase tracking-widest text-muted ${side === "bottom" ? "w-full text-center" : ""}`}>
+      <p
+        className={`mb-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-600 dark:text-muted ${side === "bottom" ? "w-full text-center" : ""}`}
+      >
         {title}
       </p>
-      
+
       {/* Bütün panellerdeki akorları (Dim dahil) kesinlikle alt alta (flex-col) diziyoruz */}
       <div className="flex flex-col gap-2">
         {entries.map((e) => {
@@ -356,11 +425,13 @@ function ChordPanel({
             return (
               <div key={e.roman} className="flex items-center justify-end gap-2">
                 {e.alteration && (
-                  <div className="flex items-center gap-1 text-cyan-400">
-                    <span className="max-w-[200px] text-[9px] leading-tight text-right">
+                  <div className="flex items-center gap-1 text-foreground">
+                    <span className="max-w-[220px] text-[10px] font-medium leading-snug text-right text-foreground">
                       {e.alteration}
                     </span>
-                    <span>←</span>
+                    <span className="shrink-0" aria-hidden>
+                      ←
+                    </span>
                   </div>
                 )}
                 <ChordBadge entry={e} side={side} />
@@ -373,9 +444,11 @@ function ChordPanel({
             <div key={e.roman} className="flex items-center justify-start gap-2">
               <ChordBadge entry={e} side={side} />
               {e.alteration && (
-                <div className="flex items-center gap-1 text-cyan-400">
-                  <span>→</span>
-                  <span className="max-w-[200px] text-[9px] leading-tight text-left">
+                <div className="flex items-center gap-1 text-foreground">
+                  <span className="shrink-0" aria-hidden>
+                    →
+                  </span>
+                  <span className="max-w-[220px] text-[10px] font-medium leading-snug text-left text-foreground">
                     {e.alteration}
                   </span>
                 </div>
@@ -406,6 +479,9 @@ function CircleSVG({
   ringHighlights: RingHighlights;
   onWedgeClick: (idx: number, ring: "outer" | "inner") => void;
 }) {
+  const isDark = useIsDarkHtmlClass();
+  const c = useMemo(() => co5Palette(isDark), [isDark]);
+
   const cx = size / 2, cy = size / 2;
   const rOuter = size * 0.46;
   const rMid = rOuter * 0.72;
@@ -423,8 +499,8 @@ function CircleSVG({
   const centerLines = centerLabel.split("\n");
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="max-w-full">
-      <circle cx={cx} cy={cy} r={rOuter + 4} fill="var(--surface)" stroke="var(--border)" strokeWidth={1} />
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="max-w-full text-foreground">
+      <circle cx={cx} cy={cy} r={rOuter + 4} fill="var(--surface)" stroke={c.rimStrokeCss} strokeWidth={c.rimStroke} />
 
       {CO5_PITCH_CLASSES.map((_, i) => {
         const startDeg = i * 30 - 105;
@@ -440,12 +516,12 @@ function CircleSVG({
         const dimTriad = dimKey.triads[6] ?? "";
         const dimLabel = formatSym(dimTriad);
 
-        const outerFill = hlO > 0 ? `rgba(217,161,12,${0.12 + hlO * 0.25})` : "rgba(63,63,70,0.25)";
-        const midFill = hlM > 0 ? `rgba(180,140,20,${0.08 + hlM * 0.18})` : "rgba(63,63,70,0.18)";
-        const innerFill = hlI > 0 ? `rgba(140,110,20,${0.06 + hlI * 0.14})` : "rgba(63,63,70,0.12)";
-        const strokeO = hlO > 0.7 ? "rgba(251,191,36,0.7)" : "rgba(63,63,70,0.5)";
-        const strokeM = hlM > 0.7 ? "rgba(251,191,36,0.7)" : "rgba(63,63,70,0.5)";
-        const strokeI = hlI > 0.7 ? "rgba(251,191,36,0.7)" : "rgba(63,63,70,0.5)";
+        const outerFill = hlO > 0 ? c.outerHl(hlO) : c.outerBase;
+        const midFill = hlM > 0 ? c.midHl(hlM) : c.midBase;
+        const innerFill = hlI > 0 ? c.innerHl(hlI) : c.innerBase;
+        const strokeO = hlO > 0.7 ? c.strokeHl : c.strokeBase;
+        const strokeM = hlM > 0.7 ? c.strokeHl : c.strokeBase;
+        const strokeI = hlI > 0.7 ? c.strokeHl : c.strokeBase;
 
         const pOuter = wedgePath(cx, cy, rMid, rOuter, startDeg, endDeg);
         const pMid = wedgePath(cx, cy, rInner, rMid, startDeg, endDeg);
@@ -455,29 +531,43 @@ function CircleSVG({
         const mPos = polarXY(cx, cy, (rMid + rInner) / 2, midDeg);
         const iPos = polarXY(cx, cy, (rInner + hubR + 2) / 2, midDeg);
 
-        const outerFontSize = size > 300 ? 13 : 10;
-        const midFontSize = size > 300 ? 10.5 : 8;
-        const innerFontSize = size > 300 ? 8 : 6.5;
+        const outerFontSize = size > 300 ? 13 : isDark ? 10 : 10.5;
+        const midFontSize = size > 300 ? 10.5 : isDark ? 8 : 8.5;
+        const innerFontSize = size > 300 ? 8 : isDark ? 6.5 : 7;
 
         return (
           <g key={i}>
-            <path d={pOuter} fill={outerFill} stroke={strokeO} strokeWidth={0.6} className="cursor-pointer hover:brightness-125 transition-all" onClick={() => onWedgeClick(i, "outer")} />
-            <path d={pMid} fill={midFill} stroke={strokeM} strokeWidth={0.5} className="cursor-pointer hover:brightness-125 transition-all" onClick={() => onWedgeClick(i, "inner")} />
-            <path d={pInner} fill={innerFill} stroke={strokeI} strokeWidth={0.4} />
+            <path
+              d={pOuter}
+              fill={outerFill}
+              stroke={strokeO}
+              strokeWidth={c.strokeW.outer}
+              className="cursor-pointer hover:brightness-125 transition-all"
+              onClick={() => onWedgeClick(i, "outer")}
+            />
+            <path
+              d={pMid}
+              fill={midFill}
+              stroke={strokeM}
+              strokeWidth={c.strokeW.mid}
+              className="cursor-pointer hover:brightness-125 transition-all"
+              onClick={() => onWedgeClick(i, "inner")}
+            />
+            <path d={pInner} fill={innerFill} stroke={strokeI} strokeWidth={c.strokeW.inner} />
 
             <text x={oPos.x} y={oPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-bold"
-              style={{ fontSize: outerFontSize, fill: hlO > 0 ? `rgba(255,245,200,${0.6 + hlO * 0.4})` : "rgba(161,161,170,0.7)" }}>
+              style={{ fontSize: outerFontSize, fill: hlO > 0 ? c.textOuterHl(hlO) : c.textOuterMuted }}>
               {majLabel}
             </text>
             <text x={mPos.x} y={mPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-semibold"
-              style={{ fontSize: midFontSize, fill: hlM > 0 ? `rgba(220,230,200,${0.5 + hlM * 0.4})` : "rgba(161,161,170,0.55)" }}>
+              style={{ fontSize: midFontSize, fill: hlM > 0 ? c.textMidHl(hlM) : c.textMidMuted }}>
               {minLabel}
             </text>
             <text x={iPos.x} y={iPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-semibold"
-              style={{ fontSize: innerFontSize, fill: hlI > 0 ? `rgba(255,200,200,${0.4 + hlI * 0.4})` : "rgba(161,161,170,0.4)" }}>
+              style={{ fontSize: innerFontSize, fill: hlI > 0 ? c.textInnerHl(hlI) : c.textInnerMuted }}>
               {dimLabel}
             </text>
           </g>
@@ -485,7 +575,7 @@ function CircleSVG({
       })}
 
       {/* Hub */}
-      <circle cx={cx} cy={cy} r={hubR} fill="var(--bg)" stroke="var(--border)" strokeWidth={1.5} />
+      <circle cx={cx} cy={cy} r={hubR} fill="var(--bg)" stroke={c.rimStrokeCss} strokeWidth={c.hubStrokeW} />
       <text x={cx} y={cy - (centerLines.length > 1 ? 14 : 6)} textAnchor="middle" dominantBaseline="central"
         className="pointer-events-none select-none fill-current" style={{ fontSize: 22 }}>
         {"\u{1D11E}"}

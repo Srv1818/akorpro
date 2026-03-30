@@ -325,7 +325,7 @@ export function SongCardPlaylistAdd({ song }: { song: SongSummary }) {
     ) : null;
 
   return (
-    <div className="pointer-events-auto absolute right-2 top-2 z-20">
+    <div className="pointer-events-auto relative z-20 shrink-0 self-start">
       <button
         ref={buttonRef}
         type="button"
@@ -336,12 +336,12 @@ export function SongCardPlaylistAdd({ song }: { song: SongSummary }) {
           if (!open) setNotice(null);
         }}
         disabled={firebaseUid === undefined}
-        className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface/95 text-accent shadow-sm backdrop-blur-sm transition hover:border-accent/40 hover:bg-bg disabled:opacity-50 sm:h-7 sm:w-7"
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface/95 p-0 text-accent shadow-sm backdrop-blur-sm transition hover:border-accent/40 hover:bg-bg disabled:opacity-50 sm:h-7 sm:w-7"
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="Çalma listesine ekle"
       >
-        <Plus className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
       </button>
 
       {mounted && panel ? createPortal(panel, document.body) : null}

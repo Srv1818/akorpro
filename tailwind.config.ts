@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss";
 
 /**
  * Tasarım sistemi (ARCHITECTURE Faz 1):
- * - Vurgu: emerald-500 tabanlı `accent` token’ları (--color-accent, globals.css).
+ * - Vurgu: green-500 (#22c55e) tabanlı `accent` token’ları (--color-accent, globals.css).
  * - Nötr krom: yerleşik `zinc-*` paleti (hover, ikon, kenarlık vurguları).
  * - Akor semantiği: `chord.*` → maj / min / dim / aug / extension.
  */
@@ -15,7 +15,7 @@ export default {
         foreground: "rgb(var(--color-foreground) / <alpha-value>)",
         muted: "rgb(var(--color-muted) / <alpha-value>)",
         border: "rgb(var(--color-border) / <alpha-value>)",
-        /** Ana vurgu — emerald-500 tabanlı token */
+        /** Ana vurgu — green-500 (#22c55e) tabanlı token */
         accent: {
           DEFAULT: "rgb(var(--color-accent) / <alpha-value>)",
           foreground: "rgb(var(--color-accent-foreground) / <alpha-value>)",

@@ -26,7 +26,7 @@ export default function GlobalError({
         <button
           type="button"
           onClick={() => reset()}
-          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-emerald-400"
+          className="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-green-400"
         >
           Yeniden dene
         </button>

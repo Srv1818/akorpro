@@ -512,9 +512,9 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
                 onClick={(e) => {
                   if (!sceneHref) e.preventDefault();
                 }}
-                className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/25 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+                className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
                   sceneHref
-                    ? "border border-white/10 bg-gradient-to-r from-blue-600 via-sky-500 to-red-600 hover:from-blue-500 hover:via-sky-400 hover:to-red-500"
+                    ? "border border-white/10 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-400 hover:from-amber-500 hover:via-yellow-400 hover:to-amber-300"
                     : "cursor-not-allowed border border-border bg-surface/60 text-muted shadow-none opacity-60"
                 }`}
                 title={sceneHref ? "Sahne modunu 1. şarkıdan başlat" : "Listede şarkı yok"}

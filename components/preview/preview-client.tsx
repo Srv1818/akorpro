@@ -983,7 +983,7 @@ export function PreviewClient({
                     if (!prevSongHref) return;
                     router.push(prevSongHref);
                   }}
-                  className="rounded-lg border border-white/10 bg-gradient-to-r from-red-600 via-sky-500 to-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:from-red-500 hover:via-sky-400 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-white/10 bg-gradient-to-r from-amber-700 via-amber-500 to-yellow-400 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-amber-600 hover:via-amber-400 hover:to-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
                   title={
                     playlistNextLoading
                       ? "Liste sırası yükleniyor…"
@@ -1013,7 +1013,7 @@ export function PreviewClient({
                     if (!nextSongHref) return;
                     router.push(nextSongHref);
                   }}
-                  className="rounded-lg border border-white/10 bg-gradient-to-r from-blue-600 via-sky-500 to-red-600 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/25 transition hover:from-blue-500 hover:via-sky-400 hover:to-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-white/10 bg-gradient-to-r from-yellow-400 via-amber-500 to-amber-700 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-yellow-300 hover:via-amber-400 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
                   title={
                     playlistNextLoading
                       ? "Liste sırası yükleniyor…"
@@ -1196,10 +1196,10 @@ export function PreviewClient({
               });
             }}
             aria-pressed={sceneMode}
-            className={`w-full max-w-md rounded-lg px-3 py-2.5 text-xs font-semibold text-white transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:w-auto sm:max-w-none ${
+            className={`w-full max-w-md rounded-lg px-3 py-2.5 text-xs font-semibold text-white transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:w-auto sm:max-w-none ${
               sceneMode
-                ? "border border-white/20 bg-gradient-to-r from-blue-500 via-sky-500 to-red-500 shadow-lg shadow-blue-500/20 ring-2 ring-red-300/50 hover:from-blue-400 hover:via-sky-400 hover:to-red-400"
-                : "border border-white/10 bg-gradient-to-r from-blue-600 via-sky-500 to-red-600 shadow-lg shadow-sky-500/25 hover:from-blue-500 hover:via-sky-400 hover:to-red-500"
+                ? "border border-white/20 bg-gradient-to-r from-yellow-300 via-amber-500 to-amber-700 shadow-lg shadow-amber-500/40 ring-2 ring-amber-300/50 hover:from-yellow-200 hover:via-amber-400 hover:to-amber-600"
+                : "border border-white/10 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-400 shadow-lg shadow-amber-500/35 hover:from-amber-500 hover:via-yellow-400 hover:to-amber-300"
             }`}
           >
             Sahne Modu
@@ -1311,14 +1311,7 @@ export function PreviewClient({
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-            <span className="shrink-0 text-sm text-muted" id="transpose-label">
-              Transpoze:
-            </span>
-            <div
-              className="grid w-full min-w-0 grid-cols-4 gap-1 sm:inline-flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:gap-1"
-              aria-describedby="transpose-label"
-            >
+          <div className="grid w-full min-w-0 grid-cols-4 gap-1 sm:inline-flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:gap-1">
             {Array.from({ length: 12 }, (_, pc) => {
               const label = PC_TO_NAME[pc];
               const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
@@ -1340,7 +1333,6 @@ export function PreviewClient({
                 </button>
               );
             })}
-            </div>
           </div>
         </div>
 

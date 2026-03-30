@@ -4,16 +4,19 @@
 /* Faz 1 — tek token seti; .dark ile gündüz/gece (ARCHITECTURE) */
 :root {
   color-scheme: light;
-  --color-bg: 250 250 250;
-  --color-surface: 255 255 255;
+  /* Aydınlık mod: #fff büyük alanlarda parlar; yüzey mat off-white, zemin biraz daha koyu — kontrast korunur. */
+  --color-bg: 218 217 215;
+  --color-surface: 244 243 241;
   --color-foreground: 24 24 27;
   --color-muted: 82 82 91;
-  --color-border: 228 228 231;
-  --color-accent: 16 185 129;
+  /* Yüzeyden net ayrılsın; çok açık gri çizgiler kayboluyordu */
+  --color-border: 168 165 161;
+  /* Vurgu — green-500 (#22c55e), görsel marka yeşili */
+  --color-accent: 34 197 94;
   --color-accent-foreground: 255 255 255;
-  --color-accent-muted: 5 150 105;
+  --color-accent-muted: 22 163 74;
   --chord-root: 63 63 70;
-  --chord-major: 5 150 105;
+  --chord-major: 22 163 74;
   --chord-minor: 2 112 175;
   --chord-diminished: 225 29 72;
   --chord-augmented: 217 119 6;
@@ -35,11 +38,11 @@
   --color-foreground: 250 250 250;
   --color-muted: 161 161 170;
   --color-border: 63 63 70;
-  --color-accent: 16 185 129;
+  --color-accent: 34 197 94;
   --color-accent-foreground: 9 9 11;
-  --color-accent-muted: 52 211 153;
+  --color-accent-muted: 74 222 128;
   --chord-root: 212 212 216;
-  --chord-major: 52 211 153;
+  --chord-major: 74 222 128;
   --chord-minor: 56 189 248;
   --chord-diminished: 251 113 133;
   --chord-augmented: 251 191 36;
@@ -80,7 +83,7 @@ body {
   @apply bg-bg text-foreground min-h-full antialiased;
 }
 
-/* Odak — zinc + emerald */
+/* Odak — zinc + accent (green-500) */
 :focus-visible {
   @apply outline-2 outline-offset-2 outline-accent;
 }

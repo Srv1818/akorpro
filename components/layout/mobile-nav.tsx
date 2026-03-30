@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Item = { readonly href: string; readonly label: string };
 
 export function MobileNav({ items }: { items: readonly Item[] }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const id = useId();
 
   const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -37,35 +43,39 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
         {open ? <CloseIcon /> : <MenuIcon />}
       </button>
 
-      {open ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 bg-zinc-950/40 backdrop-blur-sm dark:bg-black/60"
-            aria-label="Menüyü kapat"
-            onClick={close}
-          />
-          <div
-            id={id}
-            className="fixed inset-x-0 top-14 z-50 border-b border-border bg-bg px-4 py-4 shadow-lg sm:top-16"
-            role="dialog"
-            aria-modal="true"
-          >
-            <nav className="flex flex-col gap-1" aria-label="Mobil menü">
-              {items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-surface min-h-[44px] flex items-center"
-                  onClick={close}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </>
-      ) : null}
+      {open && mounted
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-[90] bg-zinc-950/40 backdrop-blur-sm dark:bg-black/60"
+                aria-label="Menüyü kapat"
+                onClick={close}
+              />
+              <div
+                id={id}
+                className="fixed inset-x-0 top-14 z-[100] border-b border-border bg-bg px-4 py-4 shadow-lg sm:top-16"
+                role="dialog"
+                aria-modal="true"
+                onClick={close}
+              >
+                <nav className="flex flex-col gap-1" aria-label="Mobil menü">
+                  {items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="flex min-h-[44px] items-center rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-surface"
+                      onClick={close}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

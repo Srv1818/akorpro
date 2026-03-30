@@ -17,14 +17,13 @@ export function SongCard({
   const label = `${song.title} — ${song.artistName} akoru`;
 
   return (
-    <article className="relative rounded-lg border border-border bg-surface p-3 shadow-sm transition hover:border-accent/30">
-      {showPlaylistAdd ? <SongCardPlaylistAdd song={song} /> : null}
+    <article className="relative flex flex-row items-start gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm transition hover:border-accent/30">
       <Link
         href={chordHref}
         className="absolute inset-0 z-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         aria-label={label}
       />
-      <div className={`relative z-10 pointer-events-none ${showPlaylistAdd ? "pr-8" : ""}`}>
+      <div className="relative z-10 min-w-0 flex-1 pointer-events-none">
         <h2 className="line-clamp-1 text-sm font-semibold text-foreground">{song.title}</h2>
         {showArtist ? (
           <p className="mt-0.5 line-clamp-1 text-xs text-muted">
@@ -34,6 +33,7 @@ export function SongCard({
           </p>
         ) : null}
       </div>
+      {showPlaylistAdd ? <SongCardPlaylistAdd song={song} /> : null}
     </article>
   );
 }
