@@ -7,6 +7,7 @@ import { GUITAR_ROOT_ENTRIES } from "@/lib/chords-db/guitar";
 import { gamlarCatalogAndTonicToPitchClassSet } from "@/lib/music/fretboard-from-scale-notes";
 import { noteNameToPitchClass, OPEN_STRING_PC_TOP_FIRST, PC_TO_NAME } from "@/lib/music/note-utils";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
+import type { KeyMode } from "@/lib/types/content";
 
 const STRING_NAMES = ["E", "B", "G", "D", "A", "E"] as const;
 const FRET_COUNT = 16;
@@ -41,25 +42,42 @@ function noteLabelForPitchClass(pc: number, scaleNoteNames: readonly string[]): 
   return PC_TO_NAME[pc];
 }
 
-export function GamlarScaleExplorer() {
+type Props = {
+  lockedTonicPc?: number | null;
+  lockedMode?: KeyMode;
+};
+
+function modeToGamlarScaleId(mode: KeyMode | undefined): string {
+  if (mode === "harmonic") return "harmonic-minor";
+  if (mode === "melodic") return "melodic-minor";
+  if (mode === "natural") return "natural-minor";
+  return "major";
+}
+
+export function GamlarScaleExplorer({ lockedTonicPc, lockedMode }: Props) {
   const tonal = usePreviewToolsStore((s) => s.tonalCenterIndex);
   const setTonal = usePreviewToolsStore((s) => s.setTonalCenterIndex);
   const scaleId = usePreviewToolsStore((s) => s.selectedScaleId);
   const setScaleId = usePreviewToolsStore((s) => s.setSelectedScaleId);
+  const lockSelection = lockedTonicPc != null || lockedMode != null;
 
-  const scaleEntry = gamlarScaleById(scaleId) ?? GAMLAR_SCALE_CATALOG[0];
+  const effectiveTonal =
+    lockedTonicPc != null ? ((lockedTonicPc % 12) + 12) % 12 : ((tonal % 12) + 12) % 12;
+  const effectiveScaleId = lockSelection ? modeToGamlarScaleId(lockedMode) : scaleId;
+
+  const scaleEntry = gamlarScaleById(effectiveScaleId) ?? GAMLAR_SCALE_CATALOG[0];
 
   const activePcs = useMemo(
-    () => gamlarCatalogAndTonicToPitchClassSet(tonal, scaleId),
-    [tonal, scaleId]
+    () => gamlarCatalogAndTonicToPitchClassSet(effectiveTonal, effectiveScaleId),
+    [effectiveTonal, effectiveScaleId]
   );
 
   /** Tonal.js gam notaları — vurgu kümesi `gamlarCatalogAndTonicToPitchClassSet` ile uyumlu */
   const scaleNotesFromTonal = useMemo(() => {
     if (!scaleEntry) return [] as string[];
-    const tonic = rootEntryForPitchClass(((tonal % 12) + 12) % 12)?.label ?? PC_TO_NAME[tonal] ?? "C";
+    const tonic = rootEntryForPitchClass(effectiveTonal)?.label ?? PC_TO_NAME[effectiveTonal] ?? "C";
     return Scale.get([tonic, scaleEntry.tonalType]).notes;
-  }, [tonal, scaleEntry]);
+  }, [effectiveTonal, scaleEntry]);
 
   const dotPositions = useMemo(() => {
     const out: { s: number; f: number; pc: number }[] = [];
@@ -71,8 +89,8 @@ export function GamlarScaleExplorer() {
     }
     return out;
   }, [activePcs]);
-  const rootEntry = rootEntryForPitchClass(((tonal % 12) + 12) % 12);
-  const rootLabel = rootEntry?.label ?? PC_TO_NAME[tonal] ?? "C";
+  const rootEntry = rootEntryForPitchClass(effectiveTonal);
+  const rootLabel = rootEntry?.label ?? PC_TO_NAME[effectiveTonal] ?? "C";
   const scaleLabel = scaleEntry?.name ?? "Gam";
 
   const scalesSorted = useMemo(
@@ -80,7 +98,7 @@ export function GamlarScaleExplorer() {
     []
   );
 
-  const rootPc = ((tonal % 12) + 12) % 12;
+  const rootPc = effectiveTonal;
 
   return (
     <div className="space-y-3">
@@ -216,48 +234,52 @@ export function GamlarScaleExplorer() {
         </div>
       </section>
 
-      <section aria-label="Tonal merkez (kök nota)">
-        <div className="flex flex-wrap justify-center gap-1 rounded-2xl border border-border bg-surface/90 p-2 sm:gap-1.5 sm:p-2.5">
-          {GUITAR_ROOT_ENTRIES.map(({ label }) => {
-            const pc = noteNameToPitchClass(label);
-            const selected = pc !== null && pc === ((tonal % 12) + 12) % 12;
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => pc !== null && setTonal(pc)}
-                className={[
-                  "min-h-8 min-w-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-9 sm:min-w-9 sm:text-[0.8125rem]",
-                  selected ? btnSelected : btnRootIdle,
-                ].join(" ")}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {!lockSelection ? (
+        <>
+          <section aria-label="Tonal merkez (kök nota)">
+            <div className="flex flex-wrap justify-center gap-1 rounded-2xl border border-border bg-surface/90 p-2 sm:gap-1.5 sm:p-2.5">
+              {GUITAR_ROOT_ENTRIES.map(({ label }) => {
+                const pc = noteNameToPitchClass(label);
+                const selected = pc !== null && pc === ((tonal % 12) + 12) % 12;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => pc !== null && setTonal(pc)}
+                    className={[
+                      "min-h-8 min-w-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-9 sm:min-w-9 sm:text-[0.8125rem]",
+                      selected ? btnSelected : btnRootIdle,
+                    ].join(" ")}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-      <section aria-label="Gam tipi seçimi">
-        <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border bg-surface/90 p-2 sm:grid-cols-6 sm:gap-1.5 sm:p-2.5">
-          {scalesSorted.map((sc) => {
-            const selected = (scaleId ?? GAMLAR_SCALE_CATALOG[0]?.id) === sc.id;
-            return (
-              <button
-                key={sc.id}
-                type="button"
-                onClick={() => setScaleId(sc.id)}
-                className={[
-                  "rounded-lg px-2 py-1.5 text-center text-xs font-medium transition-colors sm:py-2",
-                  selected ? btnSelected : "border border-border bg-bg text-foreground hover:border-zinc-500/45",
-                ].join(" ")}
-              >
-                {sc.name}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+          <section aria-label="Gam tipi seçimi">
+            <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border bg-surface/90 p-2 sm:grid-cols-6 sm:gap-1.5 sm:p-2.5">
+              {scalesSorted.map((sc) => {
+                const selected = (scaleId ?? GAMLAR_SCALE_CATALOG[0]?.id) === sc.id;
+                return (
+                  <button
+                    key={sc.id}
+                    type="button"
+                    onClick={() => setScaleId(sc.id)}
+                    className={[
+                      "rounded-lg px-2 py-1.5 text-center text-xs font-medium transition-colors sm:py-2",
+                      selected ? btnSelected : "border border-border bg-bg text-foreground hover:border-zinc-500/45",
+                    ].join(" ")}
+                  >
+                    {sc.name}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }

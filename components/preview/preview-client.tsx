@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   addDoc,
   collection,
@@ -49,6 +49,7 @@ type Props = {
 };
 
 type PlaylistRow = { id: string; name: string };
+type WidgetId = "circle" | "gamlar";
 
 function formatError(err: unknown): string {
   if (err && typeof err === "object" && "code" in err) {
@@ -135,6 +136,14 @@ function keyModeToLabel(mode: KeyMode | undefined, originalKey: string): string 
   return "Majör";
 }
 
+function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): KeyMode {
+  if (mode) return mode;
+  const k = originalKey.trim().toLowerCase();
+  if (k.endsWith("maj")) return "major";
+  if (k.endsWith("m")) return "natural";
+  return "major";
+}
+
 export function PreviewClient({
   songId,
   songTitle,
@@ -157,7 +166,49 @@ export function PreviewClient({
   const semitones = usePreviewToolsStore((s) => s.transposeSemitones);
   const setTransposeSemitones = usePreviewToolsStore((s) => s.setTransposeSemitones);
   const resetTonalAndTranspose = usePreviewToolsStore((s) => s.resetTonalAndTranspose);
-  const [activeWidget, setActiveWidget] = useState<null | "circle" | "gamlar">(null);
+  const [openWidgets, setOpenWidgets] = useState<Record<WidgetId, boolean>>({ circle: false, gamlar: false });
+  const [widgetOffsets, setWidgetOffsets] = useState<Record<WidgetId, { x: number; y: number }>>({
+    circle: { x: 0, y: 0 },
+    gamlar: { x: 0, y: 0 },
+  });
+  const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, { width: number; height: number } | null>>({
+    circle: null,
+    gamlar: null,
+  });
+  const widgetDragRef = useRef<{
+    dragging: boolean;
+    widget: WidgetId | null;
+    pointerId: number | null;
+    startX: number;
+    startY: number;
+    baseX: number;
+    baseY: number;
+  }>({
+    dragging: false,
+    widget: null,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    baseX: 0,
+    baseY: 0,
+  });
+  const widgetResizeRef = useRef<{
+    resizing: boolean;
+    widget: WidgetId | null;
+    pointerId: number | null;
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+  }>({
+    resizing: false,
+    widget: null,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    startWidth: 0,
+    startHeight: 0,
+  });
 
   const initialBpm =
     typeof tempo === "number"
@@ -202,6 +253,8 @@ export function PreviewClient({
     const tonic = parseTonicFromOriginalKey(originalKey);
     return noteNameToPitchClass(tonic);
   })();
+  const originalMode = resolveOriginalMode(keyMode, originalKey);
+  const transposedTonicPc = originalTonicPc === null ? null : (originalTonicPc + semitones + 120) % 12;
 
   const firebaseUid = useFirebaseUidFromSession();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -342,21 +395,178 @@ export function PreviewClient({
   }, [firebaseUid, searchParams, songId]);
 
   useEffect(() => {
-    if (!activeWidget) return;
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!openWidgets.circle && !openWidgets.gamlar) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setActiveWidget(null);
+      if (e.key === "Escape") setOpenWidgets({ circle: false, gamlar: false });
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prevOverflow;
     };
-  }, [activeWidget]);
+  }, [openWidgets.circle, openWidgets.gamlar]);
+
+  useEffect(() => {
+    const opened = (["circle", "gamlar"] as const).filter((id) => openWidgets[id]);
+    const pad = 32;
+    const maxWidth = Math.max(460, Math.min(window.innerWidth - pad, Math.floor(window.innerWidth * 0.66)));
+    const maxHeight = Math.max(340, Math.min(window.innerHeight - pad, Math.floor(window.innerHeight * 0.72)));
+    const minWidth = 340;
+    const minHeight = 260;
+    setWidgetSizes((prev) => {
+      const next = { ...prev };
+      for (const id of opened) {
+        if (next[id]) continue;
+        const base = id === "gamlar" ? { width: 700, height: 500 } : { width: 700, height: 500 };
+        const width = Math.min(maxWidth, Math.max(minWidth, base.width));
+        const height = Math.min(maxHeight, Math.max(minHeight, base.height));
+        next[id] = {
+          width,
+          height,
+        };
+        setWidgetOffsets((prevOffsets) => {
+          const existing = prevOffsets[id];
+          if (existing.x !== 0 || existing.y !== 0) return prevOffsets;
+          const edgePad = 20;
+          const stackOffsetY = id === "gamlar" ? 12 : 0;
+          const x =
+            id === "gamlar"
+              ? Math.round(-(window.innerWidth / 2 - edgePad - width / 2))
+              : Math.round(window.innerWidth / 2 - edgePad - width / 2);
+          const y = Math.round(-(window.innerHeight / 2 - edgePad - height / 2) + stackOffsetY);
+          return { ...prevOffsets, [id]: { x, y } };
+        });
+      }
+      return next;
+    });
+  }, [openWidgets.circle, openWidgets.gamlar]);
+
+  const handleWidgetHeaderPointerDown = useCallback((widget: WidgetId, e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!openWidgets[widget]) return;
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("button,a,input,select,textarea")) return;
+    e.preventDefault();
+    const offset = widgetOffsets[widget];
+    widgetDragRef.current = {
+      dragging: true,
+      widget,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      baseX: offset.x,
+      baseY: offset.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [openWidgets, widgetOffsets]);
+
+  const handleWidgetHeaderPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = widgetDragRef.current;
+    if (!drag.dragging || drag.pointerId !== e.pointerId || !drag.widget) return;
+    const size = widgetSizes[drag.widget];
+    if (!size) return;
+    const edgePad = 8;
+    const maxX = Math.max(0, window.innerWidth / 2 - size.width / 2 - edgePad);
+    const maxY = Math.max(0, window.innerHeight / 2 - size.height / 2 - edgePad);
+    const nextX = drag.baseX + (e.clientX - drag.startX);
+    const nextY = drag.baseY + (e.clientY - drag.startY);
+    setWidgetOffsets((prev) => ({
+      ...prev,
+      [drag.widget!]: {
+        x: Math.max(-maxX, Math.min(maxX, nextX)),
+        y: Math.max(-maxY, Math.min(maxY, nextY)),
+      },
+    }));
+  }, [widgetSizes]);
+
+  const handleWidgetHeaderPointerUp = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = widgetDragRef.current;
+    if (!drag.dragging || drag.pointerId !== e.pointerId) return;
+    widgetDragRef.current = {
+      ...drag,
+      dragging: false,
+      widget: null,
+      pointerId: null,
+    };
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
+
+  const getWidgetBounds = useCallback(() => {
+    if (typeof window === "undefined") {
+      return { minWidth: 340, minHeight: 260, maxWidth: 920, maxHeight: 640 };
+    }
+    const pad = 32;
+    return {
+      minWidth: 340,
+      minHeight: 260,
+      maxWidth: Math.max(520, Math.min(window.innerWidth - pad, Math.floor(window.innerWidth * 0.95))),
+      maxHeight: Math.max(420, Math.min(window.innerHeight - pad, Math.floor(window.innerHeight * 0.92))),
+    };
+  }, []);
+
+  const handleWidgetResizePointerDown = useCallback((widget: WidgetId, e: ReactPointerEvent<HTMLButtonElement>) => {
+    const size = widgetSizes[widget];
+    if (!openWidgets[widget] || !size) return;
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    widgetResizeRef.current = {
+      resizing: true,
+      widget,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: size.width,
+      startHeight: size.height,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [openWidgets, widgetSizes]);
+
+  const handleWidgetResizePointerMove = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
+    const resize = widgetResizeRef.current;
+    if (!resize.resizing || resize.pointerId !== e.pointerId || !resize.widget) return;
+    const bounds = getWidgetBounds();
+    const nextWidth = resize.startWidth + (e.clientX - resize.startX);
+    const nextHeight = resize.startHeight + (e.clientY - resize.startY);
+    const clampedSize = {
+      width: Math.min(bounds.maxWidth, Math.max(bounds.minWidth, nextWidth)),
+      height: Math.min(bounds.maxHeight, Math.max(bounds.minHeight, nextHeight)),
+    };
+    const edgePad = 8;
+    const maxX = Math.max(0, window.innerWidth / 2 - clampedSize.width / 2 - edgePad);
+    const maxY = Math.max(0, window.innerHeight / 2 - clampedSize.height / 2 - edgePad);
+    setWidgetSizes((prev) => ({
+      ...prev,
+      [resize.widget!]: clampedSize,
+    }));
+    setWidgetOffsets((prev) => {
+      const current = prev[resize.widget!];
+      return {
+        ...prev,
+        [resize.widget!]: {
+          x: Math.max(-maxX, Math.min(maxX, current.x)),
+          y: Math.max(-maxY, Math.min(maxY, current.y)),
+        },
+      };
+    });
+  }, []);
+
+  const handleWidgetResizePointerUp = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
+    const resize = widgetResizeRef.current;
+    if (!resize.resizing || resize.pointerId !== e.pointerId) return;
+    widgetResizeRef.current = {
+      ...resize,
+      resizing: false,
+      widget: null,
+      pointerId: null,
+    };
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }, []);
 
   useEffect(() => {
     if (!sceneMode) return;
@@ -489,9 +699,18 @@ export function PreviewClient({
     [pathname, router, setTransposeSemitones],
   );
 
+  const handleCirclePitchClassSelect = useCallback(
+    (selectedPc: number) => {
+      if (originalTonicPc === null) return;
+      replaceTranspose(signedSemitoneDelta(originalTonicPc, selectedPc));
+    },
+    [originalTonicPc, replaceTranspose],
+  );
+
   // Ok tuşlarıyla yarım ses (semitone) hareketi.
   useEffect(() => {
-    if (activeWidget || saveAndAddOpen) return;
+    const hasAnyWidgetOpen = openWidgets.circle || openWidgets.gamlar;
+    if (hasAnyWidgetOpen || saveAndAddOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -512,7 +731,7 @@ export function PreviewClient({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeWidget, saveAndAddOpen, replaceTranspose, semitones]);
+  }, [openWidgets.circle, openWidgets.gamlar, saveAndAddOpen, replaceTranspose, semitones]);
 
   const resetOriginal = useCallback(() => {
     resetTonalAndTranspose();
@@ -651,8 +870,7 @@ export function PreviewClient({
   const canAddToPlaylist =
     canSave && Boolean(selectedPlaylistId) && playlists.length > 0;
 
-  const widgetTitle = activeWidget === "gamlar" ? "Gamlar" : "5'li Çember";
-  const widgetMaxWidthClass = activeWidget === "gamlar" ? "max-w-6xl" : "max-w-5xl";
+  const widgetTitleById: Record<WidgetId, string> = { circle: "5'li Çember", gamlar: "Gamlar" };
 
   return (
     <div className={sceneMode ? "rounded-2xl ring-2 ring-accent ring-offset-2 ring-offset-bg" : ""}>
@@ -850,10 +1068,10 @@ export function PreviewClient({
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setActiveWidget((w) => (w === "circle" ? null : "circle"))}
-              aria-pressed={activeWidget === "circle"}
+              onClick={() => setOpenWidgets((w) => ({ ...w, circle: !w.circle }))}
+              aria-pressed={openWidgets.circle}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                activeWidget === "circle"
+                openWidgets.circle
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
               }`}
@@ -862,10 +1080,10 @@ export function PreviewClient({
             </button>
             <button
               type="button"
-              onClick={() => setActiveWidget((w) => (w === "gamlar" ? null : "gamlar"))}
-              aria-pressed={activeWidget === "gamlar"}
+              onClick={() => setOpenWidgets((w) => ({ ...w, gamlar: !w.gamlar }))}
+              aria-pressed={openWidgets.gamlar}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                activeWidget === "gamlar"
+                openWidgets.gamlar
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
               }`}
@@ -940,41 +1158,74 @@ export function PreviewClient({
         </div>
       </div>
 
-      {activeWidget ? (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={widgetTitle}
-          onMouseDown={() => setActiveWidget(null)}
-        >
-          <div
-            className={`mx-auto flex h-full max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface ${widgetMaxWidthClass}`}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur">
-              <p className="text-sm font-medium text-foreground">{widgetTitle}</p>
-              <button
-                type="button"
-                onClick={() => setActiveWidget(null)}
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface"
+      {(openWidgets.circle || openWidgets.gamlar) ? (
+        <div className="pointer-events-none fixed inset-0 z-50 p-4">
+          {(["circle", "gamlar"] as const).map((widget) => {
+            if (!openWidgets[widget]) return null;
+            const widgetTitle = widgetTitleById[widget];
+            const offset = widgetOffsets[widget];
+            const size = widgetSizes[widget];
+            return (
+              <div
+                key={widget}
+                role="dialog"
+                aria-modal="false"
+                aria-label={widgetTitle}
+                className="pointer-events-auto absolute left-1/2 top-1/2 flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+                style={{
+                  width: size?.width,
+                  height: size?.height,
+                  transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
+                }}
               >
-                Kapat
-              </button>
-            </div>
+                <div
+                  className="flex cursor-move items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur"
+                  onPointerDown={(e) => handleWidgetHeaderPointerDown(widget, e)}
+                  onPointerMove={handleWidgetHeaderPointerMove}
+                  onPointerUp={handleWidgetHeaderPointerUp}
+                  onPointerCancel={handleWidgetHeaderPointerUp}
+                >
+                  <p className="text-sm font-medium text-foreground">{widgetTitle}</p>
+                  <button
+                    type="button"
+                    onClick={() => setOpenWidgets((w) => ({ ...w, [widget]: false }))}
+                    className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface"
+                  >
+                    Kapat
+                  </button>
+                </div>
 
-            <div className="flex-1 overflow-auto p-4">
-              {activeWidget === "circle" ? (
-                <div className="mx-auto max-w-5xl">
-                  <CircleOfFifths variant="full" />
+                <div className="flex-1 overflow-auto p-4">
+                  {widget === "circle" ? (
+                    <div className="mx-auto max-w-5xl">
+                      <CircleOfFifths
+                        variant="full"
+                        lockedMode={originalMode}
+                        selectedPitchClass={transposedTonicPc}
+                        onPitchClassSelect={handleCirclePitchClassSelect}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mx-auto max-w-6xl">
+                      <GamlarScaleExplorer
+                        lockedTonicPc={transposedTonicPc}
+                        lockedMode={originalMode}
+                      />
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="mx-auto max-w-6xl">
-                  <GamlarScaleExplorer />
-                </div>
-              )}
-            </div>
-          </div>
+                <button
+                  type="button"
+                  aria-label="Widget boyutunu değiştir"
+                  className="absolute bottom-1 right-1 h-5 w-5 cursor-se-resize rounded bg-border/40 hover:bg-border/70"
+                  onPointerDown={(e) => handleWidgetResizePointerDown(widget, e)}
+                  onPointerMove={handleWidgetResizePointerMove}
+                  onPointerUp={handleWidgetResizePointerUp}
+                  onPointerCancel={handleWidgetResizePointerUp}
+                />
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
@@ -1065,7 +1316,10 @@ export function PreviewClient({
       </article>
 
       <div className="print:hidden">
-        <FloatingWidgetDock open={metronomeOpen} zClassName={activeWidget ? "z-60" : "z-40"}>
+        <FloatingWidgetDock
+          open={metronomeOpen}
+          zClassName={openWidgets.circle || openWidgets.gamlar ? "z-60" : "z-40"}
+        >
           <MetronomeButton
             active={metronomeActive}
             onActiveChange={(next) => {

@@ -15,7 +15,7 @@ export function DiscoverBlock({
       <h2 id={id} className="text-lg font-semibold text-foreground">
         {title}
       </h2>
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         {songs.map((song) => (
           <li key={song.id}>
             <SongCard song={song} />

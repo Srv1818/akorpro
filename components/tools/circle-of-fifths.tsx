@@ -1,7 +1,7 @@
 "use client";
 
 import { Chord, Key, Note } from "tonal";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import { CO5_LABELS, CO5_PITCH_CLASSES } from "@/lib/music/note-utils";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
@@ -23,7 +23,13 @@ type ChordEntry = {
   alteration?: string;
 };
 
-type Props = { variant?: "widget" | "full"; className?: string };
+type Props = {
+  variant?: "widget" | "full";
+  className?: string;
+  lockedMode?: ScaleMode;
+  selectedPitchClass?: number | null;
+  onPitchClassSelect?: (pitchClass: number) => void;
+};
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -35,6 +41,12 @@ const MODES: { id: ScaleMode; label: string }[] = [
   { id: "harmonic", label: "Harmonik Minör" },
   { id: "melodic", label: "Melodik Minör" },
 ];
+const MODE_LABELS: Record<ScaleMode, string> = {
+  major: "Majör",
+  natural: "Doğal Minör",
+  harmonic: "Harmonik Minör",
+  melodic: "Melodik Minör",
+};
 
 const ROMAN_MAJ = ["I", "ii", "iii", "IV", "V", "vi", "vii°"] as const;
 const ROMAN_NAT = ["i", "ii°", "III", "iv", "v", "VI", "VII"] as const;
@@ -135,7 +147,7 @@ function buildChords(majorTonic: string, mode: ScaleMode): ChordEntry[] {
 
 type DegChange = { deg: number; from: string; to: string };
 
-function scaleChanges(natScale: string[], altScale: string[]): DegChange[] {
+function scaleChanges(natScale: readonly string[], altScale: readonly string[]): DegChange[] {
   const out: DegChange[] = [];
   for (let i = 0; i < 7; i++) {
     if (natScale[i] !== altScale[i]) out.push({ deg: i + 1, from: natScale[i], to: altScale[i] });
@@ -492,27 +504,50 @@ function CircleSVG({
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
+function CircleOfFifthsInner({
+  variant = "widget",
+  className = "",
+  lockedMode,
+  selectedPitchClass,
+  onPitchClassSelect,
+}: Props) {
   const setStoreTonal = usePreviewToolsStore((s) => s.setTonalCenterIndex);
 
   const [majorKeyIdx, setMajorKeyIdx] = useState(1); // G
-  const [mode, setMode] = useState<ScaleMode>("major");
+  const [mode, setMode] = useState<ScaleMode>(lockedMode ?? "major");
 
-  const svgSize = variant === "full" ? 420 : 260;
+  const svgSize = variant === "full" ? 340 : 260;
 
   const handleWedgeClick = useCallback(
     (idx: number, ring: "outer" | "inner") => {
       setMajorKeyIdx(idx);
-      if (ring === "outer") setMode("major");
-      else if (mode === "major") setMode("natural");
-      setStoreTonal(CO5_PITCH_CLASSES[idx]);
+      if (!lockedMode) {
+        if (ring === "outer") setMode("major");
+        else if (mode === "major") setMode("natural");
+      }
+      const selectedPc = CO5_PITCH_CLASSES[idx];
+      setStoreTonal(selectedPc);
+      onPitchClassSelect?.(selectedPc);
     },
-    [mode, setStoreTonal],
+    [lockedMode, mode, onPitchClassSelect, setStoreTonal],
   );
 
   const handleModeChange = useCallback((m: ScaleMode) => {
+    if (lockedMode) return;
     setMode(m);
-  }, []);
+  }, [lockedMode]);
+
+  useEffect(() => {
+    if (!lockedMode) return;
+    setMode(lockedMode);
+  }, [lockedMode]);
+
+  useEffect(() => {
+    if (selectedPitchClass == null) return;
+    const idx = co5IndexForRootPc(selectedPitchClass);
+    if (idx == null) return;
+    setMajorKeyIdx(idx);
+  }, [selectedPitchClass]);
 
   const chords = useMemo(() => buildChords(CO5_LABELS[majorKeyIdx], mode), [majorKeyIdx, mode]);
   const ringHighlights = useMemo(() => {
@@ -542,11 +577,17 @@ function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
 
   return (
     <div className={`flex flex-col gap-6 ${className}`}>
-      <ModeTabBar mode={mode} onChange={handleModeChange} />
+      {!lockedMode ? (
+        <ModeTabBar mode={mode} onChange={handleModeChange} />
+      ) : (
+        <div className="mx-auto w-fit rounded-lg border border-border bg-surface/70 px-3 py-1.5 text-xs font-semibold text-muted">
+          Mod: <span className="text-foreground">{MODE_LABELS[mode]}</span>
+        </div>
+      )}
 
-      <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:justify-center lg:gap-4">
+      <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-3">
         {/* Left panel - MAJOR chords */}
-        <div className="order-2 min-w-[140px] lg:order-1 lg:min-w-[200px]">
+        <div className="order-2 min-w-[120px] lg:order-1 lg:min-w-[150px]">
           <ChordPanel title="MAJÖR" entries={majorChords} side="left" />
         </div>
 
@@ -562,7 +603,7 @@ function CircleOfFifthsInner({ variant = "widget", className = "" }: Props) {
         </div>
 
         {/* Right panel - MINOR chords */}
-        <div className="order-3 min-w-[140px] lg:min-w-[200px]">
+        <div className="order-3 min-w-[120px] lg:min-w-[150px]">
           <ChordPanel title="MİNÖR" entries={minorChords} side="right" />
         </div>
       </div>

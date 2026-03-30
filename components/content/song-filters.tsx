@@ -61,22 +61,18 @@ export function SongFilters({ basePath, current, facets }: Props) {
         <div className="flex flex-wrap items-end gap-2 sm:col-span-3">
           <button
             type="submit"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:bg-accent-muted"
           >
             Uygula
           </button>
           <Link
             href={basePath}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-bg"
+            className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted hover:bg-bg"
           >
             Sıfırla
           </Link>
         </div>
       </form>
-
-      <p className="text-xs text-muted">
-        Filtreli liste URL’leri kanonik değildir; arama motorları için noindex (ARCHITECTURE Faz 2).
-      </p>
     </div>
   );
 }
