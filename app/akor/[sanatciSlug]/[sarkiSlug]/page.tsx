@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/content/page-header";
 import { CoverImage } from "@/components/content/cover-image";
 import { ChordReturnLink } from "@/components/content/chord-return-link";
 import { SongCard } from "@/components/content/song-card";
+import { PreviewClient } from "@/components/preview/preview-client";
+import { PreviewShell } from "@/components/preview/preview-shell";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { getSongBySlugs, getSongsByArtist, getAllApprovedSongs } from "@/lib/firestore/songs";
-import { chordPath, previewPath } from "@/lib/paths";
+import { chordPath } from "@/lib/paths";
 import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
 import { songJsonLd } from "@/lib/seo/structured-data";
+import { getServerSessionUser } from "@/lib/auth/server-session";
+import { firstParam } from "@/lib/search-params";
 
 /** ISR: 1 hour (see lib/cache/tags.ts TTL.SONG_DETAIL) */
 export const revalidate = 3600;
@@ -18,7 +23,7 @@ export const dynamicParams = true;
 
 type Props = {
   params: Promise<{ sanatciSlug: string; sarkiSlug: string }>;
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{ returnTo?: string | string[]; transpose?: string | string[] }>;
 };
 
 export async function generateStaticParams() {
@@ -51,10 +56,14 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const rawReturn = typeof sp.returnTo === "string" ? sp.returnTo : undefined;
   const listReturnHref = safeInternalReturnPath(rawReturn);
+  const rawTranspose = firstParam(sp.transpose);
+  const parsedTranspose = rawTranspose !== undefined ? Number(rawTranspose) : 0;
+  const initialTranspose = Number.isFinite(parsedTranspose) ? parsedTranspose : 0;
 
   const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) notFound();
 
+  const sessionUser = await getServerSessionUser();
   const artistSongs = await getSongsByArtist(sanatciSlug);
   const related = artistSongs
     .filter((s) => s.slug !== sarkiSlug)
@@ -107,7 +116,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
           />
         }
       />
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         {listReturnHref ? (
           <ChordReturnLink
             href={listReturnHref}
@@ -115,12 +124,6 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
           />
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={previewPath(song.artistSlug, song.slug)}
-            className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-foreground hover:border-accent/50"
-          >
-            Önizleme modu
-          </Link>
           {song.timeSignature ? (
             <span className="self-center text-xs text-muted">Ölçü: {song.timeSignature}</span>
           ) : null}
@@ -128,12 +131,28 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
             <span className="self-center text-xs text-muted">Akort: {song.tuning}</span>
           ) : null}
         </div>
-        <article className="mt-8 rounded-2xl border border-border bg-surface p-4 sm:p-6">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{song.chordBody}</pre>
-        </article>
-        {song.copyrightSource ? (
-          <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p>
-        ) : null}
+
+        <Suspense
+          fallback={
+            <div className="mt-8 animate-pulse rounded-2xl border border-border bg-surface p-8 text-sm text-muted">
+              Yükleniyor…
+            </div>
+          }
+        >
+          <PreviewShell instanceKey={song.id} initialTranspose={initialTranspose} initialScaleId="ionian">
+            <PreviewClient
+              songId={song.id}
+              songTitle={song.title}
+              artistSlug={song.artistSlug}
+              songSlug={song.slug}
+              originalKey={song.originalKey}
+              chordBody={song.chordBody}
+              serverUid={sessionUser?.uid ?? null}
+            />
+          </PreviewShell>
+        </Suspense>
+
+        {song.copyrightSource ? <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p> : null}
 
         {related.length > 0 && (
           <section className="mt-12">

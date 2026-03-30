@@ -17,9 +17,8 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
-import { Fretboard } from "@/components/tools/fretboard";
 import { AutoScrollButton, MetronomeButton, CopyButton, PrintButton } from "@/components/preview/preview-toolbar";
-import { GAMLAR_SCALE_CATALOG } from "@/data/gamlar-scale-catalog";
+import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
 import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
@@ -65,8 +64,7 @@ export function PreviewClient({
   const semitones = usePreviewToolsStore((s) => s.transposeSemitones);
   const setTransposeSemitones = usePreviewToolsStore((s) => s.setTransposeSemitones);
   const resetTonalAndTranspose = usePreviewToolsStore((s) => s.resetTonalAndTranspose);
-  const selectedScaleId = usePreviewToolsStore((s) => s.selectedScaleId);
-  const setSelectedScaleId = usePreviewToolsStore((s) => s.setSelectedScaleId);
+  const [activeWidget, setActiveWidget] = useState<null | "circle" | "gamlar">(null);
 
   const fromUrl = Number(searchParams.get("transpose") ?? "0");
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
@@ -83,6 +81,23 @@ export function PreviewClient({
   const urlTransposeRef = useRef(0);
 
   const hydrateReadyRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeWidget) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setActiveWidget(null);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [activeWidget]);
 
   /**
    * Sync URL param → store, but only when the value genuinely differs from what
@@ -302,6 +317,9 @@ export function PreviewClient({
   const canAddToPlaylist =
     canSave && Boolean(selectedPlaylistId) && playlists.length > 0;
 
+  const widgetTitle = activeWidget === "gamlar" ? "Gamlar" : "5'li Çember";
+  const widgetMaxWidthClass = activeWidget === "gamlar" ? "max-w-6xl" : "max-w-5xl";
+
   return (
     <div className={sceneMode ? "rounded-2xl ring-2 ring-accent ring-offset-2 ring-offset-bg" : ""}>
       {sessionMismatch ? (
@@ -366,27 +384,75 @@ export function PreviewClient({
         ) : null}
       </p>
 
-      <div className="mt-8 grid gap-8 border-t border-border pt-8 lg:grid-cols-2">
-        <CircleOfFifths variant="widget" />
-        <div>
-          <label htmlFor="preview-scale" className="block text-xs font-medium text-muted">
-            Gam (mock — store ile fretboard)
-          </label>
-          <select
-            id="preview-scale"
-            value={selectedScaleId ?? "major"}
-            onChange={(e) => setSelectedScaleId(e.target.value || null)}
-            className="mt-1 w-full max-w-xs rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
+      <div className="mt-8 flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveWidget((w) => (w === "circle" ? null : "circle"))}
+            aria-pressed={activeWidget === "circle"}
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+              activeWidget === "circle"
+                ? "border-accent bg-accent text-accent-foreground"
+                : "border-border bg-bg text-foreground hover:border-accent/50"
+            }`}
           >
-            {GAMLAR_SCALE_CATALOG.map((sc) => (
-              <option key={sc.id} value={sc.id}>
-                {sc.name}
-              </option>
-            ))}
-          </select>
-          <Fretboard mode="scale" maxFret={12} className="mt-4" />
+            5&apos;li Çember
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveWidget((w) => (w === "gamlar" ? null : "gamlar"))}
+            aria-pressed={activeWidget === "gamlar"}
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+              activeWidget === "gamlar"
+                ? "border-accent bg-accent text-accent-foreground"
+                : "border-border bg-bg text-foreground hover:border-accent/50"
+            }`}
+          >
+            Gamlar
+          </button>
         </div>
+        <p className="text-xs text-muted">
+          Butonlarla widget’ları açıp ton/gam tiplerini etkileşimli seçebilirsiniz.
+        </p>
       </div>
+
+      {activeWidget ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={widgetTitle}
+          onMouseDown={() => setActiveWidget(null)}
+        >
+          <div
+            className={`mx-auto flex h-full max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface ${widgetMaxWidthClass}`}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur">
+              <p className="text-sm font-medium text-foreground">{widgetTitle}</p>
+              <button
+                type="button"
+                onClick={() => setActiveWidget(null)}
+                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface"
+              >
+                Kapat
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4">
+              {activeWidget === "circle" ? (
+                <div className="mx-auto max-w-5xl">
+                  <CircleOfFifths variant="full" />
+                </div>
+              ) : (
+                <div className="mx-auto max-w-6xl">
+                  <GamlarScaleExplorer />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="flex flex-wrap items-center gap-2">

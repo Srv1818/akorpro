@@ -1,7 +1,4 @@
-import { chordPath, previewPath } from "@/lib/paths";
-
-/** Önizleme demo: ilk mock şarkı — navbar tek URL için */
-const previewDemo = previewPath("duman", "kufi");
+import { chordPath } from "@/lib/paths";
 
 export const mainNav = [
   { href: "/", label: "Keşfet" },
@@ -10,7 +7,6 @@ export const mainNav = [
   { href: "/gamlar", label: "Gamlar" },
   { href: "/besli-cember", label: "5'li Çember" },
   { href: "/calma-listeleri", label: "Listeler" },
-  { href: previewDemo, label: "Önizleme" },
 ] as const;
 
 export const footerNav = [
@@ -21,7 +17,6 @@ export const footerNav = [
   { href: "/gamlar", label: "Gamlar" },
   { href: "/besli-cember", label: "5'li çember" },
   { href: "/calma-listeleri", label: "Çalma listeleri" },
-  { href: previewDemo, label: "Önizleme" },
   { href: chordPath("duman", "kufi"), label: "Örnek akor sayfası" },
 ] as const;
 
