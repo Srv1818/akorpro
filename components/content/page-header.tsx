@@ -7,6 +7,7 @@ export type PageHeaderProps = {
 };
 
 /** Şu an görünür başlık kullanılmıyor; prop’lar sayfa/metadata tutarlılığı için korunur. */
-export function PageHeader(_props: PageHeaderProps) {
+export function PageHeader(props: PageHeaderProps) {
+  void props;
   return null;
 }

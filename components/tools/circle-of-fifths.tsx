@@ -296,11 +296,20 @@ function co5Palette(isDark: boolean) {
     midHl: (hl: number) => `rgba(252, 211, 77, ${0.5 + hl * 0.42})`,
     innerHl: (hl: number) => `rgba(252, 165, 165, ${0.45 + hl * 0.45})`,
     textOuterMuted: "rgb(24, 24, 27)",
-    textOuterHl: (_hl: number) => "rgb(69, 26, 3)",
+    textOuterHl: (hl: number) => {
+      void hl;
+      return "rgb(69, 26, 3)";
+    },
     textMidMuted: "rgb(39, 39, 42)",
-    textMidHl: (_hl: number) => "rgb(24, 24, 27)",
+    textMidHl: (hl: number) => {
+      void hl;
+      return "rgb(24, 24, 27)";
+    },
     textInnerMuted: "rgb(63, 63, 70)",
-    textInnerHl: (_hl: number) => "rgb(127, 29, 29)",
+    textInnerHl: (hl: number) => {
+      void hl;
+      return "rgb(127, 29, 29)";
+    },
     strokeW: { outer: 1.15, mid: 1.05, inner: 0.95 },
     rimStroke: 2.5,
     rimStrokeCss: "rgb(113, 113, 122)",
@@ -629,14 +638,14 @@ function CircleOfFifthsInner({
 
   useEffect(() => {
     if (!lockedMode) return;
-    setMode(lockedMode);
+    queueMicrotask(() => setMode(lockedMode));
   }, [lockedMode]);
 
   useEffect(() => {
     if (selectedPitchClass == null) return;
     const idx = co5IndexForRootPc(selectedPitchClass);
     if (idx == null) return;
-    setMajorKeyIdx(idx);
+    queueMicrotask(() => setMajorKeyIdx(idx));
   }, [selectedPitchClass]);
 
   const chords = useMemo(() => buildChords(CO5_LABELS[majorKeyIdx], mode), [majorKeyIdx, mode]);

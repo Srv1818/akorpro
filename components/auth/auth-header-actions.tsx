@@ -7,7 +7,7 @@ import { startTransition, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { getClientAuth } from "@/lib/firebase/client";
 // Dropdown ikonları için Lucide-react (shadcn projelerinde standarttır)
-import { User, Settings, LogOut } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 
 type MeResponse = { user: SessionUser | null };
 

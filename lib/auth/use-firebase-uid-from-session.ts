@@ -50,7 +50,7 @@ export function useFirebaseUidFromSession(): string | null | undefined {
 
   useEffect(() => {
     if (!getFirebasePublicConfig()) {
-      setFirebaseUid(null);
+      queueMicrotask(() => setFirebaseUid(null));
       return;
     }
 

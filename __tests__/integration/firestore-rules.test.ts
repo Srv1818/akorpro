@@ -5,7 +5,7 @@
  * Run: npm run emulators  (in another terminal)
  * Then: npm run test:integration
  */
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, beforeAll, afterAll, afterEach } from "vitest";
 import {
   initializeTestEnvironment,
   assertSucceeds,

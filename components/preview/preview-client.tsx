@@ -110,6 +110,13 @@ function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): Ke
 /** Mobil Gamlar paneli: klavye yatay kullanıma uygun olsun diye ekranı yatay kilitle (destekleyen tarayıcılar). */
 const WIDGET_MOBILE_MAX = 640;
 
+const TRANSPOSE_SEMITONE_MIN = -6;
+const TRANSPOSE_SEMITONE_MAX = 5;
+
+function clampTransposeSemitones(n: number): number {
+  return Math.max(TRANSPOSE_SEMITONE_MIN, Math.min(TRANSPOSE_SEMITONE_MAX, n));
+}
+
 type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (orientation: "landscape" | "portrait" | string) => Promise<void>;
   unlock?: () => void;
@@ -233,10 +240,7 @@ export function PreviewClient({
   const fromUrl = Number(searchParams.get("transpose") ?? "0");
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
 
-  const TRANSPOSE_SEMITONE_MIN = -6;
-  const TRANSPOSE_SEMITONE_MAX = 5;
-  const clampTranspose = (n: number) => Math.max(TRANSPOSE_SEMITONE_MIN, Math.min(TRANSPOSE_SEMITONE_MAX, n));
-  const initialClamped = clampTranspose(initial);
+  const initialClamped = clampTransposeSemitones(initial);
 
   const originalTonicPc = (() => {
     const tonic = parseTonicFromOriginalKey(originalKey);
@@ -394,7 +398,7 @@ export function PreviewClient({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [openWidgets.circle, openWidgets.gamlar]);
+  }, [openWidgets]);
 
   useEffect(() => {
     if (!openWidgets.gamlar) return;
@@ -493,7 +497,7 @@ export function PreviewClient({
       window.removeEventListener("orientationchange", onResize);
       document.body.style.overflow = prevOverflow || "";
     };
-  }, [openWidgets.circle, openWidgets.gamlar]);
+  }, [openWidgets]);
 
   const handleWidgetHeaderPointerDown = useCallback((widget: WidgetId, e: ReactPointerEvent<HTMLDivElement>) => {
     if (!openWidgets[widget]) return;
@@ -608,7 +612,7 @@ export function PreviewClient({
         },
       };
     });
-  }, []);
+  }, [getWidgetBounds]);
 
   const handleWidgetResizePointerUp = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
     const resize = widgetResizeRef.current;
@@ -790,21 +794,21 @@ export function PreviewClient({
       if (t) {
         const tag = t.tagName?.toLowerCase();
         if (tag === "input" || tag === "textarea" || tag === "select") return;
-        if ((t as any).isContentEditable) return;
+        if ("isContentEditable" in t && t.isContentEditable) return;
       }
 
       if (e.key === "ArrowLeft") {
         e.preventDefault();
-        replaceTranspose(clampTranspose(semitones - 1));
+        replaceTranspose(clampTransposeSemitones(semitones - 1));
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        replaceTranspose(clampTranspose(semitones + 1));
+        replaceTranspose(clampTransposeSemitones(semitones + 1));
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openWidgets.circle, openWidgets.gamlar, saveAndAddOpen, replaceTranspose, semitones]);
+  }, [openWidgets, saveAndAddOpen, replaceTranspose, semitones]);
 
   const resetOriginal = useCallback(() => {
     resetTonalAndTranspose();

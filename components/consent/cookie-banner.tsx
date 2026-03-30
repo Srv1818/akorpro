@@ -41,7 +41,7 @@ export function CookieBanner() {
   useEffect(() => {
     const stored = getCookieValue(CONSENT_COOKIE);
     if (!stored) {
-      setVisible(true);
+      queueMicrotask(() => setVisible(true));
     } else {
       applyConsent(stored as ConsentValue);
     }

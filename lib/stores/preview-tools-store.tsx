@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useRef, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useStore } from "zustand";
 import { createStore, type StoreApi } from "zustand/vanilla";
 
@@ -50,21 +50,19 @@ export function PreviewToolsProvider({
   initialTonalCenter?: number;
   initialScaleId?: string | null;
 }) {
-  const storeRef = useRef<PreviewToolsStore | null>(null);
-  const keyRef = useRef<string | null>(null);
-
-  if (keyRef.current !== instanceKey || !storeRef.current) {
-    keyRef.current = instanceKey;
-    storeRef.current = createPreviewToolsStore({
-      transposeSemitones: initialTranspose,
-      tonalCenterIndex: initialTonalCenter,
-      selectedScaleId: initialScaleId,
-    });
-  }
-
-  return (
-    <PreviewToolsContext.Provider value={storeRef.current}>{children}</PreviewToolsContext.Provider>
+  const store = useMemo(
+    () =>
+      createPreviewToolsStore({
+        transposeSemitones: initialTranspose,
+        tonalCenterIndex: initialTonalCenter,
+        selectedScaleId: initialScaleId,
+      }),
+    // Yalnızca instanceKey değişince yeni store; initial* yalnızca o anda okunur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- instanceKey dışındaki prop değişimleri store’u sıfırlamaz
+    [instanceKey],
   );
+
+  return <PreviewToolsContext.Provider value={store}>{children}</PreviewToolsContext.Provider>;
 }
 
 export function usePreviewToolsStore<T>(selector: (s: PreviewToolsState) => T): T {

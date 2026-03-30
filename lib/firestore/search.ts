@@ -118,7 +118,11 @@ export async function getPopularArtists(
         })
         .sort((a, b) => b.popularity - a.popularity)
         .slice(0, limit)
-        .map(({ popularity: _, ...rest }) => rest);
+        .map((row) => {
+          const { popularity, ...rest } = row;
+          void popularity;
+          return rest;
+        });
     }
     throw err;
   }

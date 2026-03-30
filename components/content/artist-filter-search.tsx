@@ -64,6 +64,7 @@ export function ArtistFilterSearch({ artists, defaultSlug }: Props) {
       <div className="flex gap-1">
         <input
           type="search"
+          role="combobox"
           autoComplete="off"
           enterKeyHint="search"
           value={query}
@@ -76,6 +77,7 @@ export function ArtistFilterSearch({ artists, defaultSlug }: Props) {
           aria-autocomplete="list"
           aria-expanded={showList}
           aria-controls="artist-filter-suggestions"
+          aria-haspopup="listbox"
         />
         {(query || committedSlug) && (
           <button
@@ -97,7 +99,7 @@ export function ArtistFilterSearch({ artists, defaultSlug }: Props) {
             <li className="px-3 py-2 text-sm text-muted">Eşleşen sanatçı yok</li>
           ) : (
             filtered.map((a) => (
-              <li key={a.slug} role="option">
+              <li key={a.slug} role="option" aria-selected={committedSlug === a.slug}>
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}

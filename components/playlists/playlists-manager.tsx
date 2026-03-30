@@ -87,8 +87,10 @@ function PlaylistSongSearch({
   useEffect(() => {
     const t = q.trim();
     if (t.length < 2) {
-      setResults([]);
-      setLocalError(null);
+      queueMicrotask(() => {
+        setResults([]);
+        setLocalError(null);
+      });
       return;
     }
     const id = window.setTimeout(() => {
