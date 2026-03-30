@@ -16,6 +16,7 @@ type ContributionInput = Pick<
   | "artistName"
   | "chordBody"
   | "originalKey"
+  | "keyMode"
   | "genre"
   | "difficulty"
   | "tempo"

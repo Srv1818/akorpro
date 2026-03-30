@@ -1,4 +1,4 @@
-import type { Difficulty } from "./content";
+import type { Difficulty, KeyMode } from "./content";
 
 /* ------------------------------------------------------------------ */
 /*  Firestore: songs/{songId}                                         */
@@ -22,6 +22,8 @@ export interface SongDoc {
   /* Künye ------------------------------------------------------------- */
   originalKey: string;
   difficulty: Difficulty;
+  /** Ton modu (minör varyantları / majör). Mevcut kayıtlar için geriye dönük uyumluluk adına opsiyonel. */
+  keyMode?: KeyMode;
   genre: string;
   /** BPM veya metin ("Andante" vb.) — isteğe bağlı */
   tempo?: number | string;

@@ -1,4 +1,7 @@
 import { IMPORT_SONG_SCHEMA } from "@/lib/types/chord-library";
+import type { KeyMode } from "@/lib/types/content";
+
+const VALID_KEY_MODES: KeyMode[] = ["major", "natural", "harmonic", "melodic"];
 
 export type ImportSongRow = {
   title: string;
@@ -8,6 +11,7 @@ export type ImportSongRow = {
   chordBody: string;
   originalKey: string;
   difficulty: string;
+  keyMode?: KeyMode;
   genre: string;
   tempo?: number | string;
   timeSignature?: string;
@@ -53,6 +57,18 @@ export function validateImportPayload(
         message: `Geçersiz zorluk: "${rec.difficulty}". Beklenen: ${IMPORT_SONG_SCHEMA.difficulties.join(", ")}`,
       });
       rowValid = false;
+    }
+
+    if (rec.keyMode !== undefined) {
+      const raw = typeof rec.keyMode === "string" ? rec.keyMode : "";
+      if (!raw || !VALID_KEY_MODES.includes(raw as KeyMode)) {
+        errors.push({
+          row: i,
+          field: "keyMode",
+          message: `Geçersiz ton modu: "${rec.keyMode}". Beklenen: major|natural|harmonic|melodic`,
+        });
+        rowValid = false;
+      }
     }
 
     if (rec.capo !== undefined && (typeof rec.capo !== "number" || rec.capo < 0)) {

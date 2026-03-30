@@ -1,5 +1,11 @@
 export type Difficulty = "kolay" | "orta" | "zor";
 
+// Minor varyantları için şarkının ton modunu ayırır.
+// - natural: doğal minör
+// - harmonic: harmonik minör
+// - melodic: melodik minör
+export type KeyMode = "major" | "natural" | "harmonic" | "melodic";
+
 /** UI bileşenleri için minimum şarkı alanları (SongCard, DiscoverBlock vb.) */
 export type SongSummary = {
   id: string;

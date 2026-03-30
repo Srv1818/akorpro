@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getSongByIdAdmin, updateSong, deleteSong } from "@/lib/firestore/admin-songs";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
+import type { KeyMode } from "@/lib/types/content";
+
+const VALID_KEY_MODES: KeyMode[] = ["major", "natural", "harmonic", "melodic"];
 
 export const runtime = "nodejs";
 
@@ -43,6 +46,10 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (typeof b.originalKey === "string") updates.originalKey = sanitizePlainField(b.originalKey);
   if (typeof b.difficulty === "string") updates.difficulty = sanitizePlainField(b.difficulty);
   if (typeof b.genre === "string") updates.genre = sanitizePlainField(b.genre);
+  if (typeof b.keyMode === "string") {
+    const keyModeRaw = sanitizePlainField(b.keyMode);
+    if (keyModeRaw && VALID_KEY_MODES.includes(keyModeRaw as KeyMode)) updates.keyMode = keyModeRaw as KeyMode;
+  }
   if (b.tempo !== undefined) updates.tempo = b.tempo;
   if (typeof b.timeSignature === "string") updates.timeSignature = b.timeSignature;
   if (typeof b.tuning === "string") updates.tuning = b.tuning;

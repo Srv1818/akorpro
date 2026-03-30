@@ -49,8 +49,15 @@ export function ContributionFormClient() {
 
       <input name="songTitle" placeholder="Şarkı başlığı *" required className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground" />
       <input name="artistName" placeholder="Sanatçı adı *" required className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground" />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
         <input name="originalKey" placeholder="Ton (Am, Em…) *" required className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground" />
+        <select name="keyMode" required className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground">
+          <option value="">Ton modu *</option>
+          <option value="major">Majör</option>
+          <option value="natural">Doğal Minör</option>
+          <option value="harmonic">Harmonik Minör</option>
+          <option value="melodic">Melodik Minör</option>
+        </select>
         <select name="difficulty" required className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground">
           <option value="">Zorluk *</option>
           <option value="kolay">Kolay</option>

@@ -1,10 +1,13 @@
 import type { ModerationStatus } from "./firestore";
+import type { KeyMode } from "./content";
 
 export interface ContributionDoc {
   songTitle: string;
   artistName: string;
   chordBody: string;
   originalKey: string;
+  /** Ton modu (minör varyantları / majör). */
+  keyMode?: KeyMode;
   genre: string;
   difficulty: "kolay" | "orta" | "zor";
 

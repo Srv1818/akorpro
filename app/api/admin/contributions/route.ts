@@ -5,8 +5,18 @@ import { getPendingContributions, getContributionById, updateContributionStatus 
 import { createSong } from "@/lib/firestore/admin-songs";
 import { writeAuditLog } from "@/lib/security/audit-log";
 import { TAGS } from "@/lib/cache/tags";
+import type { KeyMode } from "@/lib/types/content";
 
 export const runtime = "nodejs";
+
+const VALID_KEY_MODES: KeyMode[] = ["major", "natural", "harmonic", "melodic"];
+
+function inferKeyModeFromOriginalKey(originalKey: string): KeyMode {
+  const k = originalKey.trim().toLowerCase();
+  if (k.endsWith("maj")) return "major";
+  if (k.endsWith("m")) return "natural";
+  return "major";
+}
 
 /** List pending contributions */
 export async function GET() {
@@ -70,6 +80,8 @@ export async function POST(request: Request) {
         artistName: contrib.artistName,
         chordBody: contrib.chordBody,
         originalKey: contrib.originalKey,
+        keyMode: (contrib.keyMode && VALID_KEY_MODES.includes(contrib.keyMode as KeyMode) ? contrib.keyMode as KeyMode : undefined)
+          ?? inferKeyModeFromOriginalKey(contrib.originalKey),
         difficulty: contrib.difficulty,
         genre: contrib.genre,
         tempo: contrib.tempo,

@@ -12,6 +12,7 @@ type Song = {
   artistName: string;
   originalKey: string;
   difficulty: string;
+  keyMode?: string;
   genre: string;
   moderationStatus: string;
 };
@@ -91,6 +92,13 @@ export function AdminSongsClient() {
             <option value="kolay">Kolay</option>
             <option value="orta">Orta</option>
             <option value="zor">Zor</option>
+          </select>
+          <select name="keyMode" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm">
+            <option value="">Ton modu *</option>
+            <option value="major">Majör</option>
+            <option value="natural">Doğal Minör</option>
+            <option value="harmonic">Harmonik Minör</option>
+            <option value="melodic">Melodik Minör</option>
           </select>
           <input name="genre" placeholder="Tür (Rock, Pop…) *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
           <input name="tempo" placeholder="Tempo (BPM)" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />

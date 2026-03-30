@@ -3,10 +3,20 @@ import { getServerSessionUser } from "@/lib/auth/server-session";
 import { createContribution, getContributionsByUser } from "@/lib/firestore/contributions";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
 import { rateLimiter } from "@/lib/security/rate-limit";
+import type { KeyMode } from "@/lib/types/content";
 
 export const runtime = "nodejs";
 
 const contribRl = rateLimiter({ windowMs: 300_000, max: 5 });
+
+const VALID_KEY_MODES: KeyMode[] = ["major", "natural", "harmonic", "melodic"];
+
+function inferKeyModeFromOriginalKey(originalKey: string): KeyMode {
+  const k = originalKey.trim().toLowerCase();
+  if (k.endsWith("maj")) return "major";
+  if (k.endsWith("m")) return "natural";
+  return "major";
+}
 
 export async function POST(request: Request) {
   const user = await getServerSessionUser();
@@ -37,6 +47,9 @@ export async function POST(request: Request) {
   const originalKey = sanitizePlainField(b.originalKey);
   const genre = sanitizePlainField(b.genre);
   const difficulty = sanitizePlainField(b.difficulty);
+  const keyModeRaw = sanitizePlainField(b.keyMode);
+  const keyMode = keyModeRaw && VALID_KEY_MODES.includes(keyModeRaw as KeyMode) ? (keyModeRaw as KeyMode) : undefined;
+  const finalKeyMode = keyMode ?? inferKeyModeFromOriginalKey(originalKey);
 
   if (!songTitle || !artistName || !chordBody || !originalKey || !genre || !difficulty) {
     return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
@@ -51,6 +64,7 @@ export async function POST(request: Request) {
     artistName,
     chordBody,
     originalKey,
+    keyMode: finalKeyMode,
     genre,
     difficulty: difficulty as "kolay" | "orta" | "zor",
     tempo: typeof b.tempo === "number" || typeof b.tempo === "string" ? b.tempo : undefined,

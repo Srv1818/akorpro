@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { validateImportPayload } from "@/lib/firestore/import-validator";
 import { writeAuditLog } from "@/lib/security/audit-log";
+import type { KeyMode } from "@/lib/types/content";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,13 @@ function db() {
   const fs = getAdminFirestore();
   if (!fs) throw new Error("Firestore Admin başlatılamadı.");
   return fs;
+}
+
+function inferKeyModeFromOriginalKey(originalKey: string): KeyMode {
+  const k = originalKey.trim().toLowerCase();
+  if (k.endsWith("maj")) return "major";
+  if (k.endsWith("m")) return "natural";
+  return "major";
 }
 
 /**
@@ -75,6 +83,7 @@ export async function POST(request: Request) {
         artistId: row.artistSlug,
         chordBody: row.chordBody,
         originalKey: row.originalKey,
+        keyMode: row.keyMode ?? inferKeyModeFromOriginalKey(row.originalKey),
         difficulty: row.difficulty,
         genre: row.genre,
         moderationStatus: "approved",

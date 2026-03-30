@@ -141,6 +141,7 @@ export function AdminImportClient() {
       "chordBody": "[Verse]\\nAm F",// zorunlu
       "originalKey": "Am",         // zorunlu
       "difficulty": "kolay|orta|zor", // zorunlu
+      "keyMode": "major|natural|harmonic|melodic", // opsiyonel (eksikse originalKey’den türetilir)
       "genre": "Rock",             // zorunlu
       "tempo": 120,                // opsiyonel
       "timeSignature": "4/4",      // opsiyonel

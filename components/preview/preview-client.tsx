@@ -26,6 +26,7 @@ import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-sess
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { getClientFirestore } from "@/lib/firebase/client";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
+import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
 
 const OVERRIDE_SCHEMA_VERSION = 1;
 
@@ -48,6 +49,48 @@ function formatError(err: unknown): string {
     return String((err as { code: string }).code);
   }
   return "Bilinmeyen hata";
+}
+
+function parseTonicFromOriginalKey(key: string): string {
+  const k = key.trim();
+  // Örn: "Am" -> "A", "Em" -> "E", "Cmaj" -> "C"
+  if (k.toLowerCase().endsWith("maj")) return k.slice(0, -3).trim();
+  if (k.length > 1 && k.toLowerCase().endsWith("m")) return k.slice(0, -1).trim();
+  return k;
+}
+
+function signedSemitoneDelta(fromPc: number, toPc: number): number {
+  const raw = (toPc - fromPc + 12) % 12;
+  return raw > 6 ? raw - 12 : raw; // [-6..+5]
+}
+
+function transposeChordToken(token: string, semitones: number): string {
+  // Basit akor formatı: Root + opsiyonel kalite (m, maj, dim, aug, sus2, sus4) + opsiyonel sayı (7, 9 vb.)
+  // Örn: Cm, Am, A7, Bb, F#, Dm7
+  const m = token.match(/^([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?$/i);
+  if (!m) return token;
+  const root = m[1];
+  const quality = m[2] ?? "";
+  const digits = m[3] ?? "";
+
+  const rootPc = noteNameToPitchClass(root);
+  if (rootPc === null) return token;
+
+  const newPc = (rootPc + semitones + 120) % 12;
+  const newRoot = PC_TO_NAME[newPc];
+  return `${newRoot}${quality}${digits}`;
+}
+
+function transposeChordBodyText(text: string, semitones: number): string {
+  if (!text) return text;
+  if (!Number.isFinite(semitones) || semitones === 0) return text;
+
+  const chordTokenRegex = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
+
+  return text.replace(chordTokenRegex, (full, root: string, quality: string | undefined, digits: string | undefined) => {
+    const suffix = `${quality ?? ""}${digits ?? ""}`;
+    return transposeChordToken(`${root}${suffix}`, semitones);
+  });
 }
 
 export function PreviewClient({
@@ -99,14 +142,26 @@ export function PreviewClient({
     setMetronomeOpen(false);
     setMetronomeBpm(initialBpmNumber);
     setMetronomeTimeSignature(initialTimeSignatureValue);
+    setSaveAndAddOpen(false);
   }, [songId, initialBpmNumber, initialTimeSignatureValue]);
 
   const fromUrl = Number(searchParams.get("transpose") ?? "0");
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
 
+  const TRANSPOSE_SEMITONE_MIN = -6;
+  const TRANSPOSE_SEMITONE_MAX = 5;
+  const clampTranspose = (n: number) => Math.max(TRANSPOSE_SEMITONE_MIN, Math.min(TRANSPOSE_SEMITONE_MAX, n));
+  const initialClamped = clampTranspose(initial);
+
+  const originalTonicPc = (() => {
+    const tonic = parseTonicFromOriginalKey(originalKey);
+    return noteNameToPitchClass(tonic);
+  })();
+
   const firebaseUid = useFirebaseUidFromSession();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveAndAddOpen, setSaveAndAddOpen] = useState(false);
 
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
@@ -116,6 +171,13 @@ export function PreviewClient({
   const urlTransposeRef = useRef(0);
 
   const hydrateReadyRef = useRef(false);
+
+  const displayedChordBody = (() => {
+    // chordBody'yi transpoze etmek, UI transpoze state’i ile birebir senkron olmalı.
+    // Memo yerine hızlı fonksiyon çağrısı (metin boyutu küçük/orta) tercih edildi.
+    // (İstersen daha sonra useMemo ile optimize edebiliriz.)
+    return transposeChordBodyText(chordBody, semitones);
+  })();
 
   useEffect(() => {
     if (!activeWidget) return;
@@ -141,13 +203,13 @@ export function PreviewClient({
    * every searchParam update triggered by router.replace().
    */
   useEffect(() => {
-    if (initial !== urlTransposeRef.current) {
-      setTransposeSemitones(initial);
+    if (initialClamped !== urlTransposeRef.current) {
+      setTransposeSemitones(initialClamped);
     }
-    urlTransposeRef.current = initial;
+    urlTransposeRef.current = initialClamped;
     // setTransposeSemitones is a stable Zustand action; intentionally omitted from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial]);
+  }, [initialClamped]);
 
   useEffect(() => {
     hydrateReadyRef.current = false;
@@ -248,6 +310,31 @@ export function PreviewClient({
     [pathname, router, setTransposeSemitones],
   );
 
+  // Ok tuşlarıyla yarım ses (semitone) hareketi.
+  useEffect(() => {
+    if (activeWidget || saveAndAddOpen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        const tag = t.tagName?.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") return;
+        if ((t as any).isContentEditable) return;
+      }
+
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        replaceTranspose(clampTranspose(semitones - 1));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        replaceTranspose(clampTranspose(semitones + 1));
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeWidget, saveAndAddOpen, replaceTranspose, semitones]);
+
   const resetOriginal = useCallback(() => {
     resetTonalAndTranspose();
     urlTransposeRef.current = 0;
@@ -269,16 +356,19 @@ export function PreviewClient({
     if (!firebaseUid) {
       setSaveState("error");
       setSaveMessage("Önce giriş yapın.");
+      setSaveAndAddOpen(false);
       return;
     }
     if (serverUid && serverUid !== firebaseUid) {
       setSaveState("error");
       setSaveMessage("Tarayıcı oturumu ile sunucu çerezi eşleşmiyor. Çıkış yapıp yeniden giriş yapın.");
+      setSaveAndAddOpen(false);
       return;
     }
     if (!getFirebasePublicConfig()) {
       setSaveState("error");
       setSaveMessage("Firebase istemci yapılandırması eksik.");
+      setSaveAndAddOpen(false);
       return;
     }
     setSaveState("saving");
@@ -293,9 +383,11 @@ export function PreviewClient({
       await setDoc(doc(db, "users", firebaseUid, "songOverrides", songId), payload, { merge: true });
       setSaveState("saved");
       setSaveMessage("Tercih kaydedildi.");
+      setSaveAndAddOpen(true);
     } catch (e) {
       setSaveState("error");
       setSaveMessage(formatError(e));
+      setSaveAndAddOpen(false);
     }
   }, [firebaseUid, semitones, serverUid, songId]);
 
@@ -339,6 +431,7 @@ export function PreviewClient({
         updatedAt: serverTimestamp(),
       });
       setAddNotice({ variant: "success", message: "Şarkı listeye eklendi." });
+      setSaveAndAddOpen(false);
     } catch (e) {
       setAddNotice({ variant: "error", message: formatError(e) });
     } finally {
@@ -373,104 +466,155 @@ export function PreviewClient({
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-foreground">Önizleme görünümü</p>
-          <p className="text-xs text-muted">
-            Orijinal ton sunucuda sabit: <span className="font-mono text-foreground">{originalKey}</span> · Transpoze
-            görünüm katmanı; tercih Firestore&apos;ta saklanabilir.
-          </p>
-        </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted">
-          <input
-            type="checkbox"
-            checked={sceneMode}
-            onChange={(e) => setSceneMode(e.target.checked)}
-            className="h-4 w-4 rounded border-border text-accent"
-          />
-          Sahne modu (kontrast iskeleti)
-        </label>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-2" role="group" aria-label="Transpoze kontrolleri">
-        <span className="text-sm text-muted" id="transpose-label">Transpoze:</span>
-        {[-2, -1, 0, 1, 2].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => replaceTranspose(n)}
-            aria-pressed={semitones === n}
-            aria-label={`Transpoze ${n === 0 ? "orijinal" : n > 0 ? `+${n}` : `${n}`} yarım ton`}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              semitones === n
-                ? "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-bg text-foreground hover:border-accent/50"
-            }`}
-          >
-            {n === 0 ? "0" : n > 0 ? `+${n}` : `${n}`}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={resetOriginal}
-          className="ml-auto rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
+      {saveAndAddOpen ? (
+        <div
+          className="fixed inset-0 z-60 bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Kaydet ve listeye ekle"
+          onMouseDown={() => setSaveAndAddOpen(false)}
         >
-          Orijinale dön
-        </button>
-      </div>
-
-      <p className="mt-3 text-xs text-muted" aria-live="polite">
-        Görüntülenen transpoze:{" "}
-        <span className="font-mono text-foreground">
-          {semitones === 0 ? "0" : semitones > 0 ? `+${semitones}` : semitones} yarım ton
-        </span>
-        {semitones !== 0 ? (
-          <span className="block sm:inline sm:pl-2">· Parametreli URL kanonik değildir (ARCHITECTURE).</span>
-        ) : null}
-      </p>
-
-      <div className="mt-8 flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveWidget((w) => (w === "circle" ? null : "circle"))}
-            aria-pressed={activeWidget === "circle"}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              activeWidget === "circle"
-                ? "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-bg text-foreground hover:border-accent/50"
-            }`}
+          <div
+            className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            5&apos;li Çember
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveWidget((w) => (w === "gamlar" ? null : "gamlar"))}
-            aria-pressed={activeWidget === "gamlar"}
-            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-              activeWidget === "gamlar"
-                ? "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-bg text-foreground hover:border-accent/50"
-            }`}
-          >
-            Gamlar
-          </button>
-          <MetronomeButton
-            active={metronomeActive}
-            onActiveChange={(next) => {
-              setMetronomeActive(next);
-              setMetronomeOpen(next);
-            }}
-            bpm={metronomeBpm}
-            onBpmChange={setMetronomeBpm}
-            timeSignature={metronomeTimeSignature}
-            onTimeSignatureChange={setMetronomeTimeSignature}
-            showControls={false}
-          />
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3">
+              <p className="text-sm font-medium text-foreground">Kaydet ve listeye ekle</p>
+              <button
+                type="button"
+                onClick={() => setSaveAndAddOpen(false)}
+                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface"
+              >
+                Kapat
+              </button>
+            </div>
+
+            <div className="p-4">
+              {addNotice ? (
+                <p
+                  className={`mb-3 text-sm ${addNotice.variant === "error" ? "text-red-200" : "text-muted"}`}
+                  role={addNotice.variant === "error" ? "alert" : "status"}
+                >
+                  {addNotice.message}
+                </p>
+              ) : null}
+
+              <label htmlFor="preview-playlist-modal" className="block text-xs font-medium text-muted">
+                Listeye ekle
+              </label>
+              <select
+                id="preview-playlist-modal"
+                value={selectedPlaylistId}
+                onChange={(e) => setSelectedPlaylistId(e.target.value)}
+                disabled={playlists.length === 0 || addBusy}
+                className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2 disabled:opacity-50"
+              >
+                {playlists.length === 0 ? <option value="">Henüz liste yok</option> : null}
+                {playlists.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  disabled={!canAddToPlaylist || addBusy}
+                  onClick={() => void onAddToPlaylist()}
+                  className="flex-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {addBusy ? "Ekleniyor…" : "Listeye ekle"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSaveAndAddOpen(false)}
+                  className="rounded-lg border border-border bg-bg px-4 py-2 text-sm font-medium text-muted hover:bg-surface"
+                >
+                  Vazgeç
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-xs text-muted">
-          Butonlarla widget’ları açıp ton/gam tiplerini etkileşimli seçebilirsiniz.
-        </p>
+      ) : null}
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveWidget((w) => (w === "circle" ? null : "circle"))}
+              aria-pressed={activeWidget === "circle"}
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                activeWidget === "circle"
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-bg text-foreground hover:border-accent/50"
+              }`}
+            >
+              5&apos;li Çember
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveWidget((w) => (w === "gamlar" ? null : "gamlar"))}
+              aria-pressed={activeWidget === "gamlar"}
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                activeWidget === "gamlar"
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-bg text-foreground hover:border-accent/50"
+              }`}
+            >
+              Gamlar
+            </button>
+            <MetronomeButton
+              active={metronomeActive}
+              onActiveChange={(next) => {
+                setMetronomeActive(next);
+                setMetronomeOpen(next);
+              }}
+              bpm={metronomeBpm}
+              onBpmChange={setMetronomeBpm}
+              timeSignature={metronomeTimeSignature}
+              onTimeSignatureChange={setMetronomeTimeSignature}
+              showControls={false}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <button
+              type="button"
+              disabled={!canSave || saveState === "saving"}
+              onClick={() => void onSave()}
+              title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
+            </button>
+            {firebaseUid === undefined ? (
+              <span className="text-sm text-muted">Oturum kontrol ediliyor…</span>
+            ) : firebaseUid === null ? (
+              <Link
+                href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
+              >
+                Giriş (Kaydet için)
+              </Link>
+            ) : (
+              null
+            )}
+          </div>
+
+          {playlists.length === 0 && firebaseUid && !sessionMismatch ? (
+            <p className="mt-2 text-sm text-muted">
+              Liste oluşturmak için{" "}
+              <Link href="/calma-listeleri" className="text-accent underline-offset-2 hover:underline">
+                çalma listeleri
+              </Link>{" "}
+              sayfasına gidin.
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {activeWidget ? (
@@ -511,80 +655,50 @@ export function PreviewClient({
         </div>
       ) : null}
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={!canSave || saveState === "saving"}
-            onClick={() => void onSave()}
-            title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
-          </button>
-          {firebaseUid === undefined ? (
-            <span className="text-sm text-muted">Oturum kontrol ediliyor…</span>
-          ) : firebaseUid === null ? (
-            <Link
-              href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
-            >
-              Giriş (Kaydet için)
-            </Link>
-          ) : (
-            <Link
-              href="/calma-listeleri"
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted hover:bg-surface hover:text-foreground"
-            >
-              Çalma listelerim
-            </Link>
-          )}
-        </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
+        <span className="text-sm text-muted" id="transpose-label">Transpoze:</span>
+        <div className="flex flex-wrap items-center gap-1" aria-describedby="transpose-label">
+          {Array.from({ length: 12 }, (_, pc) => {
+            const label = PC_TO_NAME[pc];
+            const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
+            const isActive = semitones === delta;
 
-        {firebaseUid && !sessionMismatch ? (
-          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-md sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1">
-              <label htmlFor="preview-playlist" className="block text-xs font-medium text-muted">
-                Listeye ekle
-              </label>
-              <select
-                id="preview-playlist"
-                value={selectedPlaylistId}
-                onChange={(e) => setSelectedPlaylistId(e.target.value)}
-                disabled={playlists.length === 0 || addBusy}
-                className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2 disabled:opacity-50"
+            return (
+              <button
+                key={pc}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => replaceTranspose(delta)}
+                className={`select-none inline-flex min-w-[2.5rem] justify-center rounded-md border px-1.5 py-1 text-xs font-medium leading-none transition ${
+                  isActive
+                    ? "border-accent bg-accent text-accent-foreground"
+                    : "border-border bg-bg text-foreground hover:border-accent/50"
+                }`}
               >
-                {playlists.length === 0 ? (
-                  <option value="">Henüz liste yok</option>
-                ) : (
-                  playlists.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-            <button
-              type="button"
-              disabled={!canAddToPlaylist || addBusy}
-              onClick={() => void onAddToPlaylist()}
-              className="shrink-0 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-50 sm:mb-0 sm:py-2"
-            >
-              {addBusy ? "Ekleniyor…" : "Listeye ekle"}
-            </button>
-          </div>
-        ) : null}
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={resetOriginal}
+          className="ml-auto rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-surface"
+        >
+          Orijinale dön
+        </button>
       </div>
-      {playlists.length === 0 && firebaseUid && !sessionMismatch ? (
-        <p className="mt-2 text-sm text-muted">
-          Liste oluşturmak için{" "}
-          <Link href="/calma-listeleri" className="text-accent underline-offset-2 hover:underline">
-            çalma listeleri
-          </Link>{" "}
-          sayfasına gidin.
-        </p>
-      ) : null}
+
+      <p className="mt-3 text-xs text-muted" aria-live="polite">
+        Görüntülenen transpoze:{" "}
+        <span className="font-mono text-foreground">
+          {semitones === 0 ? "0" : semitones > 0 ? `+${semitones}` : semitones} yarım ton
+        </span>
+        {semitones !== 0 ? (
+          <span className="block sm:inline sm:pl-2">· Parametreli URL kanonik değildir (ARCHITECTURE).</span>
+        ) : null}
+      </p>
+
       <div aria-live="polite" aria-atomic="true">
         {addNotice ? (
           <p
@@ -606,12 +720,12 @@ export function PreviewClient({
 
       <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-border pt-4" role="toolbar" aria-label="Çalma araçları">
         <AutoScrollButton />
-        <CopyButton text={chordBody} />
+        <CopyButton text={displayedChordBody} />
         <PrintButton />
       </div>
 
       <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
-        <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{chordBody}</pre>
+        <pre className="whitespace-pre-wrap font-sans text-sm leading-loose text-foreground sm:text-base sm:leading-relaxed">{displayedChordBody}</pre>
       </article>
 
       <div className="print:hidden">
