@@ -942,21 +942,24 @@ export function PreviewClient({
     };
   }, [replaceSceneParam, sceneMode]);
 
+  useEffect(() => {
+    urlTransposeRef.current = 0;
+  }, [songId]);
+
   /**
-   * Sync URL param → store, but only when the value genuinely differs from what
-   * replaceTranspose / resetOriginal already set.  This prevents a redundant
-   * Zustand set() — and the resulting subscriber cascade — that used to fire on
-   * every searchParam update triggered by router.replace().
+   * Yalnızca URL'de `transpose` varken senkronize et. Parametre yokken `initialClamped` her
+   * zaman 0 olduğu için bu efekt Firestore / kullanıcı transpoze sonrası tekrar çalışınca
+   * `urlTransposeRef` ile karşılaşıp store'u sıfırlıyordu (kayıtlı tonda “yarım ses geri” gibi).
    */
   useEffect(() => {
+    if (!hasTransposeParam) {
+      return;
+    }
     if (initialClamped !== urlTransposeRef.current) {
       setTransposeSemitones(initialClamped);
     }
     urlTransposeRef.current = initialClamped;
-    if (hasTransposeParam) {
-      // URL'de transpose varsa bunu kullanıcı tercihi olarak kabul et, hydration ezmesin.
-      transposeLockRef.current = true;
-    }
+    transposeLockRef.current = true;
     // setTransposeSemitones is a stable Zustand action; intentionally omitted from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTransposeParam, initialClamped]);
