@@ -4,6 +4,7 @@
 export async function postSessionCookie(idToken: string): Promise<string | null> {
   const res = await fetch("/api/auth/session", {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idToken }),
   });

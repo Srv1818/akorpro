@@ -14,6 +14,27 @@ import type { Difficulty } from "@/lib/types/content";
 
 const COLLECTION = "songs";
 
+/** Soğuk başlatma / geçici hatalarda sorguyu birkaç kez dene (önbelleğe yanlış null yazılmasını azaltır). */
+async function withFirestoreRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const delaysMs = [0, 300, 700];
+  let last: unknown;
+  for (let i = 0; i < delaysMs.length; i++) {
+    if (delaysMs[i] > 0) {
+      await new Promise((r) => setTimeout(r, delaysMs[i]));
+    }
+    try {
+      return await fn();
+    } catch (e) {
+      last = e;
+      console.warn(`[songs] ${label} deneme ${i + 1}/${delaysMs.length}`, e);
+    }
+  }
+  throw last;
+}
+
+/** unstable_cache içinde null saklanmasın diye sentinel (gerçek 404’ler önbelleklenmez). */
+const SONG_SLUG_CACHE_MISS = "SONG_SLUG_CACHE_MISS";
+
 function db() {
   const fs = getAdminFirestore();
   if (!fs) throw new Error("Firestore Admin başlatılamadı — FIREBASE_SERVICE_ACCOUNT_KEY eksik.");
@@ -34,11 +55,82 @@ function isDifficulty(v: string): v is Difficulty {
   return v === "kolay" || v === "orta" || v === "zor";
 }
 
+/** gRPC 9 + olası string kodları (Admin SDK sürümleri arası fark). */
+function isFailedPrecondition(err: unknown): boolean {
+  const e = err as { code?: number | string; message?: string };
+  if (e.code === 9) return true;
+  if (e.code === "FAILED_PRECONDITION" || e.code === "failed-precondition") return true;
+  const msg = typeof e.message === "string" ? e.message.toLowerCase() : "";
+  return msg.includes("requires an index") || msg.includes("composite index");
+}
+
+function normalizeSlugMatch(s: string): string {
+  return s.trim().normalize("NFKC").toLocaleLowerCase("tr-TR");
+}
+
+/** URL’deki slug ile belgedeki slug’u eşle (Türkçe büyük/küçük harf, boşluk, birleşik karakter). */
+function docSlugMatchesUrl(data: SongDoc, urlSongSlug: string): boolean {
+  const urlNorm = normalizeSlugMatch(urlSongSlug);
+  const primary = normalizeSlugMatch(data.slug ?? "");
+  if (primary === urlNorm) return true;
+  const legacy = (data as SongDoc & { songSlug?: string }).songSlug;
+  if (typeof legacy === "string" && normalizeSlugMatch(legacy) === urlNorm) return true;
+  return false;
+}
+
+/**
+ * Birincil eşitlik sorgusu boş / indeks hatası verdiğinde: sanatçıdaki onaylı şarkıları çek, slug’u bellek içi eşle.
+ * Listede görünüp detayda 404 olan kayıtlar (slug varyantı, indeks sapması) için.
+ */
+async function _findSongByArtistSlugFallback(
+  artistSlug: string,
+  songSlug: string,
+): Promise<(SongDoc & { id: string }) | null> {
+  const snap = await db()
+    .collection(COLLECTION)
+    .where("artistSlug", "==", artistSlug)
+    .where("moderationStatus", "==", "approved")
+    .get();
+  const doc = snap.docs.find((d) => docSlugMatchesUrl(d.data() as SongDoc, songSlug));
+  if (!doc) return null;
+  return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+}
+
+/**
+ * Birincil sorgu boş + sanatçı yedeği boş: URL’deki sanatçı slug’ı DB’de farklı olabilir.
+ * `slug` alanı URL ile birebir eşleşen onaylı kayıtlarda sanatçıyı gevşek karşılaştır veya tekil kaydı kabul et.
+ * (Tam koleksiyon taraması yok — tek alan `slug` eşitlik sorgusu.)
+ */
+async function _findSongByStoredSlugFallback(
+  artistSlug: string,
+  songSlug: string,
+): Promise<(SongDoc & { id: string }) | null> {
+  const snap = await db().collection(COLLECTION).where("slug", "==", songSlug).limit(25).get();
+  const approved = snap.docs.filter((d) => (d.data() as SongDoc).moderationStatus === "approved");
+  if (approved.length === 0) return null;
+  const normArtist = normalizeSlugMatch(artistSlug);
+  const byArtist = approved.filter(
+    (d) => normalizeSlugMatch((d.data() as SongDoc).artistSlug) === normArtist,
+  );
+  if (byArtist.length === 1) {
+    return sanitizeSong({ id: byArtist[0].id, ...(byArtist[0].data() as SongDoc) });
+  }
+  if (approved.length === 1 && byArtist.length === 0) {
+    console.warn("[songs] Bu slug için tek onaylı şarkı var; URL sanatçı slug’ı belgeden farklı", {
+      urlArtistSlug: artistSlug,
+      docArtistSlug: (approved[0].data() as SongDoc).artistSlug,
+      songSlug,
+    });
+    return sanitizeSong({ id: approved[0].id, ...(approved[0].data() as SongDoc) });
+  }
+  return null;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Raw (uncached) queries                                             */
 /* ------------------------------------------------------------------ */
 
-async function _getSongBySlugs(artistSlug: string, songSlug: string): Promise<(SongDoc & { id: string }) | null> {
+async function _querySongBySlugs(artistSlug: string, songSlug: string): Promise<(SongDoc & { id: string }) | null> {
   try {
     const snap = await db()
       .collection(COLLECTION)
@@ -48,23 +140,26 @@ async function _getSongBySlugs(artistSlug: string, songSlug: string): Promise<(S
       .limit(1)
       .get();
 
-    if (snap.empty) return null;
-    const doc = snap.docs[0];
-    return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
-  } catch (err: unknown) {
-    if ((err as { code?: number }).code === 9) {
-      console.warn("[songs] Composite index missing for slug query, falling back to broader query");
-      const snap = await db()
-        .collection(COLLECTION)
-        .where("artistSlug", "==", artistSlug)
-        .where("moderationStatus", "==", "approved")
-        .get();
-      const doc = snap.docs.find((d) => (d.data() as SongDoc).slug === songSlug);
-      if (!doc) return null;
+    if (!snap.empty) {
+      const doc = snap.docs[0];
       return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+    }
+    const byArtist = await _findSongByArtistSlugFallback(artistSlug, songSlug);
+    if (byArtist) return byArtist;
+    return await _findSongByStoredSlugFallback(artistSlug, songSlug);
+  } catch (err: unknown) {
+    if (isFailedPrecondition(err)) {
+      console.warn("[songs] Slug sorgusu indeks/önkoşul hatası, sanatçı bazlı yedek sorguya geçiliyor", err);
+      const byArtist = await _findSongByArtistSlugFallback(artistSlug, songSlug);
+      if (byArtist) return byArtist;
+      return await _findSongByStoredSlugFallback(artistSlug, songSlug);
     }
     throw err;
   }
+}
+
+async function _getSongBySlugs(artistSlug: string, songSlug: string): Promise<(SongDoc & { id: string }) | null> {
+  return withFirestoreRetry(`song:${artistSlug}/${songSlug}`, () => _querySongBySlugs(artistSlug, songSlug));
 }
 
 async function _getSongsByArtist(artistSlug: string): Promise<(SongDoc & { id: string })[]> {
@@ -184,16 +279,29 @@ async function _getFilterFacetOptions() {
 /*  Cached public API                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Tek şarkı — slug çifti ile (ISR cached) */
+/** Tek şarkı — slug çifti ile (ISR cached; null sonuç önbelleğe yazılmaz — v2 anahtarı eski null önbelleğini sıfırlar). */
 export function getSongBySlugs(artistSlug: string, songSlug: string) {
   return unstable_cache(
-    () => _getSongBySlugs(artistSlug, songSlug),
-    ["song-by-slugs", artistSlug, songSlug],
+    async () => {
+      const song = await _getSongBySlugs(artistSlug, songSlug);
+      if (song === null) {
+        const e = new Error(SONG_SLUG_CACHE_MISS);
+        e.name = "SongSlugCacheMiss";
+        throw e;
+      }
+      return song;
+    },
+    ["song-by-slugs-v2", artistSlug, songSlug],
     {
       tags: [songTag(artistSlug, songSlug), TAGS.SONGS_ALL],
       revalidate: TTL.SONG_DETAIL,
     },
-  )();
+  )().catch((e: unknown) => {
+    if (e instanceof Error && e.message === SONG_SLUG_CACHE_MISS) {
+      return null;
+    }
+    throw e;
+  });
 }
 
 /** Tek şarkı — ID ile (uncached, discover resolver uses its own cache) */

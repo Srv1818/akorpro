@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { getClientAuth } from "@/lib/firebase/client";
@@ -13,11 +13,13 @@ type MeResponse = { user: SessionUser | null };
 
 export function AuthHeaderActions() {
   const router = useRouter();
+  const pathname = usePathname();
   // Sadece maili değil, tüm kullanıcı objesini tutalım (eğer profil resmi vs. varsa kullanırız)
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
   // Açılır menünün açık/kapalı durumu
   const [isOpen, setIsOpen] = useState(false);
 
+  /* pathname: /giris sonrası layout unmount olmaz; rota değişince oturumu yeniden oku (önceki UI’ı tutup arka planda güncelle). */
   useEffect(() => {
     const ac = new AbortController();
     void (async () => {
@@ -37,7 +39,7 @@ export function AuthHeaderActions() {
       }
     })();
     return () => ac.abort();
-  }, []);
+  }, [pathname]);
 
   async function onSignOut() {
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });

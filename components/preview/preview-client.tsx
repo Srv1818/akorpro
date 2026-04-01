@@ -1540,11 +1540,9 @@ export function PreviewClient({
           <button
             type="button"
             onClick={() => {
-              setSceneMode((v) => {
-                const next = !v;
-                replaceSceneParam(next);
-                return next;
-              });
+              const next = !sceneMode;
+              setSceneMode(next);
+              replaceSceneParam(next);
             }}
             aria-pressed={sceneMode}
             aria-label="Sahne Modu"
