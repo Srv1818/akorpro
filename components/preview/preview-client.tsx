@@ -364,7 +364,7 @@ const TRANSPOSE_SEMITONE_MAX = 5;
 const LYRICS_FONT_SIZE_MIN = 14;
 const LYRICS_FONT_SIZE_MAX = 32;
 const LYRICS_FONT_SIZE_STEP = 1;
-const LYRICS_FONT_SIZE_DEFAULT = 18;
+const LYRICS_FONT_SIZE_DEFAULT = 17;
 
 function clampTransposeSemitones(n: number): number {
   return Math.max(TRANSPOSE_SEMITONE_MIN, Math.min(TRANSPOSE_SEMITONE_MAX, n));
@@ -1290,7 +1290,7 @@ export function PreviewClient({
                   onClick={() => setChordStripOpen(true)}
                   aria-expanded={chordStripOpen}
                   aria-controls="chord-strip-panel"
-                  className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 min-h-[44px]"
+                  className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 min-h-[36px]"
                 >
                   Akorlar
                 </button>
@@ -1300,7 +1300,7 @@ export function PreviewClient({
                   onClick={() =>
                     setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP))
                   }
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Söz yazısını küçült"
                   title="Söz yazısını küçült"
                 >
@@ -1312,7 +1312,7 @@ export function PreviewClient({
                   onClick={() =>
                     setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP))
                   }
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Söz yazısını büyüt"
                   title="Söz yazısını büyüt"
                 >
@@ -1322,7 +1322,7 @@ export function PreviewClient({
                   type="button"
                   disabled={!canDecreaseTranspose}
                   onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Transpoze: yarım ton düşür"
                   title="Transpoze: yarım ton düşür"
                 >
@@ -1332,7 +1332,7 @@ export function PreviewClient({
                   type="button"
                   disabled={!canIncreaseTranspose}
                   onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Transpoze: yarım ton yükselt"
                   title="Transpoze: yarım ton yükselt"
                 >
@@ -1342,7 +1342,7 @@ export function PreviewClient({
                   type="button"
                   aria-pressed={splitLyricsEnabled}
                   onClick={() => setSplitLyricsEnabled((prev) => !prev)}
-                  className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                  className={`inline-flex min-h-[36px] items-center justify-center rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${
                     splitLyricsEnabled
                       ? "border-emerald-400/60 bg-emerald-500/25 text-white"
                       : "border-white/15 bg-white/5 text-white hover:bg-white/10"
@@ -1359,7 +1359,7 @@ export function PreviewClient({
                     if (!prevSongHref) return;
                     router.push(prevSongHref);
                   }}
-                  className="rounded-lg border border-white/10 bg-gradient-to-r from-amber-700 via-amber-500 to-yellow-400 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-amber-600 hover:via-amber-400 hover:to-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-white/10 bg-gradient-to-r from-amber-700 via-amber-500 to-yellow-400 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-amber-600 hover:via-amber-400 hover:to-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
                   title={
                     playlistNextLoading
                       ? "Liste sırası yükleniyor…"
@@ -1389,7 +1389,7 @@ export function PreviewClient({
                     if (!nextSongHref) return;
                     router.push(nextSongHref);
                   }}
-                  className="rounded-lg border border-white/10 bg-gradient-to-r from-yellow-400 via-amber-500 to-amber-700 px-3 py-2 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-yellow-300 hover:via-amber-400 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-white/10 bg-gradient-to-r from-yellow-400 via-amber-500 to-amber-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-yellow-300 hover:via-amber-400 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
                   title={
                     playlistNextLoading
                       ? "Liste sırası yükleniyor…"
@@ -1577,14 +1577,14 @@ export function PreviewClient({
         </>
       ) : null}
 
-      <div className="mt-2 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-1 flex flex-col gap-3 sm:mt-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-start gap-x-1 gap-y-1.5">
             <button
               type="button"
               onClick={() => setOpenWidgets((w) => ({ ...w, circle: !w.circle }))}
               aria-pressed={openWidgets.circle}
-            className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
+            className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
                 openWidgets.circle
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -1602,7 +1602,7 @@ export function PreviewClient({
                 })
               }
               aria-pressed={openWidgets.gamlar}
-            className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
+            className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
                 openWidgets.gamlar
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -1629,7 +1629,7 @@ export function PreviewClient({
               onClick={() => setChordStripOpen((o) => !o)}
               aria-expanded={chordStripOpen}
               aria-controls="chord-strip-panel"
-              className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
+              className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
                 chordStripOpen
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -1639,8 +1639,8 @@ export function PreviewClient({
             </button>
           </div>
         </div>
-        <div className="flex w-full items-center justify-center sm:w-auto sm:flex-1">
-          <div className="relative inline-flex items-center justify-center">
+        <div className="flex w-full items-end justify-center sm:w-auto sm:flex-1">
+          <div className="relative inline-flex items-end justify-center">
           <button
             type="button"
             onClick={() => {
@@ -1651,16 +1651,16 @@ export function PreviewClient({
             aria-pressed={sceneMode}
             aria-label="Sahne Modu"
             title="Sahne Modu"
-            className={`group relative inline-flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+            className={`group relative inline-flex min-h-[36px] w-11 flex-col items-center justify-center gap-px rounded-md border px-0.5 py-0.5 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
               sceneMode
                 ? "border-amber-200/70 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 shadow-lg shadow-amber-500/45 ring-2 ring-amber-300/50"
                 : "border-white/15 bg-gradient-to-b from-amber-500 via-amber-600 to-orange-700 shadow-md shadow-amber-500/35 hover:from-amber-400 hover:via-amber-500 hover:to-orange-600"
             }`}
           >
-            <span aria-hidden className="text-lg leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
+            <span aria-hidden className="text-base leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
               ★
             </span>
-            <span className="rounded bg-black/35 px-1.5 py-0.5 text-[10px] font-semibold leading-none tracking-wide text-white/95">
+            <span className="rounded bg-black/35 px-1 py-0.5 text-[9px] font-semibold leading-none tracking-wide text-white/95">
               SAHNE
             </span>
           </button>
@@ -1691,7 +1691,7 @@ export function PreviewClient({
           <button
             type="button"
             onClick={resetOriginal}
-            className="col-span-2 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface min-h-[44px] sm:col-span-1"
+            className="col-span-2 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs font-medium text-foreground hover:bg-surface min-h-[36px] sm:col-span-1"
           >
             Orijinale dön
           </button>
@@ -1780,7 +1780,7 @@ export function PreviewClient({
                     type="button"
                     aria-pressed={isActive}
                     onClick={() => replaceTranspose(delta)}
-                    className={`select-none inline-flex min-h-[44px] w-full min-w-[44px] items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium leading-none transition sm:w-auto ${
+                    className={`select-none inline-flex min-h-[36px] w-full min-w-[36px] items-center justify-center rounded-md border px-1.5 py-1 text-xs font-medium leading-none transition sm:w-auto ${
                       isActive
                         ? "border-accent bg-accent text-accent-foreground"
                         : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -1798,7 +1798,7 @@ export function PreviewClient({
                 onClick={() =>
                   setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP))
                 }
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Söz yazısını küçült"
                 title="Söz yazısını küçült"
               >
@@ -1810,7 +1810,7 @@ export function PreviewClient({
                 onClick={() =>
                   setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP))
                 }
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Söz yazısını büyüt"
                 title="Söz yazısını büyüt"
               >
@@ -1820,7 +1820,7 @@ export function PreviewClient({
                 type="button"
                 aria-pressed={splitLyricsEnabled}
                 onClick={() => setSplitLyricsEnabled((prev) => !prev)}
-                className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                className={`inline-flex min-h-[36px] items-center justify-center rounded-lg border px-2 py-1.5 text-sm font-semibold transition ${
                   splitLyricsEnabled
                     ? "border-accent bg-accent text-accent-foreground"
                     : "border-border bg-bg text-foreground hover:bg-surface"
@@ -1841,7 +1841,7 @@ export function PreviewClient({
               disabled={!canSave || saveState === "saving"}
               onClick={() => void onSave()}
               title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-              className="w-full rounded-lg bg-accent px-3 py-2.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] sm:w-auto"
+              className="w-full rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[36px] sm:w-auto"
             >
               {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
             </button>
@@ -1851,7 +1851,7 @@ export function PreviewClient({
           ) : firebaseUid === null ? (
             <Link
               href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
-              className="flex min-h-[44px] w-full items-center justify-center rounded-lg border border-border px-3 py-2.5 text-xs font-medium text-foreground hover:bg-surface sm:inline-flex sm:w-auto"
+              className="flex min-h-[36px] w-full items-center justify-center rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface sm:inline-flex sm:w-auto"
             >
               Giriş (Kaydet için)
             </Link>

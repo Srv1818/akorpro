@@ -30,7 +30,7 @@ export function AutoScrollButton() {
         type="button"
         onClick={() => setActive((a) => !a)}
         aria-pressed={active}
-        className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
+        className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
           active
             ? "border-accent bg-accent text-accent-foreground"
             : "border-border bg-surface text-foreground hover:border-accent/50"
@@ -43,7 +43,7 @@ export function AutoScrollButton() {
           value={speed}
           onChange={(e) => setSpeed(Number(e.target.value))}
           aria-label="Kaydırma hızı"
-          className="rounded border border-border bg-bg px-2 py-2 text-sm text-foreground outline-none min-h-[44px]"
+          className="rounded border border-border bg-bg px-2 py-1.5 text-sm text-foreground outline-none min-h-[36px]"
         >
           <option value={0.5}>Yavaş</option>
           <option value={1}>Normal</option>
@@ -152,7 +152,7 @@ export function MetronomeButton({
           onClick={() => onActiveChange(!active)}
           aria-pressed={active}
           aria-label={active ? "Metronom durdur" : "Metronom başlat"}
-          className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
+          className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
             active
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground hover:border-accent/50"
@@ -187,7 +187,7 @@ export function MetronomeButton({
                 if (!Number.isFinite(n)) return;
                 onBpmChange(clampBpm(n));
               }}
-              className="w-16 rounded border border-border bg-bg px-2 py-2 text-sm text-foreground outline-none min-h-[44px]"
+              className="w-16 rounded border border-border bg-bg px-2 py-1.5 text-sm text-foreground outline-none min-h-[36px]"
               aria-label="BPM"
             />
             BPM
@@ -196,7 +196,7 @@ export function MetronomeButton({
             <select
               value={timeSignature}
               onChange={(e) => onTimeSignatureChange(e.target.value)}
-              className="rounded border border-border bg-bg px-2 py-2 text-sm text-foreground outline-none min-h-[44px]"
+              className="rounded border border-border bg-bg px-2 py-1.5 text-sm text-foreground outline-none min-h-[36px]"
               aria-label="Ölçü"
             >
               {timeSignatureOptions.map((opt) => (
@@ -233,7 +233,7 @@ export function CopyButton({ text }: { text: string }) {
       type="button"
       onClick={() => void copy()}
       aria-label="Akor metnini kopyala"
-      className="rounded-lg border border-border bg-surface px-3 py-2.5 text-xs font-medium text-foreground transition hover:border-accent/50 min-h-[44px]"
+      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:border-accent/50 min-h-[36px]"
     >
       {copied ? "Kopyalandı ✓" : "Kopyala"}
     </button>
@@ -246,7 +246,7 @@ export function PrintButton() {
       type="button"
       onClick={() => window.print()}
       aria-label="Sayfayı yazdır"
-      className="rounded-lg border border-border bg-surface px-3 py-2.5 text-xs font-medium text-foreground transition hover:border-accent/50 min-h-[44px]"
+      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground transition hover:border-accent/50 min-h-[36px]"
     >
       Yazdır
     </button>

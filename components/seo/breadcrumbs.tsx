@@ -26,7 +26,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
     <>
       <JsonLd data={jsonLd} />
-      <nav aria-label="Breadcrumb" className="mx-auto min-w-0 max-w-6xl px-4 pt-4 sm:px-6 lg:px-8">
+      <nav aria-label="Breadcrumb" className="mx-auto min-w-0 max-w-6xl px-4 pt-3 sm:px-6 lg:px-8">
         <ol className="flex w-full min-w-0 max-w-full flex-nowrap items-baseline gap-x-2 overflow-x-auto overscroll-x-contain pb-1 text-sm leading-tight text-muted [-webkit-overflow-scrolling:touch]">
           {items.map((item, i) => (
             <li

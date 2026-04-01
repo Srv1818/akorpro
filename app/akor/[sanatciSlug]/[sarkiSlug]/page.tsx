@@ -134,7 +134,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
           />
         }
       />
-      <div className="mx-auto max-w-6xl px-4 pb-10 pt-3 sm:px-6 sm:pt-6 lg:px-8 lg:pt-10">
+      <div className="mx-auto max-w-6xl px-4 pb-10 pt-1.5 sm:px-6 sm:pt-3 lg:px-8 lg:pt-4">
         {listReturnHref ? (
           <ChordReturnLink
             href={listReturnHref}
