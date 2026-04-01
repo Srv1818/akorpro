@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  extractUniqueChordTokensInOrder,
   parseTonicFromOriginalKey,
   signedSemitoneDelta,
   transposeChordToken,
@@ -155,5 +156,20 @@ describe("transposeChordBodyText", () => {
     expect(result).toContain("Em7");
     expect(result).toContain("B7");
     expect(result).toContain("C");
+  });
+});
+
+describe("extractUniqueChordTokensInOrder", () => {
+  it("returns unique chords in first-seen order", () => {
+    expect(extractUniqueChordTokensInOrder("Am F C G Am")).toEqual(["Am", "F", "C", "G"]);
+  });
+
+  it("dedupes case-insensitively", () => {
+    expect(extractUniqueChordTokensInOrder("Am am am")).toEqual(["Am"]);
+  });
+
+  it("returns empty for empty or no chords", () => {
+    expect(extractUniqueChordTokensInOrder("")).toEqual([]);
+    expect(extractUniqueChordTokensInOrder("sadece söz")).toEqual([]);
   });
 });

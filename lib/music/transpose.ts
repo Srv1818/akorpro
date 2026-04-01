@@ -27,13 +27,34 @@ export function transposeChordToken(token: string, semitones: number): string {
   return `${newRoot}${quality}${digits}`;
 }
 
+/** Metindeki akor tokenlarıyla aynı desen (transpose ile uyumlu). */
+const CHORD_TOKEN_REGEX = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
+
+/**
+ * Metinde geçen akorları ilk göründükleri sırayla, yinelenmeden döndürür (görüntülenen metinle uyumlu olması için transpoze sonrası metin verin).
+ */
+export function extractUniqueChordTokensInOrder(text: string): string[] {
+  if (!text) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const re = new RegExp(CHORD_TOKEN_REGEX.source, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const full = m[0];
+    const norm = full.toLowerCase();
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    out.push(full);
+  }
+  return out;
+}
+
 export function transposeChordBodyText(text: string, semitones: number): string {
   if (!text) return text;
   if (!Number.isFinite(semitones) || semitones === 0) return text;
 
-  const chordTokenRegex = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
-
-  return text.replace(chordTokenRegex, (full, root: string, quality: string | undefined, digits: string | undefined) => {
+  const re = new RegExp(CHORD_TOKEN_REGEX.source, CHORD_TOKEN_REGEX.flags);
+  return text.replace(re, (full, root: string, quality: string | undefined, digits: string | undefined) => {
     const suffix = `${quality ?? ""}${digits ?? ""}`;
     return transposeChordToken(`${root}${suffix}`, semitones);
   });

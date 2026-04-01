@@ -23,6 +23,7 @@ const EMPTY: Song[] = [];
 export function AdminSongsClient() {
   const [songs, setSongs] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
@@ -63,6 +64,9 @@ export function AdminSongsClient() {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setMsg("");
     const fd = new FormData(e.currentTarget);
     const body: Record<string, unknown> = {};
     fd.forEach((v, k) => { if (typeof v === "string" && v.trim()) body[k] = v.trim(); });
@@ -71,10 +75,41 @@ export function AdminSongsClient() {
 
     const url = editId ? `/api/admin/songs/${editId}` : "/api/admin/songs";
     const method = editId ? "PATCH" : "POST";
-    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const data = await res.json();
-    setMsg(res.ok ? (editId ? "Güncellendi." : `Oluşturuldu: ${data.id}`) : (data.error ?? "Hata."));
-    if (res.ok) {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      let data: unknown = null;
+      let text: string | null = null;
+      try {
+        data = await res.json();
+      } catch {
+        try {
+          text = await res.text();
+        } catch {
+          text = null;
+        }
+      }
+
+      const errFromJson =
+        data && typeof data === "object" && "error" in data && typeof (data as { error?: unknown }).error === "string"
+          ? (data as { error: string }).error
+          : null;
+
+      if (!res.ok) {
+        setMsg(errFromJson ?? (text && text.trim() ? text.trim() : "Hata."));
+        return;
+      }
+
+      const createdId =
+        data && typeof data === "object" && "id" in data && typeof (data as { id?: unknown }).id === "string"
+          ? (data as { id: string }).id
+          : null;
+
+      setMsg(editId ? "Güncellendi." : `Oluşturuldu${createdId ? `: ${createdId}` : "."}`);
       setShowForm(false);
       setEditId(null);
       setTitle("");
@@ -84,6 +119,10 @@ export function AdminSongsClient() {
       setArtistSlug("");
       setArtistSlugDirty(false);
       fetchSongs();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "İstek başarısız.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -190,8 +229,12 @@ export function AdminSongsClient() {
           <input name="copyrightSource" placeholder="Telif notu" className="col-span-full rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
           <textarea name="chordBody" placeholder="Akor + söz gövdesi *" required rows={6} className="col-span-full rounded-lg border border-border bg-bg px-3 py-2 text-sm font-mono" />
           <div className="col-span-full flex gap-2">
-            <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground">
-              {editId ? "Güncelle" : "Oluştur"}
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Kaydediliyor…" : (editId ? "Güncelle" : "Oluştur")}
             </button>
             <button
               type="button"

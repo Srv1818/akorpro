@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   addDoc,
   collection,
@@ -18,6 +25,7 @@ import {
   where,
   limit,
 } from "firebase/firestore";
+import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { AutoScrollButton, MetronomeButton } from "@/components/preview/preview-toolbar";
 import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
@@ -30,7 +38,9 @@ import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { getClientFirestore } from "@/lib/firebase/client";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
+import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
 import {
+  extractUniqueChordTokensInOrder,
   parseTonicFromOriginalKey,
   signedSemitoneDelta,
   transposeChordBodyText,
@@ -235,6 +245,7 @@ export function PreviewClient({
     setMetronomeBpm(initialBpmNumber);
     setMetronomeTimeSignature(initialTimeSignatureValue);
     setSaveAndAddOpen(false);
+    setChordStripOpen(false);
   }, [songId, initialBpmNumber, initialTimeSignatureValue]);
 
   const fromUrl = Number(searchParams.get("transpose") ?? "0");
@@ -253,6 +264,7 @@ export function PreviewClient({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveAndAddOpen, setSaveAndAddOpen] = useState(false);
+  const [chordStripOpen, setChordStripOpen] = useState(false);
 
   const [playlistNextSong, setPlaylistNextSong] = useState<{ title: string; href: string } | null>(null);
   const [playlistNextLoading, setPlaylistNextLoading] = useState(false);
@@ -274,6 +286,15 @@ export function PreviewClient({
     // (İstersen daha sonra useMemo ile optimize edebiliriz.)
     return transposeChordBodyText(chordBody, semitones);
   })();
+
+  const chordStripTokens = useMemo(
+    () => extractUniqueChordTokensInOrder(displayedChordBody),
+    [displayedChordBody],
+  );
+  const chordStripFingerings = useMemo(
+    () => chordStripTokens.map((token) => resolveChordTokenToFingering(token)),
+    [chordStripTokens],
+  );
 
   const sceneParam = searchParams.get("scene");
   const sceneParamActive = sceneParam === "1" || sceneParam === "true";
@@ -399,6 +420,15 @@ export function PreviewClient({
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [openWidgets]);
+
+  useEffect(() => {
+    if (!chordStripOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChordStripOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chordStripOpen]);
 
   useEffect(() => {
     if (!openWidgets.gamlar) return;
@@ -982,6 +1012,15 @@ export function PreviewClient({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setChordStripOpen(true)}
+                  aria-expanded={chordStripOpen}
+                  aria-controls="chord-strip-panel"
+                  className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 min-h-[44px]"
+                >
+                  Akorlar
+                </button>
+                <button
+                  type="button"
                   disabled={!prevSongHref || playlistNextLoading}
                   onClick={() => {
                     if (!prevSongHref) return;
@@ -1141,6 +1180,61 @@ export function PreviewClient({
         </div>
       ) : null}
 
+      {chordStripOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-[80] bg-black/40 print:hidden"
+            aria-hidden
+            onMouseDown={() => setChordStripOpen(false)}
+          />
+          <div
+            id="chord-strip-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chord-strip-title"
+            className="fixed left-0 right-0 top-0 z-[81] max-h-[min(70vh,32rem)] overflow-hidden print:hidden"
+          >
+            <div className="mx-auto flex max-h-[min(70vh,32rem)] max-w-6xl flex-col border-b border-border bg-surface shadow-lg sm:rounded-b-2xl">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+                <p id="chord-strip-title" className="text-sm font-medium text-foreground">
+                  Şarkıdaki akorlar
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setChordStripOpen(false)}
+                  className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface min-h-[44px]"
+                >
+                  Kapat
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-4 pb-4 pt-2">
+                {chordStripFingerings.length === 0 ? (
+                  <p className="text-sm text-muted">Bu metinde tanınan akor yok.</p>
+                ) : (
+                  <div className="flex flex-wrap items-stretch justify-start gap-3 sm:flex-nowrap sm:overflow-x-auto sm:pb-1">
+                    {chordStripFingerings.map((entry, i) => {
+                      const pos = entry.chord?.positions[0] ?? null;
+                      return (
+                        <div key={`${entry.token}-${i}`} className="shrink-0">
+                          {entry.chord && pos ? (
+                            <GuitarChordDiagramClassic position={pos} title={entry.token} />
+                          ) : (
+                            <div className="flex min-h-[120px] w-[140px] flex-col items-center justify-center rounded-xl border border-border bg-bg px-2 py-3 text-center">
+                              <p className="font-mono text-sm font-semibold text-foreground">{entry.token}</p>
+                              <p className="mt-1 text-xs text-muted">Basılış bulunamadı</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+
       <div className="mt-2 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-start gap-x-1 gap-y-1.5">
@@ -1187,6 +1281,20 @@ export function PreviewClient({
               showControls={false}
             />
             <AutoScrollButton />
+            <button
+              type="button"
+              id="chord-strip-trigger"
+              onClick={() => setChordStripOpen((o) => !o)}
+              aria-expanded={chordStripOpen}
+              aria-controls="chord-strip-panel"
+              className={`rounded-lg border px-2 py-2.5 text-xs font-medium transition min-h-[44px] sm:px-3 ${
+                chordStripOpen
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-bg text-foreground hover:border-accent/50"
+              }`}
+            >
+              Akorlar
+            </button>
           </div>
         </div>
         <div className="flex w-full justify-center sm:w-auto sm:flex-1">
