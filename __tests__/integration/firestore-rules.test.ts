@@ -124,7 +124,7 @@ describe("user playlists", () => {
   });
 
   it("non-owner cannot delete", async () => {
-    const ownerDb = admin("admin1");
+    const ownerDb = authed("user1");
     await setDoc(doc(ownerDb, "users", "user1", "playlists", "p1"), {
       name: "List",
       schemaVersion: 1,
