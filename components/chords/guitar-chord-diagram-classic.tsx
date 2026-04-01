@@ -55,8 +55,12 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
   const nutH = 6;
   /** × / ○ işaretleri (nut üstü); fazla boşluk vermemek için kısa tutulur. */
   const topH = 17;
-  /** Izgara yanındaki yatay boşluk (kart kenarına yaklaştırır). */
-  const padX = 6;
+  /** Sol dış boşluk + perde numarası sütunu (her satırda gerçek perde no). */
+  const padXOuter = 4;
+  const fretLabelW = 18;
+  const gridLeft = padXOuter + fretLabelW;
+  /** Sağ yatay boşluk. */
+  const padXRight = 6;
   /** Üst: başlık ile ×/○ arası; alt: son perde altı (fazla boşluk bırakmadan). */
   const padYTop = 3;
   const padYBottom = 4;
@@ -67,7 +71,7 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
 
   const gridW = STRING_COUNT * strW;
   const gridH = topH + nutH + numRows * rowH;
-  const w = padX * 2 + gridW;
+  const w = gridLeft + gridW + padXRight;
   const h = padYTop + gridH + padYBottom;
 
   const baseY = padYTop;
@@ -77,7 +81,7 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
     const fretRow = position.barres - startFret;
     if (fretRow >= 0 && fretRow < numRows) {
       const cy = baseY + topH + nutH + fretRow * rowH + rowH / 2;
-      const x = padX + barreSpan.from * strW + strW * 0.1;
+      const x = gridLeft + barreSpan.from * strW + strW * 0.1;
       const width = (barreSpan.to - barreSpan.from + 1) * strW - strW * 0.2;
       barreRect = { x, y: cy - barreH / 2, width, height: barreH, ry: barreH / 2 };
     }
@@ -102,10 +106,58 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
         >
           <title>{title}</title>
 
-          {/* Sustur / açık */}
+          {/* Nut (perde alanının arkasında) */}
+          <rect
+            x={gridLeft}
+            y={baseY + topH}
+            width={gridW}
+            height={nutH}
+            className="fill-[rgb(var(--color-surface))] stroke-foreground"
+            strokeWidth={1.25}
+            rx={0.5}
+          />
+
+          {/* Perde çizgileri (yatay) */}
+          {Array.from({ length: numRows }, (_, r) => {
+            const y = baseY + topH + nutH + (r + 1) * rowH;
+            return (
+              <line
+                key={`h-${r}`}
+                x1={gridLeft}
+                x2={gridLeft + gridW}
+                y1={y}
+                y2={y}
+                className="stroke-[rgb(var(--color-border))]"
+                strokeWidth={1}
+                opacity={0.8}
+              />
+            );
+          })}
+
+          {/* Altı tel: her biri parmak dairesiyle aynı x (tel merkezi); kalın/ince E biraz daha belirgin. */}
+          {Array.from({ length: STRING_COUNT }, (_, s) => {
+            const x = gridLeft + s * strW + strW / 2;
+            const yTop = baseY + 2;
+            const yBot = baseY + topH + nutH + numRows * rowH;
+            const thick = s === 0 || s === STRING_COUNT - 1;
+            return (
+              <line
+                key={`str-${s}`}
+                x1={x}
+                x2={x}
+                y1={yTop}
+                y2={yBot}
+                className="stroke-[rgb(var(--color-border))]"
+                strokeWidth={thick ? 2.1 : 1.15}
+                opacity={thick ? 0.95 : 0.88}
+              />
+            );
+          })}
+
+          {/* Sustur / açık (tellerin üstünde) */}
           {Array.from({ length: STRING_COUNT }, (_, s) => {
             const v = fretsParsed[s] ?? "mute";
-            const cx = padX + s * strW + strW / 2;
+            const cx = gridLeft + s * strW + strW / 2;
             const cy = baseY + topH / 2;
             if (v === "mute") {
               return (
@@ -135,62 +187,23 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
             return null;
           })}
 
-          {/* Nut */}
-          <rect
-            x={padX}
-            y={baseY + topH}
-            width={gridW}
-            height={nutH}
-            className="fill-[rgb(var(--color-surface))] stroke-foreground"
-            strokeWidth={1.25}
-            rx={0.5}
-          />
-
-          {/* Perde aralıkları (iç yatay çizgiler) */}
+          {/* Perde numaraları: her yatay sıra = gerçek perde (startFret …). */}
           {Array.from({ length: numRows }, (_, r) => {
-            const y = baseY + topH + nutH + (r + 1) * rowH;
+            const fretNum = startFret + r;
+            const yMid = baseY + topH + nutH + r * rowH + rowH / 2;
             return (
-              <line
-                key={`h-${r}`}
-                x1={padX}
-                x2={padX + gridW}
-                y1={y}
-                y2={y}
-                className="stroke-[rgb(var(--color-border))]"
-                strokeWidth={1}
-                opacity={0.8}
-              />
+              <text
+                key={`fret-nr-${r}`}
+                x={padXOuter + fretLabelW / 2}
+                y={yMid}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="fill-muted text-[10px] font-semibold tabular-nums"
+              >
+                {fretNum}
+              </text>
             );
           })}
-
-          {/* Tel çizgileri */}
-          {Array.from({ length: STRING_COUNT + 1 }, (_, c) => {
-            const x = padX + c * strW;
-            const y0 = baseY + topH + nutH;
-            const y1 = y0 + numRows * rowH;
-            return (
-              <line
-                key={`v-${c}`}
-                x1={x}
-                x2={x}
-                y1={y0}
-                y2={y1}
-                className="stroke-[rgb(var(--color-border))]"
-                strokeWidth={c === 0 || c === STRING_COUNT ? 1.15 : 1}
-                opacity={0.88}
-              />
-            );
-          })}
-
-          {startFret > 1 ? (
-            <text
-              x={2}
-              y={baseY + topH + nutH + rowH / 2 + 3}
-              className="fill-muted text-[10px] font-semibold tabular-nums"
-            >
-              {startFret}
-            </text>
-          ) : null}
 
           {barreRect ? (
             <rect
@@ -213,7 +226,7 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
             const atBarre = position.barres != null && v === position.barres;
             if (atBarre) return null;
 
-            const cx = padX + s * strW + strW / 2;
+            const cx = gridLeft + s * strW + strW / 2;
             const cy = baseY + topH + nutH + fretRow * rowH + rowH / 2;
             const fg = fingers[s] ?? "0";
             const showFinger = fg && fg !== "0";

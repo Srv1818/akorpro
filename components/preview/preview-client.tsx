@@ -29,9 +29,8 @@ import {
 } from "firebase/firestore";
 import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
-import { AutoScrollButton, MetronomeButton } from "@/components/preview/preview-toolbar";
+import { AutoScrollButton, MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
 import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
-import { FloatingWidgetDock } from "@/components/layout/floating-widget-dock";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { SongOverrideDoc } from "@/lib/types/song-override";
 import type { KeyMode } from "@/lib/types/content";
@@ -52,6 +51,7 @@ import {
 import { X } from "lucide-react";
 
 const OVERRIDE_SCHEMA_VERSION = 1;
+const PLAYLIST_SCHEMA_VERSION = 1;
 
 type Props = {
   songId: string;
@@ -69,7 +69,7 @@ type Props = {
 };
 
 type PlaylistRow = { id: string; name: string };
-type WidgetId = "circle" | "gamlar";
+type WidgetId = "circle" | "gamlar" | "metronome";
 const INLINE_CHORD_REGEX = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/g;
 const BRACKET_CHORD_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/g;
 
@@ -417,14 +417,20 @@ export function PreviewClient({
   const semitones = usePreviewToolsStore((s) => s.transposeSemitones);
   const setTransposeSemitones = usePreviewToolsStore((s) => s.setTransposeSemitones);
   const resetTonalAndTranspose = usePreviewToolsStore((s) => s.resetTonalAndTranspose);
-  const [openWidgets, setOpenWidgets] = useState<Record<WidgetId, boolean>>({ circle: false, gamlar: false });
+  const [openWidgets, setOpenWidgets] = useState<Record<WidgetId, boolean>>({
+    circle: false,
+    gamlar: false,
+    metronome: false,
+  });
   const [widgetOffsets, setWidgetOffsets] = useState<Record<WidgetId, { x: number; y: number }>>({
     circle: { x: 0, y: 0 },
     gamlar: { x: 0, y: 0 },
+    metronome: { x: 0, y: 0 },
   });
   const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, { width: number; height: number } | null>>({
     circle: null,
     gamlar: null,
+    metronome: null,
   });
   const widgetDragRef = useRef<{
     dragging: boolean;
@@ -460,6 +466,7 @@ export function PreviewClient({
     startWidth: 0,
     startHeight: 0,
   });
+  const sceneLyricsScrollRef = useRef<HTMLDivElement>(null);
 
   const initialBpm =
     typeof tempo === "number"
@@ -479,14 +486,13 @@ export function PreviewClient({
   const initialTimeSignatureValue = initialTimeSignature ?? "4/4";
 
   const [metronomeActive, setMetronomeActive] = useState(false);
-  const [metronomeOpen, setMetronomeOpen] = useState(false);
   const [metronomeBpm, setMetronomeBpm] = useState(initialBpmNumber);
   const [metronomeTimeSignature, setMetronomeTimeSignature] = useState(initialTimeSignatureValue);
 
   useEffect(() => {
     // Yeni şarkıya geçildiğinde metronomu "orijinal" tempo/ölçüyle sıfırla.
     setMetronomeActive(false);
-    setMetronomeOpen(false);
+    setOpenWidgets((w) => ({ ...w, metronome: false }));
     setMetronomeBpm(initialBpmNumber);
     setMetronomeTimeSignature(initialTimeSignatureValue);
     setSaveAndAddOpen(false);
@@ -520,8 +526,9 @@ export function PreviewClient({
 
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
-  const [addBusy, setAddBusy] = useState(false);
+  const [playlistModalBusy, setPlaylistModalBusy] = useState<null | "add" | "create">(null);
   const [addNotice, setAddNotice] = useState<{ variant: "success" | "error"; message: string } | null>(null);
+  const [saveModalNewListName, setSaveModalNewListName] = useState("");
 
   const urlTransposeRef = useRef(0);
   const transposeLockRef = useRef(false);
@@ -659,10 +666,12 @@ export function PreviewClient({
   }, [firebaseUid, searchParams, songId]);
 
   useEffect(() => {
-    if (!openWidgets.circle && !openWidgets.gamlar) return;
+    if (!openWidgets.circle && !openWidgets.gamlar && !openWidgets.metronome) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenWidgets({ circle: false, gamlar: false });
+      if (e.key === "Escape") {
+        setOpenWidgets({ circle: false, gamlar: false, metronome: false });
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -690,10 +699,10 @@ export function PreviewClient({
   }, [openWidgets.gamlar]);
 
   useEffect(() => {
-    if (!openWidgets.circle && !openWidgets.gamlar) return;
+    if (!openWidgets.circle && !openWidgets.gamlar && !openWidgets.metronome) return;
 
     const applyLayout = () => {
-      const opened = (["circle", "gamlar"] as const).filter((id) => openWidgets[id]);
+      const opened = (["circle", "gamlar", "metronome"] as const).filter((id) => openWidgets[id]);
       if (opened.length === 0) return;
 
       const isNarrow = window.innerWidth < WIDGET_MOBILE_MAX;
@@ -702,6 +711,8 @@ export function PreviewClient({
       for (const id of opened) {
         if (isNarrow) {
           computedSizes[id] = { width: window.innerWidth, height: window.innerHeight };
+        } else if (id === "metronome") {
+          computedSizes[id] = { width: 320, height: 240 };
         } else {
           const pad = 32;
           const maxWidth = Math.max(460, Math.min(window.innerWidth - pad, Math.floor(window.innerWidth * 0.66)));
@@ -739,6 +750,12 @@ export function PreviewClient({
             next[id] = {
               x: Math.max(-maxX, Math.min(maxX, existing.x)),
               y: Math.max(-maxY, Math.min(maxY, existing.y)),
+            };
+          } else if (id === "metronome") {
+            const edgePad = 20;
+            next[id] = {
+              x: 0,
+              y: Math.round(window.innerHeight / 2 - edgePad - size.height / 2 - 72),
             };
           } else {
             const edgePad = 20;
@@ -1058,6 +1075,10 @@ export function PreviewClient({
     }
   }, [playlists, selectedPlaylistId]);
 
+  useEffect(() => {
+    if (!saveAndAddOpen) setSaveModalNewListName("");
+  }, [saveAndAddOpen]);
+
   const replaceTranspose = useCallback(
     (n: number) => {
       transposeLockRef.current = true;
@@ -1111,7 +1132,7 @@ export function PreviewClient({
     resetTonalAndTranspose();
     urlTransposeRef.current = 0;
     setMetronomeActive(false);
-    setMetronomeOpen(false);
+    setOpenWidgets((w) => ({ ...w, metronome: false }));
     setMetronomeBpm(initialBpmNumber);
     setMetronomeTimeSignature(initialTimeSignatureValue);
     router.replace(pathname, { scroll: false });
@@ -1183,7 +1204,7 @@ export function PreviewClient({
       });
       return;
     }
-    setAddBusy(true);
+    setPlaylistModalBusy("add");
     try {
       const db = getClientFirestore();
       const itemsCol = collection(db, "users", firebaseUid, "playlists", selectedPlaylistId, "items");
@@ -1224,12 +1245,71 @@ export function PreviewClient({
     } catch (e) {
       setAddNotice({ variant: "error", message: formatError(e) });
     } finally {
-      setAddBusy(false);
+      setPlaylistModalBusy(null);
     }
   }, [
     artistSlug,
     firebaseUid,
     selectedPlaylistId,
+    semitones,
+    serverUid,
+    songId,
+    songSlug,
+    songTitle,
+  ]);
+
+  const onCreatePlaylistAndAdd = useCallback(async () => {
+    setAddNotice(null);
+    if (!firebaseUid) {
+      setAddNotice({ variant: "error", message: "Önce giriş yapın." });
+      return;
+    }
+    if (serverUid && serverUid !== firebaseUid) {
+      setAddNotice({
+        variant: "error",
+        message: "Oturum eşleşmiyor; çıkış yapıp yeniden giriş yapın.",
+      });
+      return;
+    }
+    const name = saveModalNewListName.trim();
+    if (!name) {
+      setAddNotice({ variant: "error", message: "Liste adı girin." });
+      return;
+    }
+    setPlaylistModalBusy("create");
+    try {
+      const db = getClientFirestore();
+      const playlistRef = await addDoc(collection(db, "users", firebaseUid, "playlists"), {
+        name,
+        schemaVersion: PLAYLIST_SCHEMA_VERSION,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistRef.id, "items");
+      await addDoc(itemsCol, {
+        order: 0,
+        songId,
+        title: songTitle,
+        artistSlug,
+        songSlug,
+        transposeSemitones: semitones,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistRef.id), {
+        updatedAt: serverTimestamp(),
+      });
+      setSelectedPlaylistId(playlistRef.id);
+      setSaveAndAddOpen(false);
+    } catch (e) {
+      setAddNotice({ variant: "error", message: formatError(e) });
+    } finally {
+      setPlaylistModalBusy(null);
+    }
+  }, [
+    artistSlug,
+    firebaseUid,
+    saveModalNewListName,
     semitones,
     serverUid,
     songId,
@@ -1243,8 +1323,13 @@ export function PreviewClient({
     firebaseConfigured && firebaseUid !== undefined && firebaseUid !== null && !sessionMismatch;
   const canAddToPlaylist =
     canSave && Boolean(selectedPlaylistId) && playlists.length > 0;
+  const canCreatePlaylistInModal = canSave && Boolean(saveModalNewListName.trim());
 
-  const widgetTitleById: Record<WidgetId, string> = { circle: "5'li Çember", gamlar: "Gamlar" };
+  const widgetTitleById: Record<WidgetId, string> = {
+    circle: "5'li Çember",
+    gamlar: "Gamlar",
+    metronome: "Metronom",
+  };
   const canDecreaseLyricsFont = lyricsFontSizePx > LYRICS_FONT_SIZE_MIN;
   const canIncreaseLyricsFont = lyricsFontSizePx < LYRICS_FONT_SIZE_MAX;
   const canDecreaseTranspose = semitones > TRANSPOSE_SEMITONE_MIN;
@@ -1294,6 +1379,7 @@ export function PreviewClient({
                 >
                   Akorlar
                 </button>
+                <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} variant="scene" />
                 <button
                   type="button"
                   disabled={!canDecreaseLyricsFont}
@@ -1424,7 +1510,7 @@ export function PreviewClient({
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 sm:p-6">
+            <div ref={sceneLyricsScrollRef} className="flex-1 overflow-auto p-4 sm:p-6">
               <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
                 <pre
                   className="song-chord-text overflow-x-auto whitespace-pre leading-snug text-white sm:leading-snug md:leading-snug"
@@ -1482,41 +1568,117 @@ export function PreviewClient({
                 </p>
               ) : null}
 
-              <label htmlFor="preview-playlist-modal" className="block text-xs font-medium text-muted">
-                Listeye ekle
-              </label>
-              <select
-                id="preview-playlist-modal"
-                value={selectedPlaylistId}
-                onChange={(e) => setSelectedPlaylistId(e.target.value)}
-                disabled={playlists.length === 0 || addBusy}
-                className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2 disabled:opacity-50"
-              >
-                {playlists.length === 0 ? <option value="">Henüz liste yok</option> : null}
-                {playlists.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              {playlists.length === 0 ? (
+                <>
+                  <p className="mb-2 text-xs text-muted">
+                    Henüz listeniz yok. Yeni liste adı yazıp oluşturduğunuzda şarkı bu listeye eklenir.
+                  </p>
+                  <label htmlFor="preview-playlist-modal-new" className="block text-xs font-medium text-muted">
+                    Liste oluştur
+                  </label>
+                  <input
+                    id="preview-playlist-modal-new"
+                    value={saveModalNewListName}
+                    onChange={(e) => setSaveModalNewListName(e.target.value)}
+                    disabled={playlistModalBusy !== null}
+                    placeholder="Liste adı"
+                    maxLength={120}
+                    className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2 disabled:opacity-50"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void onCreatePlaylistAndAdd();
+                      }
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <label htmlFor="preview-playlist-modal" className="block text-xs font-medium text-muted">
+                    Listeye ekle
+                  </label>
+                  <select
+                    id="preview-playlist-modal"
+                    value={selectedPlaylistId}
+                    onChange={(e) => setSelectedPlaylistId(e.target.value)}
+                    disabled={playlistModalBusy !== null}
+                    className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2 disabled:opacity-50"
+                  >
+                    {playlists.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
 
-              <div className="mt-4 flex gap-2">
-                <button
-                  type="button"
-                  disabled={!canAddToPlaylist || addBusy}
-                  onClick={() => void onAddToPlaylist()}
-                  className="flex-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {addBusy ? "Ekleniyor…" : "Listeye ekle"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSaveAndAddOpen(false)}
-                  className="rounded-lg border border-border bg-bg px-4 py-2 text-sm font-medium text-muted hover:bg-surface"
-                >
-                  Vazgeç
-                </button>
-              </div>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!canAddToPlaylist || playlistModalBusy !== null}
+                      onClick={() => void onAddToPlaylist()}
+                      className="flex-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {playlistModalBusy === "add" ? "Ekleniyor…" : "Listeye ekle"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSaveAndAddOpen(false)}
+                      className="rounded-lg border border-border bg-bg px-4 py-2 text-sm font-medium text-muted hover:bg-surface"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
+
+                  <div className="mt-4 border-t border-border pt-4">
+                    <label htmlFor="preview-playlist-modal-new" className="block text-xs font-medium text-muted">
+                      Yeni liste oluştur
+                    </label>
+                    <input
+                      id="preview-playlist-modal-new"
+                      value={saveModalNewListName}
+                      onChange={(e) => setSaveModalNewListName(e.target.value)}
+                      disabled={playlistModalBusy !== null}
+                      placeholder="Liste adı"
+                      maxLength={120}
+                      className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2 disabled:opacity-50"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void onCreatePlaylistAndAdd();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={!canCreatePlaylistInModal || playlistModalBusy !== null}
+                      onClick={() => void onCreatePlaylistAndAdd()}
+                      className="mt-2 w-full rounded-lg border border-border bg-bg px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {playlistModalBusy === "create" ? "Oluşturuluyor…" : "Liste oluştur"}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {playlists.length === 0 ? (
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={!canCreatePlaylistInModal || playlistModalBusy !== null}
+                    onClick={() => void onCreatePlaylistAndAdd()}
+                    className="flex-1 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface/80 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {playlistModalBusy === "create" ? "Oluşturuluyor…" : "Liste oluştur"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSaveAndAddOpen(false)}
+                    className="rounded-lg border border-border bg-bg px-4 py-2 text-sm font-medium text-muted hover:bg-surface"
+                  >
+                    Vazgeç
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1610,19 +1772,19 @@ export function PreviewClient({
             >
               Gamlar
             </button>
-            <MetronomeButton
-              active={metronomeActive}
-              onActiveChange={(next) => {
-                setMetronomeActive(next);
-                setMetronomeOpen(next);
-              }}
-              bpm={metronomeBpm}
-              onBpmChange={setMetronomeBpm}
-              timeSignature={metronomeTimeSignature}
-              onTimeSignatureChange={setMetronomeTimeSignature}
-              showControls={false}
-            />
-            <AutoScrollButton />
+            <button
+              type="button"
+              onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))}
+              aria-pressed={openWidgets.metronome}
+              className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
+                openWidgets.metronome
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-bg text-foreground hover:border-accent/50"
+              }`}
+            >
+              Metronom
+            </button>
+            <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} />
             <button
               type="button"
               id="chord-strip-trigger"
@@ -1698,9 +1860,9 @@ export function PreviewClient({
         </div>
       </div>
 
-      {(openWidgets.circle || openWidgets.gamlar) ? (
+      {(openWidgets.circle || openWidgets.gamlar || openWidgets.metronome) ? (
         <div className="pointer-events-none fixed inset-0 z-50 p-0 sm:p-4">
-          {(["circle", "gamlar"] as const).map((widget) => {
+          {(["circle", "gamlar", "metronome"] as const).map((widget) => {
             if (!openWidgets[widget]) return null;
             const widgetTitle = widgetTitleById[widget];
             const offset = widgetOffsets[widget];
@@ -1741,24 +1903,38 @@ export function PreviewClient({
                         onPitchClassSelect={handleCirclePitchClassSelect}
                       />
                     </div>
-                  ) : (
+                  ) : widget === "gamlar" ? (
                     <div className="mx-auto max-w-6xl">
                       <GamlarScaleExplorer
                         lockedTonicPc={transposedTonicPc}
                         lockedMode={originalMode}
                       />
                     </div>
+                  ) : (
+                    <MetronomeControls
+                      active={metronomeActive}
+                      onActiveChange={setMetronomeActive}
+                      bpm={metronomeBpm}
+                      onBpmChange={setMetronomeBpm}
+                      timeSignature={metronomeTimeSignature}
+                      onTimeSignatureChange={setMetronomeTimeSignature}
+                      layout="column"
+                      toggleStartLabel="Başlat"
+                      toggleStopLabel="Durdur"
+                    />
                   )}
                 </div>
-                <button
-                  type="button"
-                  aria-label="Widget boyutunu değiştir"
-                  className="absolute bottom-1 right-1 hidden h-5 w-5 cursor-se-resize rounded bg-border/40 hover:bg-border/70 sm:block"
-                  onPointerDown={(e) => handleWidgetResizePointerDown(widget, e)}
-                  onPointerMove={handleWidgetResizePointerMove}
-                  onPointerUp={handleWidgetResizePointerUp}
-                  onPointerCancel={handleWidgetResizePointerUp}
-                />
+                {widget === "circle" || widget === "gamlar" ? (
+                  <button
+                    type="button"
+                    aria-label="Widget boyutunu değiştir"
+                    className="absolute bottom-1 right-1 hidden h-5 w-5 cursor-se-resize rounded bg-border/40 hover:bg-border/70 sm:block"
+                    onPointerDown={(e) => handleWidgetResizePointerDown(widget, e)}
+                    onPointerMove={handleWidgetResizePointerMove}
+                    onPointerUp={handleWidgetResizePointerUp}
+                    onPointerCancel={handleWidgetResizePointerUp}
+                  />
+                ) : null}
               </div>
             );
           })}
@@ -1914,24 +2090,11 @@ export function PreviewClient({
       </article>
 
       <div className="print:hidden">
-        <FloatingWidgetDock
-          open={metronomeOpen}
-          zClassName={openWidgets.circle || openWidgets.gamlar ? "z-60" : "z-40"}
-        >
-          <MetronomeButton
-            active={metronomeActive}
-            onActiveChange={(next) => {
-              setMetronomeActive(next);
-              setMetronomeOpen(next);
-            }}
-            bpm={metronomeBpm}
-            onBpmChange={setMetronomeBpm}
-            timeSignature={metronomeTimeSignature}
-            onTimeSignatureChange={setMetronomeTimeSignature}
-            showToggle={false}
-            showControls={true}
-          />
-        </FloatingWidgetDock>
+        <MetronomeEngine
+          active={metronomeActive}
+          bpm={metronomeBpm}
+          timeSignature={metronomeTimeSignature}
+        />
       </div>
     </div>
   );

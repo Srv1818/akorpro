@@ -1,28 +1,53 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
 /* ------------------------------------------------------------------ */
 /*  Auto-scroll                                                        */
 /* ------------------------------------------------------------------ */
 
-export function AutoScrollButton() {
+export function AutoScrollButton({
+  scrollContainerRef,
+  variant = "default",
+}: {
+  /** Varsa (ör. sahne modu söz alanı) bu öğe kayar; yoksa pencere/document */
+  scrollContainerRef?: RefObject<HTMLElement | null>;
+  /** Sahne modu başlığında koyu tema */
+  variant?: "default" | "scene";
+} = {}) {
   const [active, setActive] = useState(false);
   const [speed, setSpeed] = useState(1);
   const rafRef = useRef(0);
+  const accRef = useRef(0);
 
   useEffect(() => {
     if (!active) return;
+    accRef.current = 0;
     let last = performance.now();
     function tick(now: number) {
       const dt = now - last;
       last = now;
-      window.scrollBy(0, (speed * dt) / 60);
+      accRef.current += (speed * dt) / 60;
+      const delta = Math.trunc(accRef.current);
+      if (delta !== 0) {
+        const el = scrollContainerRef?.current;
+        if (el) {
+          el.scrollTop += delta;
+        } else {
+          window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+        }
+        accRef.current -= delta;
+      }
       rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [active, speed]);
+  }, [active, speed, scrollContainerRef]);
+
+  const sceneBase =
+    "shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold transition min-h-[36px]";
+  const sceneIdle = `${sceneBase} border-white/15 bg-white/5 text-white hover:bg-white/10`;
+  const sceneActive = `${sceneBase} border-accent bg-accent text-accent-foreground`;
 
   return (
     <div className="flex items-center gap-1">
@@ -30,11 +55,17 @@ export function AutoScrollButton() {
         type="button"
         onClick={() => setActive((a) => !a)}
         aria-pressed={active}
-        className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
-          active
-            ? "border-accent bg-accent text-accent-foreground"
-            : "border-border bg-surface text-foreground hover:border-accent/50"
-        }`}
+        className={
+          variant === "scene"
+            ? active
+              ? sceneActive
+              : sceneIdle
+            : `rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
+                active
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-surface text-foreground hover:border-accent/50"
+              }`
+        }
       >
         {active ? "Durdur" : "Kaydır"}
       </button>
@@ -43,7 +74,11 @@ export function AutoScrollButton() {
           value={speed}
           onChange={(e) => setSpeed(Number(e.target.value))}
           aria-label="Kaydırma hızı"
-          className="rounded border border-border bg-bg px-2 py-1.5 text-sm text-foreground outline-none min-h-[36px]"
+          className={
+            variant === "scene"
+              ? "rounded-lg border border-white/15 bg-black/50 px-2 py-1.5 text-xs text-white outline-none min-h-[36px]"
+              : "rounded border border-border bg-bg px-2 py-1.5 text-sm text-foreground outline-none min-h-[36px]"
+          }
         >
           <option value={0.5}>Yavaş</option>
           <option value={1}>Normal</option>
@@ -58,46 +93,28 @@ export function AutoScrollButton() {
 /*  Metronome                                                          */
 /* ------------------------------------------------------------------ */
 
-export function MetronomeButton({
+function parseTimeSignature(value: string): { numerator: number; denominator: number } | null {
+  const m = value.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+  if (!m) return null;
+  const numerator = Number(m[1]);
+  const denominator = Number(m[2]);
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || numerator < 1 || denominator < 1) return null;
+  return { numerator, denominator };
+}
+
+/** Ses / zamanlama; panel kapalıyken de metronom çalışması için UI’dan ayrı tutulur. */
+export function MetronomeEngine({
   active,
-  onActiveChange,
   bpm,
-  onBpmChange,
   timeSignature,
-  onTimeSignatureChange,
-  showToggle = true,
-  showControls = true,
 }: {
   active: boolean;
-  onActiveChange: (next: boolean) => void;
   bpm: number;
-  onBpmChange: (next: number) => void;
   timeSignature: string;
-  onTimeSignatureChange: (next: string) => void;
-  showToggle?: boolean;
-  showControls?: boolean;
 }) {
   const intervalRef = useRef<ReturnType<typeof setInterval>>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const beatInBarRef = useRef(0);
-
-  const clampBpm = useCallback((n: number) => Math.max(40, Math.min(240, n)), []);
-
-  // Keep a local text buffer so typing (including temporarily empty/partial values)
-  // is not blocked by min/max clamping.
-  const [bpmText, setBpmText] = useState(String(bpm));
-  useEffect(() => {
-    setBpmText(String(bpm));
-  }, [bpm]);
-
-  const parseTimeSignature = useCallback((value: string): { numerator: number; denominator: number } | null => {
-    const m = value.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
-    if (!m) return null;
-    const numerator = Number(m[1]);
-    const denominator = Number(m[2]);
-    if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || numerator < 1 || denominator < 1) return null;
-    return { numerator, denominator };
-  }, []);
 
   const tsParsed = parseTimeSignature(timeSignature);
   const beatsPerBar = tsParsed?.numerator ?? 4;
@@ -135,36 +152,74 @@ export function MetronomeButton({
     };
   }, [active, bpm, tick, beatsPerBar]);
 
+  return null;
+}
+
+export function MetronomeControls({
+  active,
+  onActiveChange,
+  bpm,
+  onBpmChange,
+  timeSignature,
+  onTimeSignatureChange,
+  showToggle = true,
+  showControls = true,
+  toggleStartLabel = "J Met",
+  toggleStopLabel = "■ Met",
+  layout = "row",
+}: {
+  active: boolean;
+  onActiveChange: (next: boolean) => void;
+  bpm: number;
+  onBpmChange: (next: number) => void;
+  timeSignature: string;
+  onTimeSignatureChange: (next: string) => void;
+  showToggle?: boolean;
+  showControls?: boolean;
+  toggleStartLabel?: string;
+  toggleStopLabel?: string;
+  layout?: "row" | "column";
+}) {
+  const clampBpm = useCallback((n: number) => Math.max(40, Math.min(240, n)), []);
+
+  const [bpmText, setBpmText] = useState(String(bpm));
+  useEffect(() => {
+    setBpmText(String(bpm));
+  }, [bpm]);
+
   const timeSignatureOptions = (() => {
     const base = ["2/4", "3/4", "4/4", "5/4", "6/4", "6/8", "7/8", "9/8", "12/8"] as const;
     const initial = timeSignature || "4/4";
-    // Ensure the currently selected/initial value is always present.
     const set = new Set<string>([...base]);
     set.add(initial);
     return Array.from(set);
   })();
 
+  const flexClass = layout === "column" ? "flex flex-col gap-3" : "flex flex-wrap items-center gap-2";
+
   return (
-    <div className="flex items-center gap-1">
+    <div className={flexClass}>
       {showToggle ? (
         <button
           type="button"
           onClick={() => onActiveChange(!active)}
           aria-pressed={active}
           aria-label={active ? "Metronom durdur" : "Metronom başlat"}
-          className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
+          className={`rounded-lg border px-3 py-2 text-xs font-medium transition min-h-[40px] sm:text-sm ${
             active
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground hover:border-accent/50"
           }`}
         >
-          {active ? "■ Met" : "J Met"}
+          {active ? toggleStopLabel : toggleStartLabel}
         </button>
       ) : null}
 
       {showControls ? (
         <>
-          <label className={`flex items-center gap-1 text-xs ${active ? "text-muted" : "text-muted/80"}`}>
+          <label
+            className={`flex items-center gap-2 text-xs sm:text-sm ${active ? "text-muted" : "text-muted/80"}`}
+          >
             <input
               type="number"
               min={40}
@@ -177,8 +232,6 @@ export function MetronomeButton({
                 if (!nextText.trim()) return;
                 const n = Number(nextText);
                 if (!Number.isFinite(n)) return;
-                // Only apply to the metronome when within a valid range.
-                // This prevents clamping from blocking "partial" typing (e.g. 6 → 60).
                 if (n < 40 || n > 240) return;
                 onBpmChange(clampBpm(n));
               }}
@@ -187,16 +240,18 @@ export function MetronomeButton({
                 if (!Number.isFinite(n)) return;
                 onBpmChange(clampBpm(n));
               }}
-              className="w-16 rounded border border-border bg-bg px-2 py-1.5 text-sm text-foreground outline-none min-h-[36px]"
+              className="w-20 rounded border border-border bg-bg px-2 py-2 text-sm text-foreground outline-none min-h-[40px]"
               aria-label="BPM"
             />
             BPM
           </label>
-          <label className={`flex items-center gap-1 text-xs ${active ? "text-muted" : "text-muted/80"}`}>
+          <label
+            className={`flex items-center gap-2 text-xs sm:text-sm ${active ? "text-muted" : "text-muted/80"}`}
+          >
             <select
               value={timeSignature}
               onChange={(e) => onTimeSignatureChange(e.target.value)}
-              className="rounded border border-border bg-bg px-2 py-1.5 text-sm text-foreground outline-none min-h-[36px]"
+              className="min-w-[4.5rem] rounded border border-border bg-bg px-2 py-2 text-sm text-foreground outline-none min-h-[40px]"
               aria-label="Ölçü"
             >
               {timeSignatureOptions.map((opt) => (
@@ -210,6 +265,42 @@ export function MetronomeButton({
         </>
       ) : null}
     </div>
+  );
+}
+
+export function MetronomeButton({
+  active,
+  onActiveChange,
+  bpm,
+  onBpmChange,
+  timeSignature,
+  onTimeSignatureChange,
+  showToggle = true,
+  showControls = true,
+}: {
+  active: boolean;
+  onActiveChange: (next: boolean) => void;
+  bpm: number;
+  onBpmChange: (next: number) => void;
+  timeSignature: string;
+  onTimeSignatureChange: (next: string) => void;
+  showToggle?: boolean;
+  showControls?: boolean;
+}) {
+  return (
+    <>
+      <MetronomeEngine active={active} bpm={bpm} timeSignature={timeSignature} />
+      <MetronomeControls
+        active={active}
+        onActiveChange={onActiveChange}
+        bpm={bpm}
+        onBpmChange={onBpmChange}
+        timeSignature={timeSignature}
+        onTimeSignatureChange={onTimeSignatureChange}
+        showToggle={showToggle}
+        showControls={showControls}
+      />
+    </>
   );
 }
 
