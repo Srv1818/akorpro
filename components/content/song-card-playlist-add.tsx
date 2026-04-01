@@ -26,6 +26,7 @@ const PLAYLIST_SCHEMA_VERSION = 1;
 type PlaylistRow = { id: string; name: string };
 
 type PopoverCoords = { top: number; right: number };
+type SongCardPlaylistAddSong = Pick<SongSummary, "id" | "title" | "artistSlug" | "slug">;
 
 function formatError(err: unknown): string {
   if (err && typeof err === "object" && "code" in err) {
@@ -34,7 +35,7 @@ function formatError(err: unknown): string {
   return "Bilinmeyen hata";
 }
 
-export function SongCardPlaylistAdd({ song }: { song: SongSummary }) {
+export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong }) {
   const pathname = usePathname();
   const firebaseUid = useFirebaseUidFromSession();
   const buttonRef = useRef<HTMLButtonElement>(null);

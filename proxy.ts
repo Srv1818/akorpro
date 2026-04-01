@@ -16,10 +16,18 @@ function isAuthRoute(pathname: string): boolean {
 function buildCsp(nonce: string): string {
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "";
   const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "";
+  const isDev = process.env.NODE_ENV !== "production";
+  const scriptSrc = [
+    "script-src 'self'",
+    `'nonce-${nonce}'`,
+    "'strict-dynamic'",
+    "https://www.googletagmanager.com",
+    ...(isDev ? ["'unsafe-eval'"] : []),
+  ].join(" ");
 
   const directives: string[] = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.googletagmanager.com`,
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https://*.googleusercontent.com https://www.google-analytics.com${storageBucket ? ` https://${storageBucket}` : ""}`,
     "font-src 'self'",

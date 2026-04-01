@@ -122,26 +122,21 @@ function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): Ke
   return "major";
 }
 
-function renderChordTokenNode(token: string, key: string): ReactNode {
-  const fingering = resolveChordTokenToFingering(token);
-  const pos = fingering.chord?.positions[0] ?? null;
+function renderChordTokenNode(token: string, key: string, onClick: () => void): ReactNode {
   return (
-    <span key={key} className="group relative inline-block align-baseline">
-      <span className="cursor-help rounded-sm px-0.5 font-mono font-normal text-green-500">{token}</span>
-      <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden -translate-x-1/2 group-hover:block group-focus-within:block">
-        {fingering.chord && pos ? (
-          <GuitarChordDiagramClassic position={pos} title={token} />
-        ) : (
-          <span className="inline-block rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground shadow-lg">
-            {token}
-          </span>
-        )}
-      </span>
-    </span>
+    <button
+      key={key}
+      type="button"
+      onClick={onClick}
+      className="inline-block cursor-pointer rounded-sm px-0.5 font-mono font-normal text-green-500 hover:text-green-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+      aria-label={`${token} akoru, Akorlar panelini aç`}
+    >
+      {token}
+    </button>
   );
 }
 
-function renderChordLine(line: string, semitones: number): ReactNode[] {
+function renderChordLine(line: string, semitones: number, onChordClick: () => void): ReactNode[] {
   const out: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -151,16 +146,21 @@ function renderChordLine(line: string, semitones: number): ReactNode[] {
     const displayed = transposeChordToken(full, semitones);
     const index = match.index;
     if (index > lastIndex) out.push(line.slice(lastIndex, index));
-    out.push(renderChordTokenNode(displayed, `${displayed}-${index}`));
+    out.push(renderChordTokenNode(displayed, `${displayed}-${index}`, onChordClick));
     lastIndex = index + full.length;
   }
   if (lastIndex < line.length) out.push(line.slice(lastIndex));
   return out;
 }
 
-function renderAlignedBracketLine(line: string, semitones: number, lineIndex: number): ReactNode[] {
+function renderAlignedBracketLine(
+  line: string,
+  semitones: number,
+  lineIndex: number,
+  onChordClick: () => void,
+): ReactNode[] {
   const matches = Array.from(line.matchAll(BRACKET_CHORD_REGEX));
-  if (matches.length === 0) return renderChordLine(line, semitones);
+  if (matches.length === 0) return renderChordLine(line, semitones, onChordClick);
 
   const chordAtPos: Array<{ pos: number; token: string }> = [];
   let lyrics = "";
@@ -184,18 +184,18 @@ function renderAlignedBracketLine(line: string, semitones: number, lineIndex: nu
   chordAtPos.forEach((item, i) => {
     if (item.pos > caret) nodes.push(" ".repeat(item.pos - caret));
     else if (i > 0) nodes.push(" ");
-    nodes.push(renderChordTokenNode(item.token, `bchord-${lineIndex}-${i}-${item.pos}`));
+    nodes.push(renderChordTokenNode(item.token, `bchord-${lineIndex}-${i}-${item.pos}`, onChordClick));
     caret = Math.max(caret, item.pos + item.token.length);
   });
 
   return [...nodes, "\n", lyrics];
 }
 
-function renderChordBodyWithHighlights(text: string, semitones: number): ReactNode {
+function renderChordBodyWithHighlights(text: string, semitones: number, onChordClick: () => void): ReactNode {
   const lines = text.split("\n");
   return lines.map((line, idx) => (
     <Fragment key={`line-${idx}`}>
-      {renderAlignedBracketLine(line, semitones, idx)}
+      {renderAlignedBracketLine(line, semitones, idx, onChordClick)}
       {idx < lines.length - 1 ? "\n" : null}
     </Fragment>
   ));
@@ -1178,8 +1178,8 @@ export function PreviewClient({
             </div>
 
             <div className="flex-1 overflow-auto p-4 sm:p-6">
-              <pre className="overflow-x-auto whitespace-pre font-mono text-base leading-loose text-white sm:text-lg md:text-xl sm:leading-loose md:leading-loose">
-                {renderChordBodyWithHighlights(chordBody, semitones)}
+              <pre className="song-chord-text overflow-x-auto whitespace-pre text-base leading-loose text-white sm:text-lg md:text-xl sm:leading-loose md:leading-loose">
+                {renderChordBodyWithHighlights(chordBody, semitones, () => setChordStripOpen(true))}
               </pre>
             </div>
           </div>
@@ -1587,8 +1587,8 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
-        <pre className="overflow-x-auto whitespace-pre font-mono text-sm leading-loose text-foreground sm:text-base md:text-lg sm:leading-relaxed md:leading-relaxed">
-          {renderChordBodyWithHighlights(chordBody, semitones)}
+        <pre className="song-chord-text overflow-x-auto whitespace-pre text-sm leading-loose text-foreground sm:text-base md:text-lg sm:leading-relaxed md:leading-relaxed">
+          {renderChordBodyWithHighlights(chordBody, semitones, () => setChordStripOpen(true))}
         </pre>
       </article>
 

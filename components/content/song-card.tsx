@@ -15,6 +15,12 @@ export function SongCard({
 }) {
   const chordHref = chordPath(song.artistSlug, song.slug);
   const label = `${song.title} — ${song.artistName} akoru`;
+  const playlistSong = {
+    id: song.id,
+    title: song.title,
+    artistSlug: song.artistSlug,
+    slug: song.slug,
+  };
 
   return (
     <article className="relative flex flex-row items-start gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm transition hover:border-accent/30">
@@ -33,7 +39,7 @@ export function SongCard({
           </p>
         ) : null}
       </div>
-      {showPlaylistAdd ? <SongCardPlaylistAdd song={song} /> : null}
+      {showPlaylistAdd ? <SongCardPlaylistAdd song={playlistSong} /> : null}
     </article>
   );
 }
