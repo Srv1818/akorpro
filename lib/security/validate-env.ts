@@ -44,3 +44,16 @@ export function assertEnvOrWarn(): void {
   }
   console.warn(msg);
 }
+
+/** Dev: Firestore emülatör env’i Admin SDK’yı etkiler — şarkı sayfaları boş/404 olabilir. */
+export function warnFirestoreEmulatorVsNextDev(): void {
+  if (process.env.NODE_ENV === "production") return;
+  if (!process.env.FIRESTORE_EMULATOR_HOST?.trim()) return;
+  if (process.env.AKORPRO_ADMIN_USE_CLOUD_FIRESTORE === "1") return;
+
+  console.warn(
+    "[env] FIRESTORE_EMULATOR_HOST tanımlı: Next sunucusu Firestore’a emülatörden bağlanır. " +
+      "Emülatör kapalı/boşsa yerelde şarkılar açılmaz; canlıda sorun olmaz. " +
+      "Çözüm: .env.local’dan bu satırı kaldırın, emülatörü çalıştırıp seed edin veya AKORPRO_ADMIN_USE_CLOUD_FIRESTORE=1 ekleyin.",
+  );
+}

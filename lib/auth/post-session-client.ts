@@ -9,8 +9,15 @@ export async function postSessionCookie(idToken: string): Promise<string | null>
     body: JSON.stringify({ idToken }),
   });
   if (!res.ok) {
-    const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    return data?.error ?? "Oturum çerezi oluşturulamadı.";
+    const text = await res.text();
+    let apiError: string | undefined;
+    try {
+      const data = JSON.parse(text) as { error?: unknown };
+      if (typeof data?.error === "string") apiError = data.error;
+    } catch {
+      /* yanıt JSON değil (ör. proxy HTML) */
+    }
+    return apiError ?? `Oturum çerezi oluşturulamadı (HTTP ${res.status}).`;
   }
   return null;
 }

@@ -1,7 +1,8 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { assertEnvOrWarn } = await import("./lib/security/validate-env");
+    const { assertEnvOrWarn, warnFirestoreEmulatorVsNextDev } = await import("./lib/security/validate-env");
     assertEnvOrWarn();
+    warnFirestoreEmulatorVsNextDev();
 
     const { assertNoClientSecrets } = await import("./lib/security/check-env-safety");
     assertNoClientSecrets();

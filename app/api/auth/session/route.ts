@@ -49,7 +49,12 @@ export async function POST(request: Request) {
       maxAge: Math.floor(expiresIn / 1000),
     });
     return res;
-  } catch {
+  } catch (e: unknown) {
+    const code =
+      typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : "";
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[auth/session] createSessionCookie:", code || e);
+    }
     return NextResponse.json({ error: "Oturum oluşturulamadı." }, { status: 401 });
   }
 }

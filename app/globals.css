@@ -135,7 +135,8 @@ body {
 /* Preview'de hizalama için monospace kalırken, daha okunakli bir stack kullan. */
 .song-chord-text {
   font-family: Consolas, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", ui-monospace, monospace;
-  letter-spacing: 0.01em;
+  /* Akor + söz aynı ızgarada: letter-spacing ve buton padding hizayı kaydırır */
+  letter-spacing: 0;
 }
 
 /* Akor satırı hover — okunabilirlik yardımcısı */
