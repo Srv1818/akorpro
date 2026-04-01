@@ -359,7 +359,9 @@ export function PreviewClient({
     setChordStripOpen(false);
   }, [songId, initialBpmNumber, initialTimeSignatureValue]);
 
-  const fromUrl = Number(searchParams.get("transpose") ?? "0");
+  const transposeParamRaw = searchParams.get("transpose");
+  const hasTransposeParam = transposeParamRaw !== null;
+  const fromUrl = Number(transposeParamRaw ?? "0");
   const initial = Number.isFinite(fromUrl) ? fromUrl : 0;
 
   const initialClamped = clampTransposeSemitones(initial);
@@ -388,6 +390,7 @@ export function PreviewClient({
   const [addNotice, setAddNotice] = useState<{ variant: "success" | "error"; message: string } | null>(null);
 
   const urlTransposeRef = useRef(0);
+  const transposeLockRef = useRef(false);
 
   const hydrateReadyRef = useRef(false);
 
@@ -814,17 +817,26 @@ export function PreviewClient({
       setTransposeSemitones(initialClamped);
     }
     urlTransposeRef.current = initialClamped;
+    if (hasTransposeParam) {
+      // URL'de transpose varsa bunu kullanıcı tercihi olarak kabul et, hydration ezmesin.
+      transposeLockRef.current = true;
+    }
     // setTransposeSemitones is a stable Zustand action; intentionally omitted from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialClamped]);
+  }, [hasTransposeParam, initialClamped]);
 
   useEffect(() => {
     hydrateReadyRef.current = false;
+    transposeLockRef.current = false;
   }, [songId, firebaseUid]);
 
   useEffect(() => {
     if (firebaseUid === undefined || firebaseUid === null || !songId) return;
     if (hydrateReadyRef.current) return;
+    if (transposeLockRef.current) {
+      hydrateReadyRef.current = true;
+      return;
+    }
 
     if (initial !== 0) {
       hydrateReadyRef.current = true;
@@ -843,7 +855,7 @@ export function PreviewClient({
         const db = getClientFirestore();
         const snap = await getDoc(doc(db, "users", firebaseUid, "songOverrides", songId));
         if (cancelled) return;
-        if (urlTransposeRef.current !== 0) {
+        if (transposeLockRef.current) {
           hydrateReadyRef.current = true;
           return;
         }
@@ -909,6 +921,7 @@ export function PreviewClient({
 
   const replaceTranspose = useCallback(
     (n: number) => {
+      transposeLockRef.current = true;
       setTransposeSemitones(n);
       urlTransposeRef.current = n;
       const q = n === 0 ? "" : `?transpose=${n}`;
@@ -952,6 +965,7 @@ export function PreviewClient({
   }, [openWidgets, saveAndAddOpen, replaceTranspose, semitones]);
 
   const resetOriginal = useCallback(() => {
+    transposeLockRef.current = true;
     resetTonalAndTranspose();
     urlTransposeRef.current = 0;
     setMetronomeActive(false);
