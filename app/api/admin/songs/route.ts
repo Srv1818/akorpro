@@ -20,8 +20,13 @@ export async function GET() {
   const auth = await requireAdmin();
   if ("error" in auth) return auth.error;
 
-  const songs = await getAllSongsAdmin();
-  return NextResponse.json({ songs });
+  try {
+    const songs = await getAllSongsAdmin();
+    return NextResponse.json({ songs });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Şarkılar alınamadı.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -53,28 +58,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
   }
 
-  const id = await createSong(
-    {
-      title,
-      slug,
-      artistId: artistId || artistSlug,
-      artistSlug,
-      artistName,
-      chordBody,
-      originalKey,
-      difficulty: difficulty as Difficulty,
+  let id: string;
+  try {
+    id = await createSong(
+      {
+        title,
+        slug,
+        artistId: artistId || artistSlug,
+        artistSlug,
+        artistName,
+        chordBody,
+        originalKey,
+        difficulty: difficulty as Difficulty,
         keyMode: finalKeyMode,
-      genre,
-      tempo: typeof b.tempo === "number" || typeof b.tempo === "string" ? b.tempo : undefined,
-      timeSignature: typeof b.timeSignature === "string" ? b.timeSignature : undefined,
-      tuning: typeof b.tuning === "string" ? b.tuning : undefined,
-      capo: typeof b.capo === "number" ? b.capo : undefined,
-      copyrightSource: typeof b.copyrightSource === "string" ? b.copyrightSource : undefined,
-      contributorIds: Array.isArray(b.contributorIds) ? b.contributorIds as string[] : undefined,
-      popularity: typeof b.popularity === "number" ? b.popularity : undefined,
-    },
-    auth.user.uid,
-  );
+        genre,
+        tempo: typeof b.tempo === "number" || typeof b.tempo === "string" ? b.tempo : undefined,
+        timeSignature: typeof b.timeSignature === "string" ? b.timeSignature : undefined,
+        tuning: typeof b.tuning === "string" ? b.tuning : undefined,
+        capo: typeof b.capo === "number" ? b.capo : undefined,
+        copyrightSource: typeof b.copyrightSource === "string" ? b.copyrightSource : undefined,
+        contributorIds: Array.isArray(b.contributorIds) ? (b.contributorIds as string[]) : undefined,
+        popularity: typeof b.popularity === "number" ? b.popularity : undefined,
+      },
+      auth.user.uid,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Şarkı oluşturulamadı.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, id });
 }

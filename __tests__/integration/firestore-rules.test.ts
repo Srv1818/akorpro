@@ -27,7 +27,7 @@ import {
 const PROJECT_ID = "demo-akorpro";
 const RULES_PATH = resolve(__dirname, "../../firestore.rules");
 
-let testEnv: RulesTestEnvironment;
+let testEnv: RulesTestEnvironment | null = null;
 
 beforeAll(async () => {
   const rules = readFileSync(RULES_PATH, "utf8");
@@ -42,18 +42,22 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
+  if (!testEnv) return;
   await testEnv.clearFirestore();
 });
 
 afterAll(async () => {
+  if (!testEnv) return;
   await testEnv.cleanup();
 });
 
 function authed(uid: string, claims?: Record<string, unknown>) {
+  if (!testEnv) throw new Error("Test environment not initialized. Is Firestore emulator running?");
   return testEnv.authenticatedContext(uid, claims).firestore();
 }
 
 function unauthed() {
+  if (!testEnv) throw new Error("Test environment not initialized. Is Firestore emulator running?");
   return testEnv.unauthenticatedContext().firestore();
 }
 
