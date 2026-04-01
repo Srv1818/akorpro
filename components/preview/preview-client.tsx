@@ -201,11 +201,36 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
   ));
 }
 
+function splitChordBodyInTwo(text: string): [left: string, right: string] {
+  const lines = text.split("\n");
+  if (lines.length <= 1) return [text, ""];
+
+  const midpoint = Math.ceil(lines.length / 2);
+  let splitIndex = midpoint;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  // Prefer splitting on an empty line close to center.
+  for (let i = 1; i < lines.length; i += 1) {
+    if (lines[i]?.trim() !== "") continue;
+    const distance = Math.abs(i - midpoint);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      splitIndex = i;
+    }
+  }
+
+  return [lines.slice(0, splitIndex).join("\n"), lines.slice(splitIndex).join("\n")];
+}
+
 /** Mobil Gamlar paneli: klavye yatay kullanıma uygun olsun diye ekranı yatay kilitle (destekleyen tarayıcılar). */
 const WIDGET_MOBILE_MAX = 640;
 
 const TRANSPOSE_SEMITONE_MIN = -6;
 const TRANSPOSE_SEMITONE_MAX = 5;
+const LYRICS_FONT_SIZE_MIN = 14;
+const LYRICS_FONT_SIZE_MAX = 32;
+const LYRICS_FONT_SIZE_STEP = 1;
+const LYRICS_FONT_SIZE_DEFAULT = 18;
 
 function clampTransposeSemitones(n: number): number {
   return Math.max(TRANSPOSE_SEMITONE_MIN, Math.min(TRANSPOSE_SEMITONE_MAX, n));
@@ -252,6 +277,8 @@ export function PreviewClient({
   const router = useRouter();
   const pathname = usePathname();
   const [sceneMode, setSceneMode] = useState(false);
+  const [lyricsFontSizePx, setLyricsFontSizePx] = useState(LYRICS_FONT_SIZE_DEFAULT);
+  const [splitLyricsEnabled, setSplitLyricsEnabled] = useState(false);
 
   const semitones = usePreviewToolsStore((s) => s.transposeSemitones);
   const setTransposeSemitones = usePreviewToolsStore((s) => s.setTransposeSemitones);
@@ -1062,6 +1089,12 @@ export function PreviewClient({
     canSave && Boolean(selectedPlaylistId) && playlists.length > 0;
 
   const widgetTitleById: Record<WidgetId, string> = { circle: "5'li Çember", gamlar: "Gamlar" };
+  const canDecreaseLyricsFont = lyricsFontSizePx > LYRICS_FONT_SIZE_MIN;
+  const canIncreaseLyricsFont = lyricsFontSizePx < LYRICS_FONT_SIZE_MAX;
+  const [leftChordBody, rightChordBody] = useMemo(
+    () => splitChordBodyInTwo(chordBody),
+    [chordBody],
+  );
 
   return (
     <div className={sceneMode ? "rounded-2xl ring-2 ring-accent ring-offset-2 ring-offset-bg" : ""}>
@@ -1102,6 +1135,44 @@ export function PreviewClient({
                   className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 min-h-[44px]"
                 >
                   Akorlar
+                </button>
+                <button
+                  type="button"
+                  disabled={!canDecreaseLyricsFont}
+                  onClick={() =>
+                    setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP))
+                  }
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Söz yazısını küçült"
+                  title="Söz yazısını küçült"
+                >
+                  A-
+                </button>
+                <button
+                  type="button"
+                  disabled={!canIncreaseLyricsFont}
+                  onClick={() =>
+                    setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP))
+                  }
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Söz yazısını büyüt"
+                  title="Söz yazısını büyüt"
+                >
+                  A+
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={splitLyricsEnabled}
+                  onClick={() => setSplitLyricsEnabled((prev) => !prev)}
+                  className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    splitLyricsEnabled
+                      ? "border-emerald-400/60 bg-emerald-500/25 text-white"
+                      : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                  }`}
+                  aria-label="Sözleri iki sütuna böl"
+                  title="Sözleri iki sütuna böl"
+                >
+                  Böl
                 </button>
                 <button
                   type="button"
@@ -1178,9 +1249,26 @@ export function PreviewClient({
             </div>
 
             <div className="flex-1 overflow-auto p-4 sm:p-6">
-              <pre className="song-chord-text overflow-x-auto whitespace-pre text-base leading-loose text-white sm:text-lg md:text-xl sm:leading-loose md:leading-loose">
-                {renderChordBodyWithHighlights(chordBody, semitones, () => setChordStripOpen(true))}
-              </pre>
+              <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
+                <pre
+                  className="song-chord-text overflow-x-auto whitespace-pre leading-loose text-white sm:leading-loose md:leading-loose"
+                  style={{ fontSize: `${lyricsFontSizePx}px` }}
+                >
+                  {renderChordBodyWithHighlights(
+                    splitLyricsEnabled ? leftChordBody : chordBody,
+                    semitones,
+                    () => setChordStripOpen(true),
+                  )}
+                </pre>
+                {splitLyricsEnabled ? (
+                  <pre
+                    className="song-chord-text overflow-x-auto whitespace-pre leading-loose text-white sm:leading-loose md:leading-loose"
+                    style={{ fontSize: `${lyricsFontSizePx}px` }}
+                  >
+                    {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+                  </pre>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -1381,7 +1469,8 @@ export function PreviewClient({
             </button>
           </div>
         </div>
-        <div className="flex w-full justify-center sm:w-auto sm:flex-1">
+        <div className="flex w-full items-center justify-center sm:w-auto sm:flex-1">
+          <div className="relative inline-flex items-center justify-center">
           <button
             type="button"
             onClick={() => {
@@ -1392,14 +1481,22 @@ export function PreviewClient({
               });
             }}
             aria-pressed={sceneMode}
-            className={`w-full max-w-md rounded-lg px-3 py-2.5 text-xs font-semibold text-white transition min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:w-auto sm:max-w-none ${
+            aria-label="Sahne Modu"
+            title="Sahne Modu"
+            className={`group relative inline-flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
               sceneMode
-                ? "border border-white/20 bg-gradient-to-r from-yellow-300 via-amber-500 to-amber-700 shadow-lg shadow-amber-500/40 ring-2 ring-amber-300/50 hover:from-yellow-200 hover:via-amber-400 hover:to-amber-600"
-                : "border border-white/10 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-400 shadow-lg shadow-amber-500/35 hover:from-amber-500 hover:via-yellow-400 hover:to-amber-300"
+                ? "border-amber-200/70 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 shadow-lg shadow-amber-500/45 ring-2 ring-amber-300/50"
+                : "border-white/15 bg-gradient-to-b from-amber-500 via-amber-600 to-orange-700 shadow-md shadow-amber-500/35 hover:from-amber-400 hover:via-amber-500 hover:to-orange-600"
             }`}
           >
-            Sahne Modu
+            <span aria-hidden className="text-lg leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
+              ★
+            </span>
+            <span className="rounded bg-black/35 px-1.5 py-0.5 text-[10px] font-semibold leading-none tracking-wide text-white/95">
+              SAHNE
+            </span>
           </button>
+          </div>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 text-[11px] text-muted sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-1.5">
           <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
@@ -1423,7 +1520,6 @@ export function PreviewClient({
               {keyModeToLabel(keyMode, originalKey)}
             </span>
           </div>
-
           <button
             type="button"
             onClick={resetOriginal}
@@ -1507,41 +1603,85 @@ export function PreviewClient({
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
-          <div className="grid w-full min-w-0 grid-cols-4 gap-1 sm:inline-flex sm:w-auto sm:flex-1 sm:flex-wrap sm:items-center sm:gap-1">
-            {Array.from({ length: 12 }, (_, pc) => {
-              const label = PC_TO_NAME[pc];
-              const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
-              const isActive = semitones === delta;
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1">
+            <div className="grid w-full min-w-0 grid-cols-4 gap-1 sm:inline-flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-1">
+              {Array.from({ length: 12 }, (_, pc) => {
+                const label = PC_TO_NAME[pc];
+                const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
+                const isActive = semitones === delta;
 
-              return (
-                <button
-                  key={pc}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => replaceTranspose(delta)}
-                  className={`select-none inline-flex min-h-[44px] w-full min-w-[44px] items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium leading-none transition sm:w-auto ${
-                    isActive
-                      ? "border-accent bg-accent text-accent-foreground"
-                      : "border-border bg-bg text-foreground hover:border-accent/50"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={pc}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={() => replaceTranspose(delta)}
+                    className={`select-none inline-flex min-h-[44px] w-full min-w-[44px] items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium leading-none transition sm:w-auto ${
+                      isActive
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-border bg-bg text-foreground hover:border-accent/50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-end gap-1 sm:ml-32 sm:justify-start">
+              <button
+                type="button"
+                disabled={!canDecreaseLyricsFont}
+                onClick={() =>
+                  setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP))
+                }
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Söz yazısını küçült"
+                title="Söz yazısını küçült"
+              >
+                A-
+              </button>
+              <button
+                type="button"
+                disabled={!canIncreaseLyricsFont}
+                onClick={() =>
+                  setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP))
+                }
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Söz yazısını büyüt"
+                title="Söz yazısını büyüt"
+              >
+                A+
+              </button>
+              <button
+                type="button"
+                aria-pressed={splitLyricsEnabled}
+                onClick={() => setSplitLyricsEnabled((prev) => !prev)}
+                className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                  splitLyricsEnabled
+                    ? "border-accent bg-accent text-accent-foreground"
+                    : "border-border bg-bg text-foreground hover:bg-surface"
+                }`}
+                aria-label="Sözleri iki sütuna böl"
+                title="Sözleri iki sütuna böl"
+              >
+                Böl
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[12rem] sm:items-end">
-          <button
-            type="button"
-            disabled={!canSave || saveState === "saving"}
-            onClick={() => void onSave()}
-            title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-            className="w-full rounded-lg bg-accent px-3 py-2.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] sm:w-auto"
-          >
-            {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
-          </button>
+          <div className="flex w-full items-center justify-end sm:w-auto">
+            <button
+              type="button"
+              disabled={!canSave || saveState === "saving"}
+              onClick={() => void onSave()}
+              title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
+              className="w-full rounded-lg bg-accent px-3 py-2.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] sm:w-auto"
+            >
+              {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
+            </button>
+          </div>
           {firebaseUid === undefined ? (
             <span className="text-center text-sm text-muted sm:text-right">Oturum kontrol ediliyor…</span>
           ) : firebaseUid === null ? (
@@ -1587,9 +1727,26 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
-        <pre className="song-chord-text overflow-x-auto whitespace-pre text-sm leading-loose text-foreground sm:text-base md:text-lg sm:leading-relaxed md:leading-relaxed">
-          {renderChordBodyWithHighlights(chordBody, semitones, () => setChordStripOpen(true))}
-        </pre>
+        <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
+          <pre
+            className="song-chord-text overflow-x-auto whitespace-pre leading-relaxed text-foreground sm:leading-relaxed md:leading-relaxed"
+            style={{ fontSize: `${lyricsFontSizePx}px` }}
+          >
+            {renderChordBodyWithHighlights(
+              splitLyricsEnabled ? leftChordBody : chordBody,
+              semitones,
+              () => setChordStripOpen(true),
+            )}
+          </pre>
+          {splitLyricsEnabled ? (
+            <pre
+              className="song-chord-text overflow-x-auto whitespace-pre leading-relaxed text-foreground sm:leading-relaxed md:leading-relaxed"
+              style={{ fontSize: `${lyricsFontSizePx}px` }}
+            >
+              {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+            </pre>
+          ) : null}
+        </div>
       </article>
 
       <div className="print:hidden">
