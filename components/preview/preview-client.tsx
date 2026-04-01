@@ -42,12 +42,14 @@ import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
 import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
 import {
-  extractUniqueChordTokensInOrder,
+  extractUniqueChordTokensAsRendered,
+  formatChordSymbolDisplay,
   parseTonicFromOriginalKey,
   signedSemitoneDelta,
   transposeChordBodyText,
   transposeChordToken,
 } from "@/lib/music/transpose";
+import { X } from "lucide-react";
 
 const OVERRIDE_SCHEMA_VERSION = 1;
 
@@ -99,6 +101,37 @@ function parsePlaylistIdFromReturnTo(value: string | null): string | null {
       return m[1]?.trim() ? m[1].trim() : null;
     }
   }
+}
+
+function PanelCloseButton({
+  onClick,
+  variant = "panel",
+  className = "",
+  title,
+}: {
+  onClick: () => void;
+  variant?: "panel" | "scene";
+  className?: string;
+  title?: string;
+}) {
+  const base =
+    "inline-flex size-7 shrink-0 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2";
+  const byVariant =
+    variant === "scene"
+      ? "text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-white/50"
+      : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground focus-visible:ring-accent/40";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+      aria-label={variant === "scene" ? "Sahne modundan çık" : "Kapat"}
+      title={title}
+      className={`${base} ${byVariant} ${className}`.trim()}
+    >
+      <X className="size-3.5" strokeWidth={1.75} aria-hidden />
+    </button>
+  );
 }
 
 function keyModeToLabel(mode: KeyMode | undefined, originalKey: string): string {
@@ -401,10 +434,12 @@ export function PreviewClient({
     return transposeChordBodyText(chordBody, semitones);
   })();
 
-  const chordStripTokens = useMemo(
-    () => extractUniqueChordTokensInOrder(displayedChordBody),
-    [displayedChordBody],
-  );
+  const chordStripTokens = useMemo(() => {
+    const raw = extractUniqueChordTokensAsRendered(chordBody);
+    return raw.map((t) =>
+      semitones === 0 ? formatChordSymbolDisplay(t) : transposeChordToken(t, semitones),
+    );
+  }, [chordBody, semitones]);
   const chordStripFingerings = useMemo(
     () => chordStripTokens.map((token) => resolveChordTokenToFingering(token)),
     [chordStripTokens],
@@ -924,10 +959,13 @@ export function PreviewClient({
       transposeLockRef.current = true;
       setTransposeSemitones(n);
       urlTransposeRef.current = n;
-      const q = n === 0 ? "" : `?transpose=${n}`;
-      router.replace(`${pathname}${q}`, { scroll: false });
+      const params = new URLSearchParams(searchParams.toString());
+      if (n === 0) params.delete("transpose");
+      else params.set("transpose", String(n));
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [pathname, router, setTransposeSemitones],
+    [pathname, router, searchParams, setTransposeSemitones],
   );
 
   const handleCirclePitchClassSelect = useCallback(
@@ -1105,6 +1143,8 @@ export function PreviewClient({
   const widgetTitleById: Record<WidgetId, string> = { circle: "5'li Çember", gamlar: "Gamlar" };
   const canDecreaseLyricsFont = lyricsFontSizePx > LYRICS_FONT_SIZE_MIN;
   const canIncreaseLyricsFont = lyricsFontSizePx < LYRICS_FONT_SIZE_MAX;
+  const canDecreaseTranspose = semitones > TRANSPOSE_SEMITONE_MIN;
+  const canIncreaseTranspose = semitones < TRANSPOSE_SEMITONE_MAX;
   const [leftChordBody, rightChordBody] = useMemo(
     () => splitChordBodyInTwo(chordBody),
     [chordBody],
@@ -1173,6 +1213,26 @@ export function PreviewClient({
                   title="Söz yazısını büyüt"
                 >
                   A+
+                </button>
+                <button
+                  type="button"
+                  disabled={!canDecreaseTranspose}
+                  onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Transpoze: yarım ton düşür"
+                  title="Transpoze: yarım ton düşür"
+                >
+                  T-
+                </button>
+                <button
+                  type="button"
+                  disabled={!canIncreaseTranspose}
+                  onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Transpoze: yarım ton yükselt"
+                  title="Transpoze: yarım ton yükselt"
+                >
+                  T+
                 </button>
                 <button
                   type="button"
@@ -1248,17 +1308,15 @@ export function PreviewClient({
                     "Sıradaki →"
                   )}
                 </button>
-                <button
-                  type="button"
+                <PanelCloseButton
+                  variant="scene"
+                  className="hidden sm:inline-flex"
+                  title="Esc ile de çıkabilirsiniz"
                   onClick={() => {
                     setSceneMode(false);
                     replaceSceneParam(false);
                   }}
-                  className="hidden items-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 sm:inline-flex"
-                >
-                  <span>Çık</span>
-                  <span className="ml-1 text-[10px] text-white/60">(Esc)</span>
-                </button>
+                />
               </div>
             </div>
 
@@ -1305,15 +1363,9 @@ export function PreviewClient({
             className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3">
-              <p className="text-sm font-medium text-foreground">Kaydet ve listeye ekle</p>
-              <button
-                type="button"
-                onClick={() => setSaveAndAddOpen(false)}
-                className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface"
-              >
-                Kapat
-              </button>
+            <div className="flex items-center justify-between gap-1.5 border-b border-border bg-surface/90 px-2.5 py-1.5">
+              <p className="text-sm font-medium leading-tight tracking-tight text-foreground">Kaydet ve listeye ekle</p>
+              <PanelCloseButton onClick={() => setSaveAndAddOpen(false)} />
             </div>
 
             <div className="p-4">
@@ -1378,26 +1430,26 @@ export function PreviewClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="chord-strip-title"
-            className="fixed left-0 right-0 top-0 z-[81] max-h-[min(70vh,32rem)] overflow-hidden print:hidden"
+            className="fixed inset-x-0 bottom-0 z-[81] max-h-[min(70vh,32rem)] overflow-hidden print:hidden"
           >
-            <div className="mx-auto flex max-h-[min(70vh,32rem)] max-w-6xl flex-col border-b border-border bg-surface shadow-lg sm:rounded-b-2xl">
-              <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
-                <p id="chord-strip-title" className="text-sm font-medium text-foreground">
+            <div className="mx-auto flex max-h-[min(70vh,32rem)] max-w-6xl flex-col border-t border-border bg-surface shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:rounded-t-2xl dark:shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">
+              <div className="flex shrink-0 items-center justify-between gap-1 border-b border-border px-2 py-0.5">
+                <p
+                  id="chord-strip-title"
+                  className="m-0 text-xs font-medium leading-none tracking-tight text-foreground"
+                >
                   Şarkıdaki akorlar
                 </p>
-                <button
-                  type="button"
+                <PanelCloseButton
+                  className="!size-5 [&_svg]:size-2.5"
                   onClick={() => setChordStripOpen(false)}
-                  className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface min-h-[44px]"
-                >
-                  Kapat
-                </button>
+                />
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-4 pb-4 pt-2">
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto px-4 pb-4 pt-1">
                 {chordStripFingerings.length === 0 ? (
                   <p className="text-sm text-muted">Bu metinde tanınan akor yok.</p>
                 ) : (
-                  <div className="flex flex-wrap items-stretch justify-start gap-3 sm:flex-nowrap sm:overflow-x-auto sm:pb-1">
+                  <div className="flex flex-wrap items-stretch justify-start gap-4 sm:flex-nowrap sm:overflow-x-auto sm:pb-1">
                     {chordStripFingerings.map((entry, i) => {
                       const pos = entry.chord?.positions[0] ?? null;
                       return (
@@ -1405,7 +1457,7 @@ export function PreviewClient({
                           {entry.chord && pos ? (
                             <GuitarChordDiagramClassic position={pos} title={entry.token} />
                           ) : (
-                            <div className="flex min-h-[120px] w-[140px] flex-col items-center justify-center rounded-xl border border-border bg-bg px-2 py-3 text-center">
+                            <div className="flex min-h-[12.5rem] min-w-[10rem] flex-col items-center justify-center rounded-xl border border-border bg-bg px-2 py-3 text-center">
                               <p className="font-mono text-sm font-semibold text-foreground">{entry.token}</p>
                               <p className="mt-1 text-xs text-muted">Basılış bulunamadı</p>
                             </div>
@@ -1565,20 +1617,16 @@ export function PreviewClient({
                 }}
               >
                 <div
-                  className="flex cursor-default items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur sm:cursor-move"
+                  className="flex cursor-default items-center justify-between gap-1.5 border-b border-border bg-surface/90 px-2.5 py-1.5 backdrop-blur sm:cursor-move"
                   onPointerDown={(e) => handleWidgetHeaderPointerDown(widget, e)}
                   onPointerMove={handleWidgetHeaderPointerMove}
                   onPointerUp={handleWidgetHeaderPointerUp}
                   onPointerCancel={handleWidgetHeaderPointerUp}
                 >
-                  <p className="text-sm font-medium text-foreground">{widgetTitle}</p>
-                  <button
-                    type="button"
-                    onClick={() => setOpenWidgets((w) => ({ ...w, [widget]: false }))}
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-xs font-medium text-foreground hover:bg-surface"
-                  >
-                    Kapat
-                  </button>
+                  <p className="text-sm font-semibold leading-tight tracking-tight text-foreground">
+                    {widgetTitle}
+                  </p>
+                  <PanelCloseButton onClick={() => setOpenWidgets((w) => ({ ...w, [widget]: false }))} />
                 </div>
 
                 <div className="flex-1 overflow-auto p-4">

@@ -127,7 +127,7 @@ function ChordDiagram({
             {STRING_NAMES.map((name, s) => (
               <div
                 key={`${name}-${s}`}
-                className="flex h-6 items-center justify-end pr-1 text-[0.65rem] font-semibold uppercase tracking-wide text-zinc-500 sm:h-7 sm:pr-1.5 sm:text-[0.7rem]"
+                className="flex h-6 items-center justify-end pr-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted sm:h-7 sm:pr-1.5 sm:text-[0.7rem]"
               >
                 {name}
               </div>
@@ -140,7 +140,7 @@ function ChordDiagram({
               return (
                 <div
                   key={s}
-                  className="relative flex h-6 border-b border-black/25 last:border-b-0 sm:h-7"
+                  className="relative flex h-6 border-b border-border/50 last:border-b-0 sm:h-7"
                 >
                   {Array.from({ length: FRET_COUNT }, (_, f) => (
                     <div

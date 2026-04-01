@@ -27,9 +27,32 @@ export function transposeChordToken(token: string, semitones: number): string {
   return `${newRoot}${quality}${digits}`;
 }
 
+/**
+ * Transpoze yokken gösterim: kök harfini müzik notasyonuna uygun büyütür (d→D, bb→Bb).
+ * Transpoze ile gelen `PC_TO_NAME` (ör. Bb→A#) davranışını değiştirmez; sadece 0 yarımda kullanılır.
+ */
+export function formatChordSymbolDisplay(token: string): string {
+  const slash = token.indexOf("/");
+  const base = slash >= 0 ? token.slice(0, slash) : token;
+  const tail = slash >= 0 ? token.slice(slash) : "";
+
+  const m = base.match(/^([A-Ga-g](?:#|b)?)(.*)$/);
+  if (!m) return token;
+  const root = m[1];
+  const rest = m[2];
+  const rootNorm =
+    root.charAt(0).toUpperCase() +
+    (root.length > 1 ? root.slice(1).toLowerCase() : "");
+  return rootNorm + rest + tail;
+}
+
 /** Metindeki akor tokenlarıyla aynı desen (transpose ile uyumlu). */
 const CHORD_TOKEN_REGEX = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
 const BRACKETED_CHORD_TOKEN_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/gi;
+
+/** `preview-client` ile aynı: köşeli akor satırı tespiti + inline akorlar (ham metin; `i` ham küçük harf için). */
+const AS_RENDERED_BRACKET_CHORD = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/gi;
+const AS_RENDERED_INLINE_CHORD = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
 
 function normalizeBracketedChordTokens(text: string): string {
   return text.replace(BRACKETED_CHORD_TOKEN_REGEX, (full, chordToken: string, offset: number, source: string) => {
@@ -60,14 +83,55 @@ export function extractUniqueChordTokensInOrder(text: string): string[] {
   return out;
 }
 
+/**
+ * Önizleme satır mantığıyla uyumlu: bir satırda en az bir `[Akor]` varsa yalnızca köşeli parantez
+ * içindeki semboller akor sayılır (parantez dışındaki C, Am vb. söz metni kalır). Diğer satırlarda
+ * üst satır akor düzeni dahil inline desen kullanılır. Şarkı sözlerinde yanlış pozitifleri ve
+ * `transposeChordBodyText` sonrası kaybolan `[]` ayrımını önlemek için ham `chordBody` verin.
+ */
+export function extractUniqueChordTokensAsRendered(text: string): string[] {
+  if (!text) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const line of text.split("\n")) {
+    const bracketMatches = [...line.matchAll(AS_RENDERED_BRACKET_CHORD)];
+    if (bracketMatches.length > 0) {
+      for (const m of bracketMatches) {
+        const inner = m[1]?.trim() ?? "";
+        if (!inner) continue;
+        const norm = inner.toLowerCase();
+        if (seen.has(norm)) continue;
+        seen.add(norm);
+        out.push(inner);
+      }
+      continue;
+    }
+
+    const re = new RegExp(AS_RENDERED_INLINE_CHORD.source, AS_RENDERED_INLINE_CHORD.flags);
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(line)) !== null) {
+      const full = m[0];
+      const norm = full.toLowerCase();
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+      out.push(full);
+    }
+  }
+
+  return out;
+}
+
 export function transposeChordBodyText(text: string, semitones: number): string {
   if (!text) return text;
   const normalized = normalizeBracketedChordTokens(text);
-  if (!Number.isFinite(semitones) || semitones === 0) return normalized;
+  if (!Number.isFinite(semitones)) return normalized;
 
   const re = new RegExp(CHORD_TOKEN_REGEX.source, CHORD_TOKEN_REGEX.flags);
   return normalized.replace(re, (full, root: string, quality: string | undefined, digits: string | undefined) => {
     const suffix = `${quality ?? ""}${digits ?? ""}`;
-    return transposeChordToken(`${root}${suffix}`, semitones);
+    const token = `${root}${suffix}`;
+    if (semitones === 0) return formatChordSymbolDisplay(token);
+    return transposeChordToken(token, semitones);
   });
 }

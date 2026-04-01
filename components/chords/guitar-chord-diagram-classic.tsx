@@ -48,28 +48,38 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
   const barreSpan =
     position.barres != null ? barreStringSpan(fretsParsed, position.barres) : null;
 
-  const strW = 34;
-  const topH = 22;
-  const nutH = 10;
-  const rowH = 26;
-  const padX = 10;
-  const padY = 8;
+  /** Tel aralığı < perde aralığı; üst sıkıştırıldığında alt boşluğu doldurmak için perdeler biraz büyük tutulur. */
+  const strW = 25;
+  const rowH = 35;
+  /** Üst eşik (nut): ince çubuk; kalın dikdörtgen görünümünü azaltır. */
+  const nutH = 6;
+  /** × / ○ işaretleri (nut üstü); fazla boşluk vermemek için kısa tutulur. */
+  const topH = 17;
+  /** Izgara yanındaki yatay boşluk (kart kenarına yaklaştırır). */
+  const padX = 6;
+  /** Üst: başlık ile ×/○ arası; alt: son perde altı (fazla boşluk bırakmadan). */
+  const padYTop = 3;
+  const padYBottom = 4;
+  const cell = Math.min(strW, rowH);
+  const dotR = Math.round(cell * 0.36);
+  const openR = Math.max(4.5, Math.round(cell * 0.22));
+  const barreH = Math.max(9, Math.round(rowH * 0.34));
 
   const gridW = STRING_COUNT * strW;
   const gridH = topH + nutH + numRows * rowH;
   const w = padX * 2 + gridW;
-  const h = padY * 2 + gridH;
+  const h = padYTop + gridH + padYBottom;
 
-  const baseY = padY;
+  const baseY = padYTop;
 
   let barreRect: { x: number; y: number; width: number; height: number; ry: number } | null = null;
   if (position.barres != null && barreSpan) {
     const fretRow = position.barres - startFret;
     if (fretRow >= 0 && fretRow < numRows) {
       const cy = baseY + topH + nutH + fretRow * rowH + rowH / 2;
-      const x = padX + barreSpan.from * strW + strW * 0.12;
-      const width = (barreSpan.to - barreSpan.from + 1) * strW - strW * 0.24;
-      barreRect = { x, y: cy - 5, width, height: 10, ry: 5 };
+      const x = padX + barreSpan.from * strW + strW * 0.1;
+      const width = (barreSpan.to - barreSpan.from + 1) * strW - strW * 0.2;
+      barreRect = { x, y: cy - barreH / 2, width, height: barreH, ry: barreH / 2 };
     }
   }
 
@@ -79,10 +89,10 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
       role="img"
       aria-label={`${title} gitar akoru`}
     >
-      <p className="border-b border-border bg-surface/80 px-2 py-1.5 text-center text-sm font-semibold text-foreground">
+      <p className="border-b border-border bg-surface/80 px-2 py-1 text-center text-sm font-semibold leading-none tabular-nums tracking-tight text-foreground">
         {title}
       </p>
-      <div className="flex justify-center p-2">
+      <div className="flex justify-center px-1 pb-1.5 pt-0.5">
         <svg
           width={w}
           height={h}
@@ -102,9 +112,9 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
                 <text
                   key={`top-${s}`}
                   x={cx}
-                  y={cy + 5}
+                  y={cy + 3}
                   textAnchor="middle"
-                  className="fill-muted text-[15px] font-bold"
+                  className="fill-muted text-[12px] font-bold"
                 >
                   ×
                 </text>
@@ -116,9 +126,9 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
                   key={`top-${s}`}
                   cx={cx}
                   cy={cy}
-                  r={6}
+                  r={openR}
                   className="fill-none stroke-foreground"
-                  strokeWidth={1.75}
+                  strokeWidth={1.5}
                 />
               );
             }
@@ -131,9 +141,9 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
             y={baseY + topH}
             width={gridW}
             height={nutH}
-            className="fill-[rgb(var(--color-surface))] stroke-[rgb(var(--color-border))]"
-            strokeWidth={2}
-            rx={1}
+            className="fill-[rgb(var(--color-surface))] stroke-foreground"
+            strokeWidth={1.25}
+            rx={0.5}
           />
 
           {/* Perde aralıkları (iç yatay çizgiler) */}
@@ -148,7 +158,7 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
                 y2={y}
                 className="stroke-[rgb(var(--color-border))]"
                 strokeWidth={1}
-                opacity={0.9}
+                opacity={0.8}
               />
             );
           })}
@@ -166,17 +176,17 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
                 y1={y0}
                 y2={y1}
                 className="stroke-[rgb(var(--color-border))]"
-                strokeWidth={1}
-                opacity={0.85}
+                strokeWidth={c === 0 || c === STRING_COUNT ? 1.15 : 1}
+                opacity={0.88}
               />
             );
           })}
 
           {startFret > 1 ? (
             <text
-              x={6}
-              y={baseY + topH + nutH + rowH / 2 + 4}
-              className="fill-muted text-[11px] font-semibold tabular-nums"
+              x={2}
+              y={baseY + topH + nutH + rowH / 2 + 3}
+              className="fill-muted text-[10px] font-semibold tabular-nums"
             >
               {startFret}
             </text>
@@ -213,16 +223,16 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
                 <circle
                   cx={cx}
                   cy={cy}
-                  r={11}
+                  r={dotR}
                   className="fill-[rgb(var(--color-accent))] stroke-[rgb(var(--color-accent-muted))]"
                   strokeWidth={1}
                 />
                 {showFinger ? (
                   <text
                     x={cx}
-                    y={cy + 4}
+                    y={cy + Math.max(3, Math.round(dotR * 0.38))}
                     textAnchor="middle"
-                    className="fill-[rgb(var(--color-accent-foreground))] text-[12px] font-bold tabular-nums"
+                    className="fill-[rgb(var(--color-accent-foreground))] text-[11px] font-bold tabular-nums"
                   >
                     {fg}
                   </text>

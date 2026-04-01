@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  extractUniqueChordTokensAsRendered,
   extractUniqueChordTokensInOrder,
+  formatChordSymbolDisplay,
   parseTonicFromOriginalKey,
   signedSemitoneDelta,
   transposeChordToken,
@@ -123,9 +125,13 @@ describe("transposeChordBodyText", () => {
     expect(result).toContain("Yine sessizlik");
   });
 
-  it("returns text unchanged for 0 semitones", () => {
+  it("returns text unchanged for 0 semitones when already cased", () => {
     const body = "Am F C G";
     expect(transposeChordBodyText(body, 0)).toBe(body);
+  });
+
+  it("normalizes lowercase chord roots at 0 semitones", () => {
+    expect(transposeChordBodyText("d Em a g", 0)).toBe("D Em A G");
   });
 
   it("unwraps bracketed chord tokens while preserving section labels", () => {
@@ -174,6 +180,37 @@ describe("transposeChordBodyText", () => {
     expect(result).toContain("Em7");
     expect(result).toContain("B7");
     expect(result).toContain("C");
+  });
+});
+
+describe("formatChordSymbolDisplay", () => {
+  it("capitalizes single-letter roots", () => {
+    expect(formatChordSymbolDisplay("d")).toBe("D");
+    expect(formatChordSymbolDisplay("g")).toBe("G");
+  });
+
+  it("normalizes minor and keeps Bb-style spelling", () => {
+    expect(formatChordSymbolDisplay("em")).toBe("Em");
+    expect(formatChordSymbolDisplay("bb")).toBe("Bb");
+  });
+
+  it("preserves slash bass spelling", () => {
+    expect(formatChordSymbolDisplay("d/F#")).toBe("D/F#");
+  });
+});
+
+describe("extractUniqueChordTokensAsRendered", () => {
+  it("on bracket lines only takes chords inside brackets", () => {
+    expect(extractUniqueChordTokensAsRendered("[Am] sözde G ve F geçse de")).toEqual(["Am"]);
+  });
+
+  it("on plain lines uses inline chord pattern (chord row + lyrics)", () => {
+    const body = "Am          F\nKaranlıkta kaldım\nC           G";
+    expect(extractUniqueChordTokensAsRendered(body)).toEqual(["Am", "F", "C", "G"]);
+  });
+
+  it("dedupes and keeps first-seen order across lines", () => {
+    expect(extractUniqueChordTokensAsRendered("[Am] x\n[F] y\nAm")).toEqual(["Am", "F"]);
   });
 });
 
