@@ -11,19 +11,23 @@ function db() {
   return fs;
 }
 
+function omitUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined));
+}
+
 type SongInput = Omit<SongDoc, "schemaVersion" | "createdAt" | "updatedAt" | "moderationStatus"> & {
   moderationStatus?: ModerationStatus;
 };
 
 export async function createSong(input: SongInput, actorUid: string): Promise<string> {
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const data: Record<string, unknown> = {
+  const data: Record<string, unknown> = omitUndefined({
     ...input,
     moderationStatus: input.moderationStatus ?? "approved",
     schemaVersion: 1,
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   const ref = await db().collection(COLLECTION).add(data);
   await writeAuditLog(actorUid, "song:create", COLLECTION, ref.id, { title: input.title });
