@@ -20,13 +20,24 @@ type Props = {
 };
 
 export async function generateStaticParams() {
-  const artists = await getAllArtists();
-  return artists.map((a) => ({ slug: a.slug }));
+  try {
+    const artists = await getAllArtists();
+    return artists.map((a) => ({ slug: a.slug }));
+  } catch {
+    // CI/build environments may not provide Firestore admin credentials.
+    // Returning an empty set keeps build green; ISR still serves pages at runtime.
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const artist = await getArtistBySlug(slug);
+  let artist: Awaited<ReturnType<typeof getArtistBySlug>> = null;
+  try {
+    artist = await getArtistBySlug(slug);
+  } catch {
+    artist = null;
+  }
   if (!artist) return { title: "Sanatçı bulunamadı" };
   const title = artist.name;
   const description = `${artist.name} gitar akorları ve şarkı sözleri.`;
