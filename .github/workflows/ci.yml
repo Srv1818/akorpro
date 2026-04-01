@@ -141,10 +141,27 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      - name: Preflight runtime env
+        run: |
+          missing=0
+          for v in NEXT_PUBLIC_FIREBASE_API_KEY NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN NEXT_PUBLIC_FIREBASE_PROJECT_ID NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID NEXT_PUBLIC_FIREBASE_APP_ID FIREBASE_SERVICE_ACCOUNT_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "Missing env: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo "SKIP_RUNTIME_TESTS=1" >> $GITHUB_ENV
+            echo "Runtime secrets missing; skipping E2E."
+          fi
       - run: npm ci
+        if: env.SKIP_RUNTIME_TESTS != '1'
       - run: npx playwright install --with-deps chromium
+        if: env.SKIP_RUNTIME_TESTS != '1'
       - run: npm run build
+        if: env.SKIP_RUNTIME_TESTS != '1'
       - name: Start server & run E2E
+        if: env.SKIP_RUNTIME_TESTS != '1'
         run: |
           npm start &
           npx wait-on http://localhost:3000 --timeout 30000
@@ -175,9 +192,30 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      - name: Preflight runtime env
+        run: |
+          missing=0
+          for v in NEXT_PUBLIC_FIREBASE_API_KEY NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN NEXT_PUBLIC_FIREBASE_PROJECT_ID NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID NEXT_PUBLIC_FIREBASE_APP_ID FIREBASE_SERVICE_ACCOUNT_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "Missing env: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo "SKIP_RUNTIME_TESTS=1" >> $GITHUB_ENV
+            echo "Runtime secrets missing; skipping Lighthouse."
+          fi
       - run: npm ci
+        if: env.SKIP_RUNTIME_TESTS != '1'
+      - name: Install Chromium for Lighthouse
+        if: env.SKIP_RUNTIME_TESTS != '1'
+        run: |
+          npx playwright install --with-deps chromium
+          echo "CHROME_PATH=$(node -e \"console.log(require('playwright').chromium.executablePath())\")" >> $GITHUB_ENV
       - run: npm run build
+        if: env.SKIP_RUNTIME_TESTS != '1'
       - name: Run Lighthouse CI
+        if: env.SKIP_RUNTIME_TESTS != '1'
         run: |
           npm start &
           npx wait-on http://localhost:3000 --timeout 30000
@@ -209,9 +247,25 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      - name: Preflight runtime env
+        run: |
+          missing=0
+          for v in NEXT_PUBLIC_FIREBASE_API_KEY NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN NEXT_PUBLIC_FIREBASE_PROJECT_ID NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID NEXT_PUBLIC_FIREBASE_APP_ID FIREBASE_SERVICE_ACCOUNT_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "Missing env: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo "SKIP_RUNTIME_TESTS=1" >> $GITHUB_ENV
+            echo "Runtime secrets missing; skipping smoke tests."
+          fi
       - run: npm ci
+        if: env.SKIP_RUNTIME_TESTS != '1'
       - run: npm run build
+        if: env.SKIP_RUNTIME_TESTS != '1'
       - name: Start server & run smoke tests
+        if: env.SKIP_RUNTIME_TESTS != '1'
         run: |
           npm start &
           npx wait-on http://localhost:3000 --timeout 30000

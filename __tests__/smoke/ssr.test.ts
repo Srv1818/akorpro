@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 
-const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
+const rawBaseUrl = (process.env.BASE_URL ?? "").trim();
+const BASE_URL = /^https?:\/\//i.test(rawBaseUrl)
+  ? rawBaseUrl.replace(/\/+$/, "")
+  : "http://localhost:3000";
 
 async function fetchHtml(path: string): Promise<string> {
   const res = await fetch(`${BASE_URL}${path}`, {
