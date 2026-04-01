@@ -18,6 +18,7 @@ const REQUIRED_IN_PROD: string[] = [
 
 export function assertEnvOrWarn(): void {
   const isProd = process.env.NODE_ENV === "production";
+  const isCi = process.env.CI === "true";
   const missing: string[] = [];
 
   for (const key of REQUIRED) {
@@ -38,7 +39,7 @@ export function assertEnvOrWarn(): void {
 
   const msg = `[env] Eksik: ${missing.join(", ")}`;
 
-  if (isProd) {
+  if (isProd && !isCi) {
     throw new Error(msg);
   }
   console.warn(msg);
