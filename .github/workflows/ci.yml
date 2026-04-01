@@ -143,10 +143,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - uses: actions/download-artifact@v4
-        with:
-          name: nextjs-build
-          path: .next
+      - run: npm run build
       - name: Start server & run E2E
         run: |
           npm start &
@@ -179,10 +176,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
-        with:
-          name: nextjs-build
-          path: .next
+      - run: npm run build
       - name: Run Lighthouse CI
         run: |
           npm start &
@@ -216,10 +210,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
-        with:
-          name: nextjs-build
-          path: .next
+      - run: npm run build
       - name: Start server & run smoke tests
         run: |
           npm start &
