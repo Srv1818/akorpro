@@ -9,12 +9,20 @@ type Song = {
   id: string;
   title: string;
   slug: string;
+  artistId?: string;
   artistSlug: string;
   artistName: string;
   originalKey: string;
   difficulty: string;
   keyMode?: string;
   genre: string;
+  tempo?: number | string;
+  timeSignature?: string;
+  tuning?: string;
+  capo?: number;
+  popularity?: number;
+  copyrightSource?: string;
+  chordBody?: string;
   moderationStatus: string;
 };
 
@@ -24,6 +32,7 @@ export function AdminSongsClient() {
   const [songs, setSongs] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
@@ -33,6 +42,38 @@ export function AdminSongsClient() {
   const [artistName, setArtistName] = useState("");
   const [artistSlug, setArtistSlug] = useState("");
   const [artistSlugDirty, setArtistSlugDirty] = useState(false);
+  const [originalKey, setOriginalKey] = useState("");
+  const [difficulty, setDifficulty] = useState("");
+  const [keyMode, setKeyMode] = useState("");
+  const [genre, setGenre] = useState("");
+  const [tempo, setTempo] = useState("");
+  const [timeSignature, setTimeSignature] = useState("");
+  const [tuning, setTuning] = useState("");
+  const [capo, setCapo] = useState("");
+  const [popularity, setPopularity] = useState("");
+  const [copyrightSource, setCopyrightSource] = useState("");
+  const [chordBody, setChordBody] = useState("");
+
+  function resetFormState() {
+    setEditId(null);
+    setTitle("");
+    setSongSlug("");
+    setSongSlugDirty(false);
+    setArtistName("");
+    setArtistSlug("");
+    setArtistSlugDirty(false);
+    setOriginalKey("");
+    setDifficulty("");
+    setKeyMode("");
+    setGenre("");
+    setTempo("");
+    setTimeSignature("");
+    setTuning("");
+    setCapo("");
+    setPopularity("");
+    setCopyrightSource("");
+    setChordBody("");
+  }
 
   const nextSongSlug = useMemo(() => slugify(title), [title]);
   const nextArtistSlug = useMemo(() => slugify(artistName), [artistName]);
@@ -67,11 +108,23 @@ export function AdminSongsClient() {
     if (saving) return;
     setSaving(true);
     setMsg("");
-    const fd = new FormData(e.currentTarget);
-    const body: Record<string, unknown> = {};
-    fd.forEach((v, k) => { if (typeof v === "string" && v.trim()) body[k] = v.trim(); });
-    if (body.capo) body.capo = Number(body.capo);
-    if (body.popularity) body.popularity = Number(body.popularity);
+    const body: Record<string, unknown> = {
+      title: title.trim(),
+      slug: songSlug.trim(),
+      artistName: artistName.trim(),
+      artistSlug: artistSlug.trim(),
+      originalKey: originalKey.trim(),
+      difficulty: difficulty.trim(),
+      keyMode: keyMode.trim(),
+      genre: genre.trim(),
+      chordBody: chordBody.trim(),
+    };
+    if (tempo.trim()) body.tempo = tempo.trim();
+    if (timeSignature.trim()) body.timeSignature = timeSignature.trim();
+    if (tuning.trim()) body.tuning = tuning.trim();
+    if (capo.trim()) body.capo = Number(capo.trim());
+    if (popularity.trim()) body.popularity = Number(popularity.trim());
+    if (copyrightSource.trim()) body.copyrightSource = copyrightSource.trim();
 
     const url = editId ? `/api/admin/songs/${editId}` : "/api/admin/songs";
     const method = editId ? "PATCH" : "POST";
@@ -111,13 +164,7 @@ export function AdminSongsClient() {
 
       setMsg(editId ? "Güncellendi." : `Oluşturuldu${createdId ? `: ${createdId}` : "."}`);
       setShowForm(false);
-      setEditId(null);
-      setTitle("");
-      setSongSlug("");
-      setSongSlugDirty(false);
-      setArtistName("");
-      setArtistSlug("");
-      setArtistSlugDirty(false);
+      resetFormState();
       fetchSongs();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "İstek başarısız.");
@@ -132,9 +179,41 @@ export function AdminSongsClient() {
     if (res.ok) fetchSongs();
   }
 
-  function startEdit(song: Song) {
+  async function startEdit(song: Song) {
     setEditId(song.id);
     setShowForm(true);
+    setLoadingEdit(true);
+    setMsg("");
+    try {
+      const res = await fetch(`/api/admin/songs/${song.id}`);
+      const data = (await res.json()) as { song?: Song; error?: string };
+      if (!res.ok || !data.song) {
+        setMsg(data.error ?? "Şarkı detayı alınamadı.");
+        return;
+      }
+      const s = data.song;
+      setTitle(s.title ?? "");
+      setSongSlug(s.slug ?? "");
+      setSongSlugDirty(false);
+      setArtistName(s.artistName ?? "");
+      setArtistSlug(s.artistSlug ?? "");
+      setArtistSlugDirty(false);
+      setOriginalKey(s.originalKey ?? "");
+      setDifficulty(s.difficulty ?? "");
+      setKeyMode(s.keyMode ?? "");
+      setGenre(s.genre ?? "");
+      setTempo(typeof s.tempo === "number" || typeof s.tempo === "string" ? String(s.tempo) : "");
+      setTimeSignature(s.timeSignature ?? "");
+      setTuning(s.tuning ?? "");
+      setCapo(typeof s.capo === "number" ? String(s.capo) : "");
+      setPopularity(typeof s.popularity === "number" ? String(s.popularity) : "");
+      setCopyrightSource(s.copyrightSource ?? "");
+      setChordBody(s.chordBody ?? "");
+    } catch {
+      setMsg("Şarkı detayı alınamadı.");
+    } finally {
+      setLoadingEdit(false);
+    }
   }
 
   if (loading) return <p className="text-sm text-muted">Yükleniyor…</p>;
@@ -148,13 +227,7 @@ export function AdminSongsClient() {
           type="button"
           onClick={() => {
             setShowForm(!showForm);
-            setEditId(null);
-            setTitle("");
-            setSongSlug("");
-            setSongSlugDirty(false);
-            setArtistName("");
-            setArtistSlug("");
-            setArtistSlugDirty(false);
+            if (showForm) resetFormState();
           }}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
         >
@@ -206,28 +279,102 @@ export function AdminSongsClient() {
             }}
             className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
           />
-          <input name="originalKey" placeholder="Ton (Am, Em…) *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <select name="difficulty" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm">
+          <input
+            name="originalKey"
+            placeholder="Ton (Am, Em…) *"
+            required
+            value={originalKey}
+            onChange={(e) => setOriginalKey(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <select
+            name="difficulty"
+            required
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          >
             <option value="">Zorluk *</option>
             <option value="kolay">Kolay</option>
             <option value="orta">Orta</option>
             <option value="zor">Zor</option>
           </select>
-          <select name="keyMode" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm">
+          <select
+            name="keyMode"
+            required
+            value={keyMode}
+            onChange={(e) => setKeyMode(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          >
             <option value="">Ton modu *</option>
             <option value="major">Majör</option>
             <option value="natural">Doğal Minör</option>
             <option value="harmonic">Harmonik Minör</option>
             <option value="melodic">Melodik Minör</option>
           </select>
-          <input name="genre" placeholder="Tür (Rock, Pop…) *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="tempo" placeholder="Tempo (BPM)" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="timeSignature" placeholder="Ölçü (4/4)" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="tuning" placeholder="Akort (Standard)" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="capo" type="number" min="0" placeholder="Kapo" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="popularity" type="number" placeholder="Popülerlik" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <input name="copyrightSource" placeholder="Telif notu" className="col-span-full rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
-          <textarea name="chordBody" placeholder="Akor + söz gövdesi *" required rows={6} className="col-span-full rounded-lg border border-border bg-bg px-3 py-2 text-sm font-mono" />
+          <input
+            name="genre"
+            placeholder="Tür (Rock, Pop…) *"
+            required
+            value={genre}
+            onChange={(e) => setGenre(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="tempo"
+            placeholder="Tempo (BPM)"
+            value={tempo}
+            onChange={(e) => setTempo(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="timeSignature"
+            placeholder="Ölçü (4/4)"
+            value={timeSignature}
+            onChange={(e) => setTimeSignature(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="tuning"
+            placeholder="Akort (Standard)"
+            value={tuning}
+            onChange={(e) => setTuning(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="capo"
+            type="number"
+            min="0"
+            placeholder="Kapo"
+            value={capo}
+            onChange={(e) => setCapo(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="popularity"
+            type="number"
+            placeholder="Popülerlik"
+            value={popularity}
+            onChange={(e) => setPopularity(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <input
+            name="copyrightSource"
+            placeholder="Telif notu"
+            value={copyrightSource}
+            onChange={(e) => setCopyrightSource(e.currentTarget.value)}
+            className="col-span-full rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          />
+          <textarea
+            name="chordBody"
+            placeholder="Akor + söz gövdesi *"
+            required
+            rows={6}
+            value={chordBody}
+            onChange={(e) => setChordBody(e.currentTarget.value)}
+            className="col-span-full rounded-lg border border-border bg-bg px-3 py-2 text-sm font-mono"
+          />
+          {loadingEdit ? <p className="col-span-full text-xs text-muted">Mevcut kayıt yükleniyor…</p> : null}
           <div className="col-span-full flex gap-2">
             <button
               type="submit"
@@ -240,13 +387,7 @@ export function AdminSongsClient() {
               type="button"
               onClick={() => {
                 setShowForm(false);
-                setEditId(null);
-                setTitle("");
-                setSongSlug("");
-                setSongSlugDirty(false);
-                setArtistName("");
-                setArtistSlug("");
-                setArtistSlugDirty(false);
+                resetFormState();
               }}
               className="rounded-lg border border-border px-4 py-2 text-sm text-muted"
             >

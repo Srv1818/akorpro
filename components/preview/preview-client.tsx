@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
@@ -44,6 +46,7 @@ import {
   parseTonicFromOriginalKey,
   signedSemitoneDelta,
   transposeChordBodyText,
+  transposeChordToken,
 } from "@/lib/music/transpose";
 
 const OVERRIDE_SCHEMA_VERSION = 1;
@@ -65,6 +68,8 @@ type Props = {
 
 type PlaylistRow = { id: string; name: string };
 type WidgetId = "circle" | "gamlar";
+const INLINE_CHORD_REGEX = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/g;
+const BRACKET_CHORD_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/g;
 
 function formatError(err: unknown): string {
   if (err && typeof err === "object" && "code" in err) {
@@ -115,6 +120,85 @@ function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): Ke
   if (k.endsWith("maj")) return "major";
   if (k.endsWith("m")) return "natural";
   return "major";
+}
+
+function renderChordTokenNode(token: string, key: string): ReactNode {
+  const fingering = resolveChordTokenToFingering(token);
+  const pos = fingering.chord?.positions[0] ?? null;
+  return (
+    <span key={key} className="group relative inline-block align-baseline">
+      <span className="cursor-help rounded-sm px-0.5 font-mono font-normal text-green-500">{token}</span>
+      <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden -translate-x-1/2 group-hover:block group-focus-within:block">
+        {fingering.chord && pos ? (
+          <GuitarChordDiagramClassic position={pos} title={token} />
+        ) : (
+          <span className="inline-block rounded-md border border-border bg-surface px-2 py-1 text-xs text-foreground shadow-lg">
+            {token}
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
+function renderChordLine(line: string, semitones: number): ReactNode[] {
+  const out: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const regex = new RegExp(INLINE_CHORD_REGEX.source, "g");
+  while ((match = regex.exec(line)) !== null) {
+    const full = match[0];
+    const displayed = transposeChordToken(full, semitones);
+    const index = match.index;
+    if (index > lastIndex) out.push(line.slice(lastIndex, index));
+    out.push(renderChordTokenNode(displayed, `${displayed}-${index}`));
+    lastIndex = index + full.length;
+  }
+  if (lastIndex < line.length) out.push(line.slice(lastIndex));
+  return out;
+}
+
+function renderAlignedBracketLine(line: string, semitones: number, lineIndex: number): ReactNode[] {
+  const matches = Array.from(line.matchAll(BRACKET_CHORD_REGEX));
+  if (matches.length === 0) return renderChordLine(line, semitones);
+
+  const chordAtPos: Array<{ pos: number; token: string }> = [];
+  let lyrics = "";
+  let cursor = 0;
+
+  for (const m of matches) {
+    const full = m[0];
+    const rootToken = m[1] ?? "";
+    const idx = m.index ?? 0;
+    if (idx > cursor) lyrics += line.slice(cursor, idx);
+    chordAtPos.push({
+      pos: lyrics.length,
+      token: transposeChordToken(rootToken, semitones),
+    });
+    cursor = idx + full.length;
+  }
+  if (cursor < line.length) lyrics += line.slice(cursor);
+
+  const nodes: ReactNode[] = [];
+  let caret = 0;
+  chordAtPos.forEach((item, i) => {
+    if (item.pos > caret) nodes.push(" ".repeat(item.pos - caret));
+    else if (i > 0) nodes.push(" ");
+    nodes.push(renderChordTokenNode(item.token, `bchord-${lineIndex}-${i}-${item.pos}`));
+    caret = Math.max(caret, item.pos + item.token.length);
+  });
+
+  return [...nodes, "\n", lyrics];
+}
+
+function renderChordBodyWithHighlights(text: string, semitones: number): ReactNode {
+  const lines = text.split("\n");
+  return lines.map((line, idx) => (
+    <Fragment key={`line-${idx}`}>
+      {renderAlignedBracketLine(line, semitones, idx)}
+      {idx < lines.length - 1 ? "\n" : null}
+    </Fragment>
+  ));
 }
 
 /** Mobil Gamlar paneli: klavye yatay kullanıma uygun olsun diye ekranı yatay kilitle (destekleyen tarayıcılar). */
@@ -1094,8 +1178,8 @@ export function PreviewClient({
             </div>
 
             <div className="flex-1 overflow-auto p-4 sm:p-6">
-              <pre className="overflow-x-auto whitespace-pre font-sans text-base leading-loose text-white sm:text-lg md:text-xl sm:leading-loose md:leading-loose">
-                {displayedChordBody}
+              <pre className="overflow-x-auto whitespace-pre font-mono text-base leading-loose text-white sm:text-lg md:text-xl sm:leading-loose md:leading-loose">
+                {renderChordBodyWithHighlights(chordBody, semitones)}
               </pre>
             </div>
           </div>
@@ -1503,7 +1587,9 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
-        <pre className="overflow-x-auto whitespace-pre font-sans text-sm leading-loose text-foreground sm:text-base md:text-lg sm:leading-relaxed md:leading-relaxed">{displayedChordBody}</pre>
+        <pre className="overflow-x-auto whitespace-pre font-mono text-sm leading-loose text-foreground sm:text-base md:text-lg sm:leading-relaxed md:leading-relaxed">
+          {renderChordBodyWithHighlights(chordBody, semitones)}
+        </pre>
       </article>
 
       <div className="print:hidden">

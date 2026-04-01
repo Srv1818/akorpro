@@ -128,6 +128,24 @@ describe("transposeChordBodyText", () => {
     expect(transposeChordBodyText(body, 0)).toBe(body);
   });
 
+  it("unwraps bracketed chord tokens while preserving section labels", () => {
+    const body = "[Verse]\n[Am] [F] [C] [G]\nSarki sozu";
+    const result = transposeChordBodyText(body, 0);
+    expect(result).toContain("[Verse]");
+    expect(result).toContain("Am F C G");
+    expect(result).not.toContain("[Am]");
+    expect(result).not.toContain("[F]");
+  });
+
+  it("inserts spacing when bracketed chords touch lyrics", () => {
+    const body = "[C]Zor olsa da, [Am]galiba donuyor[Em]um sana";
+    const result = transposeChordBodyText(body, 0);
+    expect(result).toContain("C Zor olsa da, Am galiba donuyor Em um sana");
+    expect(result).not.toContain("CZor");
+    expect(result).not.toContain("Amgaliba");
+    expect(result).not.toContain("donuyorEmum");
+  });
+
   it("returns text unchanged for NaN", () => {
     expect(transposeChordBodyText("Am F", NaN)).toBe("Am F");
   });

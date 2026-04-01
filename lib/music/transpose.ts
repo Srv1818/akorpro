@@ -29,6 +29,17 @@ export function transposeChordToken(token: string, semitones: number): string {
 
 /** Metindeki akor tokenlarıyla aynı desen (transpose ile uyumlu). */
 const CHORD_TOKEN_REGEX = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
+const BRACKETED_CHORD_TOKEN_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/gi;
+
+function normalizeBracketedChordTokens(text: string): string {
+  return text.replace(BRACKETED_CHORD_TOKEN_REGEX, (full, chordToken: string, offset: number, source: string) => {
+    const prev = offset > 0 ? source[offset - 1] : "";
+    const next = offset + full.length < source.length ? source[offset + full.length] : "";
+    const prevIsAlnum = prev ? /[\p{L}\p{N}]/u.test(prev) : false;
+    const nextIsAlnum = next ? /[\p{L}\p{N}]/u.test(next) : false;
+    return `${prevIsAlnum ? " " : ""}${chordToken}${nextIsAlnum ? " " : ""}`;
+  });
+}
 
 /**
  * Metinde geçen akorları ilk göründükleri sırayla, yinelenmeden döndürür (görüntülenen metinle uyumlu olması için transpoze sonrası metin verin).
@@ -51,10 +62,11 @@ export function extractUniqueChordTokensInOrder(text: string): string[] {
 
 export function transposeChordBodyText(text: string, semitones: number): string {
   if (!text) return text;
-  if (!Number.isFinite(semitones) || semitones === 0) return text;
+  const normalized = normalizeBracketedChordTokens(text);
+  if (!Number.isFinite(semitones) || semitones === 0) return normalized;
 
   const re = new RegExp(CHORD_TOKEN_REGEX.source, CHORD_TOKEN_REGEX.flags);
-  return text.replace(re, (full, root: string, quality: string | undefined, digits: string | undefined) => {
+  return normalized.replace(re, (full, root: string, quality: string | undefined, digits: string | undefined) => {
     const suffix = `${quality ?? ""}${digits ?? ""}`;
     return transposeChordToken(`${root}${suffix}`, semitones);
   });
