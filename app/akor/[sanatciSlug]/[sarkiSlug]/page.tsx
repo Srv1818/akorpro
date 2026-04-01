@@ -27,8 +27,14 @@ type Props = {
 };
 
 export async function generateStaticParams() {
-  const songs = await getAllApprovedSongs();
-  return songs.map((s) => ({ sanatciSlug: s.artistSlug, sarkiSlug: s.slug }));
+  try {
+    const songs = await getAllApprovedSongs();
+    return songs.map((s) => ({ sanatciSlug: s.artistSlug, sarkiSlug: s.slug }));
+  } catch {
+    // CI/build environments may not provide Firestore admin credentials.
+    // Returning an empty set keeps build green; ISR still serves pages at runtime.
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
