@@ -78,7 +78,7 @@ export default function KullanimKosullariPage() {
 
       <h2>10. İletişim</h2>
       <p>
-        Sorularınız için: <strong>iletisim@akorpro.com.tr</strong>
+        Sorularınız için: <strong>info@akorpro.com.tr</strong>
       </p>
     </article>
   );

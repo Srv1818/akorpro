@@ -62,7 +62,7 @@ export default function TelifPage() {
 
       <h2>5. İletişim</h2>
       <p>
-        E-posta: <strong>telif@akorpro.com.tr</strong>
+        E-posta: <strong>info@akorpro.com.tr</strong>
       </p>
       <p>
         Veya aşağıdaki formu kullanarak doğrudan talep gönderebilirsiniz:
