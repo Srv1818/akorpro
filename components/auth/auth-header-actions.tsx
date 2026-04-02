@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { usePathname, useRouter } from "next/navigation";
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { getClientAuth } from "@/lib/firebase/client";
 // Dropdown ikonları için Lucide-react (shadcn projelerinde standarttır)
@@ -14,6 +14,7 @@ type MeResponse = { user: SessionUser | null };
 export function AuthHeaderActions() {
   const router = useRouter();
   const pathname = usePathname();
+  const containerRef = useRef<HTMLDivElement>(null);
   // Sadece maili değil, tüm kullanıcı objesini tutalım (eğer profil resmi vs. varsa kullanırız)
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
   // Açılır menünün açık/kapalı durumu
@@ -40,6 +41,31 @@ export function AuthHeaderActions() {
     })();
     return () => ac.abort();
   }, [pathname]);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function onPointerDown(e: PointerEvent) {
+      const el = containerRef.current;
+      if (!el) return;
+      if (!el.contains(e.target as Node)) setIsOpen(false);
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setIsOpen(false);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isOpen]);
 
   async function onSignOut() {
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
@@ -79,7 +105,7 @@ export function AuthHeaderActions() {
 
   // Giriş yapmış kullanıcı durumu (Dropdown Menü)
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       {/* Kullanıcı Avatarı / Butonu */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -91,13 +117,7 @@ export function AuthHeaderActions() {
       {/* Açılır Menü (Dropdown Content) */}
       {isOpen && (
         <>
-          {/* Menü dışına tıklayınca kapanması için görünmez katman */}
-          <div 
-            className="fixed inset-0 z-40" 
-            onClick={() => setIsOpen(false)}
-          />
-          
-          <div className="absolute right-0 top-full mt-2 w-56 origin-top-right rounded-md border border-border bg-bg shadow-lg shadow-black/50 ring-1 ring-black ring-opacity-5 z-50 py-1">
+          <div className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right rounded-md border border-border bg-bg py-1 shadow-lg shadow-black/50 ring-1 ring-black ring-opacity-5">
             {/* Menü Başlığı (Kullanıcı Bilgisi) */}
             <div className="px-4 py-3 border-b border-border/50">
               <p className="text-sm font-medium text-foreground truncate">
