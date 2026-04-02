@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { createSong, getAllSongsAdmin } from "@/lib/firestore/admin-songs";
+import { TAGS } from "@/lib/cache/tags";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
 import type { Difficulty, KeyMode } from "@/lib/types/content";
 
@@ -86,6 +88,12 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Şarkı oluşturulamadı.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+
+  revalidateTag(TAGS.SONGS_ALL, "page");
+  revalidateTag(TAGS.SONGS_FACETS, "page");
+  revalidateTag(TAGS.DISCOVER_POPULAR, "page");
+  revalidateTag(TAGS.DISCOVER_NEW, "page");
+  revalidateTag(TAGS.DISCOVER_FEATURED, "page");
 
   return NextResponse.json({ ok: true, id });
 }

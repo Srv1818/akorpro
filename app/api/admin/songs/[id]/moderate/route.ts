@@ -42,6 +42,9 @@ export async function POST(request: Request, ctx: Ctx) {
     }
     revalidateTag(TAGS.SONGS_ALL, "page");
     revalidateTag(TAGS.SONGS_FACETS, "page");
+    revalidateTag(TAGS.DISCOVER_POPULAR, "page");
+    revalidateTag(TAGS.DISCOVER_NEW, "page");
+    revalidateTag(TAGS.DISCOVER_FEATURED, "page");
   }
 
   return NextResponse.json({ ok: true });

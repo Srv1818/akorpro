@@ -34,10 +34,42 @@ async function _getSection(section: string): Promise<SongWithId[]> {
 
   return withFirestoreRetry(section, async () => {
     const doc = await fs.collection(COLLECTION).doc(section).get();
-    if (!doc.exists) return [];
-    const data = doc.data() as DiscoverSectionDoc;
-    return getSongsByIds(data.songIds);
+    const curatedIds = doc.exists ? ((doc.data() as DiscoverSectionDoc).songIds ?? []) : [];
+    const curated = await getSongsByIds(curatedIds);
+
+    // Curated liste boşsa/eksikse, canlı veriden doldur:
+    // - deleted/rejected kayıtlar düşer
+    // - yeni kayıtlar keşfete otomatik yansır
+    const dynamic = await getDynamicSectionFallback(section, Math.max(curated.length, 12));
+    if (curated.length === 0) return dynamic;
+
+    const merged: SongWithId[] = [...curated];
+    const seen = new Set(curated.map((s) => s.id));
+    for (const s of dynamic) {
+      if (seen.has(s.id)) continue;
+      merged.push(s);
+      if (merged.length >= 12) break;
+    }
+    return merged;
   });
+}
+
+async function getDynamicSectionFallback(section: string, limit: number): Promise<SongWithId[]> {
+  const fs = getAdminFirestore();
+  if (!fs) return [];
+
+  let q: FirebaseFirestore.Query = fs
+    .collection("songs")
+    .where("moderationStatus", "==", "approved");
+
+  if (section === "new") {
+    q = q.orderBy("createdAt", "desc");
+  } else {
+    q = q.orderBy("popularity", "desc");
+  }
+
+  const snap = await q.limit(limit).get();
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
 }
 
 function emptyDiscover(): Promise<SongWithId[]> {

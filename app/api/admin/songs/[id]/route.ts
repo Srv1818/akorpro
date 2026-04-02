@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getSongByIdAdmin, updateSong, deleteSong } from "@/lib/firestore/admin-songs";
+import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
 import type { KeyMode } from "@/lib/types/content";
 
@@ -62,7 +64,24 @@ export async function PATCH(request: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Güncellenecek alan yok." }, { status: 400 });
   }
 
+  const before = await getSongByIdAdmin(id);
   await updateSong(id, updates, auth.user.uid);
+  const after = await getSongByIdAdmin(id);
+
+  if (before) {
+    revalidateTag(songTag(before.artistSlug, before.slug), "page");
+    revalidateTag(songsArtistTag(before.artistSlug), "page");
+  }
+  if (after) {
+    revalidateTag(songTag(after.artistSlug, after.slug), "page");
+    revalidateTag(songsArtistTag(after.artistSlug), "page");
+  }
+  revalidateTag(TAGS.SONGS_ALL, "page");
+  revalidateTag(TAGS.SONGS_FACETS, "page");
+  revalidateTag(TAGS.DISCOVER_POPULAR, "page");
+  revalidateTag(TAGS.DISCOVER_NEW, "page");
+  revalidateTag(TAGS.DISCOVER_FEATURED, "page");
+
   return NextResponse.json({ ok: true });
 }
 
@@ -71,6 +90,18 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if ("error" in auth) return auth.error;
 
   const { id } = await ctx.params;
+  const song = await getSongByIdAdmin(id);
   await deleteSong(id, auth.user.uid);
+
+  if (song) {
+    revalidateTag(songTag(song.artistSlug, song.slug), "page");
+    revalidateTag(songsArtistTag(song.artistSlug), "page");
+  }
+  revalidateTag(TAGS.SONGS_ALL, "page");
+  revalidateTag(TAGS.SONGS_FACETS, "page");
+  revalidateTag(TAGS.DISCOVER_POPULAR, "page");
+  revalidateTag(TAGS.DISCOVER_NEW, "page");
+  revalidateTag(TAGS.DISCOVER_FEATURED, "page");
+
   return NextResponse.json({ ok: true });
 }

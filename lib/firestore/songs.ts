@@ -322,7 +322,10 @@ export async function getSongsByIds(songIds: string[]): Promise<(SongDoc & { id:
   for (const id of songIds) {
     const snap = snaps.find((s) => s.id === id);
     if (snap?.exists) {
-      result.push(sanitizeSong({ id: snap.id, ...(snap.data() as SongDoc) }));
+      const data = snap.data() as SongDoc;
+      // Keşfet ve public listelerde silinmiş/onaysız kayıtları dışarıda tut.
+      if (data.moderationStatus !== "approved") continue;
+      result.push(sanitizeSong({ id: snap.id, ...data }));
     }
   }
   return result;
