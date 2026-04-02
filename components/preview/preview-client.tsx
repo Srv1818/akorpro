@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -235,9 +236,9 @@ function renderAlignedBracketLine(
     caret = Math.max(caret, item.pos + item.token.length);
   });
 
-  const pairClass = isLastSourceLine ? "flex flex-col gap-0" : "mb-1 flex flex-col gap-0";
+  const pairClass = isLastSourceLine ? "flex flex-col gap-0" : "flex flex-col gap-0 sm:mb-1";
   const chordRow = (
-    <span className="block min-h-[1.2em] leading-[1.2] [&_button]:align-baseline">{nodes}</span>
+    <span className="block leading-[1.05] [&_button]:align-baseline">{nodes}</span>
   );
 
   if (!lyrics) {
@@ -251,7 +252,7 @@ function renderAlignedBracketLine(
   return (
     <span key={`pair-${lineIndex}`} className={pairClass}>
       {chordRow}
-      <span className="block leading-tight">{lyrics}</span>
+      <span className="block leading-[1.05]">{lyrics}</span>
     </span>
   );
 }
@@ -265,6 +266,16 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     const isLast = i >= lines.length - 1;
     const next = lines[i + 1];
     const nextNext = lines[i + 2];
+
+    if (line.trim() === "") {
+      rows.push(
+        <Fragment key={`line-${i}`}>
+          <span className="block h-[2px] sm:h-[0.8em]" aria-hidden />
+        </Fragment>,
+      );
+      i += 1;
+      continue;
+    }
 
     if (lineHasBracketChords(line)) {
       rows.push(
@@ -286,11 +297,11 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       const pairEndsSong = i + 1 >= lines.length - 1;
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className={pairEndsSong ? "flex flex-col gap-0" : "mb-1 flex flex-col gap-0"}>
-            <span className="block min-h-[1.2em] leading-[1.2] [&_button]:align-baseline">
+            <span className={pairEndsSong ? "flex flex-col gap-0" : "flex flex-col gap-0 sm:mb-1"}>
+            <span className="block leading-[1.05] [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
-            <span className="block leading-tight">
+            <span className="block leading-[1.05]">
               {renderChordLine(next, semitones, onChordClick, `L${i + 1}-`)}
             </span>
           </span>
@@ -311,7 +322,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     ) {
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className="mb-1 block leading-none">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
+          <span className="block leading-none sm:mb-1">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
         </Fragment>,
       );
       i += 1;
@@ -353,6 +364,8 @@ function splitChordBodyInTwo(text: string): [left: string, right: string] {
 
 /** Mobil Gamlar paneli: klavye yatay kullanıma uygun olsun diye ekranı yatay kilitle (destekleyen tarayıcılar). */
 const WIDGET_MOBILE_MAX = 640;
+const LYRICS_MOBILE_FIT_MAX_WIDTH = 640;
+const LYRICS_MOBILE_FIT_MIN = 10;
 
 const TRANSPOSE_SEMITONE_MIN = -6;
 const TRANSPOSE_SEMITONE_MAX = 5;
@@ -407,6 +420,8 @@ export function PreviewClient({
   const pathname = usePathname();
   const [sceneMode, setSceneMode] = useState(false);
   const [lyricsFontSizePx, setLyricsFontSizePx] = useState(LYRICS_FONT_SIZE_DEFAULT);
+  const [effectiveLyricsFontSizePx, setEffectiveLyricsFontSizePx] = useState(LYRICS_FONT_SIZE_DEFAULT);
+  const [lyricsFitResizeTick, setLyricsFitResizeTick] = useState(0);
   const [splitLyricsEnabled, setSplitLyricsEnabled] = useState(false);
 
   const semitones = usePreviewToolsStore((s) => s.transposeSemitones);
@@ -462,6 +477,18 @@ export function PreviewClient({
     startHeight: 0,
   });
   const sceneLyricsScrollRef = useRef<HTMLDivElement>(null);
+
+  // Mobilde ekran genişliği değişince (resize/orient.) sözleri "zoom out" mantığıyla tekrar fit et.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = () => setLyricsFitResizeTick((t) => t + 1);
+    window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
+  }, []);
 
   const initialBpm =
     typeof tempo === "number"
@@ -1288,6 +1315,67 @@ export function PreviewClient({
     [chordBody],
   );
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const shouldFitLyrics = window.innerWidth < LYRICS_MOBILE_FIT_MAX_WIDTH;
+    if (!shouldFitLyrics) {
+      setEffectiveLyricsFontSizePx(lyricsFontSizePx);
+      return;
+    }
+
+    const modeAttr = sceneMode ? "scene" : "body";
+    const pres = Array.from(document.querySelectorAll(`[data-lyrics-pre="${modeAttr}"]`)) as HTMLElement[];
+    if (pres.length === 0) return; // Sahne moduna girip çıkarken geçici olarak mount/unmount olabiliyor.
+
+    const base = lyricsFontSizePx;
+    const mobileMin = sceneMode ? 10 : LYRICS_MOBILE_FIT_MIN;
+
+    // Amaç: pre satırları taşmadan sığacak "en büyük" fontu bulmak.
+    // Böylece 2. resimdeki gibi zoom-out hissi stabil olur.
+    let low = mobileMin;
+    let high = base;
+    let best = mobileMin;
+
+    const availableHeight = sceneMode ? sceneLyricsScrollRef.current?.clientHeight ?? window.innerHeight : null;
+
+    const fitsNow = () => {
+      // Yatay taşma kontrolü
+      for (const pre of pres) {
+        const sw = pre.scrollWidth;
+        const cw = pre.clientWidth;
+        if (cw > 0 && sw > cw + 1) return false;
+      }
+
+      if (!sceneMode) return true;
+
+      if (!availableHeight) return true;
+      // Dikey taşma kontrolü (scene overlay'da)
+      for (const pre of pres) {
+        const sh = pre.scrollHeight;
+        if (sh > availableHeight + 2) return false;
+      }
+      return true;
+    };
+
+    // Binary search: [mobileMin..base]
+    // (base genelde 14+; ama kullanıcı A-/A+ ile büyütebildiği için high'i base tutuyoruz)
+    for (let i = 0; i < 9; i += 1) {
+      const mid = Math.floor((low + high + 1) / 2);
+
+      for (const pre of pres) pre.style.fontSize = `${mid}px`;
+
+      if (fitsNow()) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    setEffectiveLyricsFontSizePx((prev) => (prev === best ? prev : best));
+  }, [lyricsFontSizePx, chordBody, splitLyricsEnabled, semitones, sceneMode, lyricsFitResizeTick]);
+
   return (
     <div className={sceneMode ? "rounded-2xl ring-2 ring-accent ring-offset-2 ring-offset-bg" : ""}>
       {sceneMode ? (
@@ -1462,8 +1550,9 @@ export function PreviewClient({
             <div ref={sceneLyricsScrollRef} className="flex-1 overflow-auto p-4 sm:p-6">
               <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
                 <pre
-                  className="song-chord-text overflow-x-auto whitespace-pre leading-snug text-white sm:leading-snug md:leading-snug"
-                  style={{ fontSize: `${lyricsFontSizePx}px` }}
+                data-lyrics-pre="scene"
+                  className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-white sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+                  style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                 >
                   {renderChordBodyWithHighlights(
                     splitLyricsEnabled ? leftChordBody : chordBody,
@@ -1473,8 +1562,9 @@ export function PreviewClient({
                 </pre>
                 {splitLyricsEnabled ? (
                   <pre
-                    className="song-chord-text overflow-x-auto whitespace-pre leading-snug text-white sm:leading-snug md:leading-snug"
-                    style={{ fontSize: `${lyricsFontSizePx}px` }}
+                    data-lyrics-pre="scene"
+                    className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-white sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+                    style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                   >
                     {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
                   </pre>
@@ -1750,7 +1840,7 @@ export function PreviewClient({
             </button>
           </div>
         </div>
-        <div className="flex w-full items-end justify-center sm:w-auto sm:flex-1">
+        <div className="hidden sm:flex w-full items-end justify-center sm:w-auto sm:flex-1">
           <div className="relative inline-flex items-end justify-center">
           <button
             type="button"
@@ -1971,6 +2061,29 @@ export function PreviewClient({
               {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
             </button>
           </div>
+          <div className="w-full sm:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !sceneMode;
+                setSceneMode(next);
+                replaceSceneParam(next);
+              }}
+              aria-pressed={sceneMode}
+              aria-label="Sahne Modu"
+              title="Sahne Modu"
+              className={`group relative inline-flex min-h-[36px] w-full items-center justify-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+                sceneMode
+                  ? "border-amber-200/70 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 shadow-lg shadow-amber-500/45 ring-2 ring-amber-300/50"
+                  : "border-white/15 bg-gradient-to-b from-amber-500 via-amber-600 to-orange-700 shadow-md shadow-amber-500/35 hover:from-amber-400 hover:via-amber-500 hover:to-orange-600"
+              }`}
+            >
+              <span aria-hidden className="text-base leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
+                ★
+              </span>
+              <span className="leading-none tracking-wide">SAHNE</span>
+            </button>
+          </div>
           {firebaseUid === undefined ? (
             <span className="text-center text-sm text-muted sm:text-right">Oturum kontrol ediliyor…</span>
           ) : firebaseUid === null ? (
@@ -2018,8 +2131,9 @@ export function PreviewClient({
       <article className="mt-4 rounded-2xl bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
         <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
           <pre
-            className="song-chord-text overflow-x-auto whitespace-pre leading-snug text-foreground sm:leading-snug md:leading-snug"
-            style={{ fontSize: `${lyricsFontSizePx}px` }}
+            data-lyrics-pre="body"
+            className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-foreground sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+            style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
           >
             {renderChordBodyWithHighlights(
               splitLyricsEnabled ? leftChordBody : chordBody,
@@ -2029,8 +2143,9 @@ export function PreviewClient({
           </pre>
           {splitLyricsEnabled ? (
             <pre
-              className="song-chord-text overflow-x-auto whitespace-pre leading-snug text-foreground sm:leading-snug md:leading-snug"
-              style={{ fontSize: `${lyricsFontSizePx}px` }}
+              data-lyrics-pre="body"
+              className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-foreground sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+              style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
             >
               {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
             </pre>
