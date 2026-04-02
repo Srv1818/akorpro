@@ -84,7 +84,7 @@ export function TakedownForm() {
             name="songUrl"
             type="url"
             required
-            placeholder="https://akorpro.com/akor/..."
+            placeholder="https://akorpro.com.tr/akor/..."
             className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground outline-none ring-accent/30 focus:ring-2"
           />
         </div>

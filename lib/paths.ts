@@ -1,7 +1,7 @@
 /** Kanonik URL üreticileri — ARCHITECTURE tek kaynak */
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://akorpro.com";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://akorpro.com.tr";
 
 export function chordPath(artistSlug: string, songSlug: string): string {
   return `/akor/${artistSlug}/${songSlug}`;

@@ -131,7 +131,7 @@ export default function GizlilikPage() {
       <h2>10. İletişim</h2>
       <p>
         Gizlilik ile ilgili sorularınız için:{" "}
-        <strong>gizlilik@akorpro.com</strong>
+        <strong>gizlilik@akorpro.com.tr</strong>
       </p>
     </article>
   );
