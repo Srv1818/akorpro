@@ -238,7 +238,7 @@ function renderAlignedBracketLine(
 
   const pairClass = isLastSourceLine ? "flex flex-col gap-0" : "flex flex-col gap-0 sm:mb-1";
   const chordRow = (
-    <span className="block leading-[1.05] [&_button]:align-baseline">{nodes}</span>
+    <span className="block leading-none sm:leading-[1.05] [&_button]:align-baseline">{nodes}</span>
   );
 
   if (!lyrics) {
@@ -252,7 +252,7 @@ function renderAlignedBracketLine(
   return (
     <span key={`pair-${lineIndex}`} className={pairClass}>
       {chordRow}
-      <span className="block leading-[1.05]">{lyrics}</span>
+      <span className="block leading-none sm:leading-[1.05]">{lyrics}</span>
     </span>
   );
 }
@@ -298,10 +298,10 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       rows.push(
         <Fragment key={`line-${i}`}>
             <span className={pairEndsSong ? "flex flex-col gap-0" : "flex flex-col gap-0 sm:mb-1"}>
-            <span className="block leading-[1.05] [&_button]:align-baseline">
+            <span className="block leading-none sm:leading-[1.05] [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
-            <span className="block leading-[1.05]">
+            <span className="block leading-none sm:leading-[1.05]">
               {renderChordLine(next, semitones, onChordClick, `L${i + 1}-`)}
             </span>
           </span>
@@ -1393,20 +1393,31 @@ export function PreviewClient({
             className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-2xl shadow-black/40"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{songTitle}</p>
-                <p className="truncate text-xs text-white/60">
-                  {originalKey}
-                  {playlistPosition ? (
-                    <>
-                      <span className="mx-2 text-white/30">•</span>
-                      <span className="text-white/70">Liste: {playlistPosition.index1}/{playlistPosition.total}</span>
-                    </>
-                  ) : null}
-                </p>
+            <div className="flex flex-col gap-2 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <div className="flex items-center justify-between gap-2 sm:min-w-0 sm:flex-1">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{songTitle}</p>
+                  <p className="truncate text-xs text-white/60">
+                    {originalKey}
+                    {playlistPosition ? (
+                      <>
+                        <span className="mx-2 text-white/30">•</span>
+                        <span className="text-white/70">Liste: {playlistPosition.index1}/{playlistPosition.total}</span>
+                      </>
+                    ) : null}
+                  </p>
+                </div>
+                <PanelCloseButton
+                  variant="scene"
+                  className="shrink-0 sm:hidden"
+                  title="Sahne modundan çık"
+                  onClick={() => {
+                    setSceneMode(false);
+                    replaceSceneParam(false);
+                  }}
+                />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setChordStripOpen(true)}
@@ -1423,7 +1434,7 @@ export function PreviewClient({
                   onClick={() =>
                     setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP))
                   }
-                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Söz yazısını küçült"
                   title="Söz yazısını küçült"
                 >
@@ -1435,7 +1446,7 @@ export function PreviewClient({
                   onClick={() =>
                     setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP))
                   }
-                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Söz yazısını büyüt"
                   title="Söz yazısını büyüt"
                 >
@@ -1445,7 +1456,7 @@ export function PreviewClient({
                   type="button"
                   disabled={!canDecreaseTranspose}
                   onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
-                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Transpoze: yarım ton düşür"
                   title="Transpoze: yarım ton düşür"
                 >
@@ -1455,7 +1466,7 @@ export function PreviewClient({
                   type="button"
                   disabled={!canIncreaseTranspose}
                   onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
-                  className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Transpoze: yarım ton yükselt"
                   title="Transpoze: yarım ton yükselt"
                 >
@@ -1465,7 +1476,7 @@ export function PreviewClient({
                   type="button"
                   aria-pressed={splitLyricsEnabled}
                   onClick={() => setSplitLyricsEnabled((prev) => !prev)}
-                  className={`inline-flex min-h-[36px] items-center justify-center rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${
+                  className={`inline-flex shrink-0 min-h-[36px] items-center justify-center rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${
                     splitLyricsEnabled
                       ? "border-emerald-400/60 bg-emerald-500/25 text-white"
                       : "border-white/15 bg-white/5 text-white hover:bg-white/10"
@@ -1482,7 +1493,7 @@ export function PreviewClient({
                     if (!prevSongHref) return;
                     router.push(prevSongHref);
                   }}
-                  className="rounded-lg border border-white/10 bg-gradient-to-r from-amber-700 via-amber-500 to-yellow-400 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-amber-600 hover:via-amber-400 hover:to-yellow-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="shrink-0 rounded-lg border border-white/10 bg-gradient-to-r from-amber-700 via-amber-500 to-yellow-400 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-amber-600 hover:via-amber-400 hover:to-yellow-300 disabled:cursor-not-allowed disabled:opacity-40 min-h-[36px]"
                   title={
                     playlistNextLoading
                       ? "Liste sırası yükleniyor…"
@@ -1492,17 +1503,17 @@ export function PreviewClient({
                   }
                 >
                   {playlistNextLoading ? (
-                    "Önceki…"
+                    "…"
                   ) : prevSongHref ? (
-                    <span className="inline-flex max-w-[14rem] items-center gap-1">
+                    <span className="inline-flex items-center gap-1">
                       <span className="shrink-0">←</span>
-                      <span className="shrink-0">Önceki:</span>
-                      <span className="min-w-0 truncate text-white/90">
+                      <span className="hidden sm:inline shrink-0">Önceki:</span>
+                      <span className="hidden sm:inline min-w-0 max-w-[8rem] truncate text-white/90">
                         {(playlistPrevSong ?? prevSong)?.title ?? ""}
                       </span>
                     </span>
                   ) : (
-                    "← Önceki"
+                    "←"
                   )}
                 </button>
                 <button
@@ -1512,7 +1523,7 @@ export function PreviewClient({
                     if (!nextSongHref) return;
                     router.push(nextSongHref);
                   }}
-                  className="rounded-lg border border-white/10 bg-gradient-to-r from-yellow-400 via-amber-500 to-amber-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-yellow-300 hover:via-amber-400 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="shrink-0 rounded-lg border border-white/10 bg-gradient-to-r from-yellow-400 via-amber-500 to-amber-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-yellow-300 hover:via-amber-400 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-40 min-h-[36px]"
                   title={
                     playlistNextLoading
                       ? "Liste sırası yükleniyor…"
@@ -1522,17 +1533,17 @@ export function PreviewClient({
                   }
                 >
                   {playlistNextLoading ? (
-                    "Sıradaki…"
+                    "…"
                   ) : nextSongHref ? (
-                    <span className="inline-flex max-w-[14rem] items-center gap-1">
-                      <span className="shrink-0">Sıradaki:</span>
-                      <span className="min-w-0 truncate text-white/90">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="hidden sm:inline shrink-0">Sıradaki:</span>
+                      <span className="hidden sm:inline min-w-0 max-w-[8rem] truncate text-white/90">
                         {(playlistNextSong ?? nextSong)?.title ?? ""}
                       </span>
                       <span className="shrink-0">→</span>
                     </span>
                   ) : (
-                    "Sıradaki →"
+                    "→"
                   )}
                 </button>
                 <PanelCloseButton
@@ -1551,7 +1562,7 @@ export function PreviewClient({
               <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
                 <pre
                 data-lyrics-pre="scene"
-                  className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-white sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+                  className="song-chord-text overflow-x-auto whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
                   style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                 >
                   {renderChordBodyWithHighlights(
@@ -1563,7 +1574,7 @@ export function PreviewClient({
                 {splitLyricsEnabled ? (
                   <pre
                     data-lyrics-pre="scene"
-                    className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-white sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+                    className="song-chord-text overflow-x-auto whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
                     style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                   >
                     {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
@@ -2006,7 +2017,7 @@ export function PreviewClient({
                 );
               })}
             </div>
-            <div className="flex items-center justify-end gap-1 sm:ml-32 sm:justify-start">
+            <div className="flex items-center justify-end gap-1 sm:ml-2 sm:justify-start">
               <button
                 type="button"
                 disabled={!canDecreaseLyricsFont}
@@ -2132,7 +2143,7 @@ export function PreviewClient({
         <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
           <pre
             data-lyrics-pre="body"
-            className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-foreground sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+            className="song-chord-text overflow-x-auto whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
             style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
           >
             {renderChordBodyWithHighlights(
@@ -2144,7 +2155,7 @@ export function PreviewClient({
           {splitLyricsEnabled ? (
             <pre
               data-lyrics-pre="body"
-              className="song-chord-text overflow-x-hidden whitespace-pre leading-none text-foreground sm:overflow-x-auto sm:whitespace-pre sm:leading-snug md:leading-snug"
+              className="song-chord-text overflow-x-auto whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
               style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
             >
               {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}

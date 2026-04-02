@@ -108,6 +108,11 @@ body {
     min-height: 44px;
     min-width: 44px;
   }
+  .song-chord-text button,
+  .song-chord-text a {
+    min-height: unset;
+    min-width: unset;
+  }
 }
 
 /* ------------------------------------------------------------------ */
