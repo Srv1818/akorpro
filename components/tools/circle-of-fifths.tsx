@@ -199,6 +199,12 @@ function co5IndexForRootPc(rootPc: number): number | null {
   return null;
 }
 
+/** Şarkı toniği (minör kök) ile 5’li çember dilim indeksi (dış halka = majör ana ton) uyuşmaz; minörde göreli majör dilimine çevir. */
+function majorWedgePcFromSongTonicPc(tonicPc: number, mode: ScaleMode): number {
+  if (mode === "major") return tonicPc;
+  return (tonicPc + 3) % 12;
+}
+
 function chordEntryRootPc(symbol: string): number | null {
   const c = Chord.get(symbol);
   if (c.empty || c.tonic == null) return null;
@@ -643,10 +649,11 @@ function CircleOfFifthsInner({
 
   useEffect(() => {
     if (selectedPitchClass == null) return;
-    const idx = co5IndexForRootPc(selectedPitchClass);
+    const wedgePc = majorWedgePcFromSongTonicPc(selectedPitchClass, mode);
+    const idx = co5IndexForRootPc(wedgePc);
     if (idx == null) return;
     queueMicrotask(() => setMajorKeyIdx(idx));
-  }, [selectedPitchClass]);
+  }, [selectedPitchClass, mode]);
 
   const chords = useMemo(() => buildChords(CO5_LABELS[majorKeyIdx], mode), [majorKeyIdx, mode]);
   const ringHighlights = useMemo(() => {

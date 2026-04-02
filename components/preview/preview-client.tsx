@@ -1101,9 +1101,12 @@ export function PreviewClient({
   const handleCirclePitchClassSelect = useCallback(
     (selectedPc: number) => {
       if (originalTonicPc === null) return;
-      replaceTranspose(signedSemitoneDelta(originalTonicPc, selectedPc));
+      // Çember dilimi dış halkadaki majör köktür; minör şarkıda hedef ton = göreli minör.
+      const targetTonicPc =
+        originalMode === "major" ? selectedPc : (selectedPc - 3 + 12) % 12;
+      replaceTranspose(signedSemitoneDelta(originalTonicPc, targetTonicPc));
     },
-    [originalTonicPc, replaceTranspose],
+    [originalMode, originalTonicPc, replaceTranspose],
   );
 
   // Ok tuşlarıyla yarım ses (semitone) hareketi.
