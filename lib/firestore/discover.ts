@@ -5,6 +5,8 @@ import { TAGS, TTL } from "@/lib/cache/tags";
 import type { DiscoverSectionDoc, SongDoc } from "@/lib/types/firestore";
 
 const COLLECTION = "discover";
+const DISCOVER_TARGET_COUNT = 12;
+const MAX_CURATED_IDS_READ = 24;
 
 type SongWithId = SongDoc & { id: string };
 
@@ -34,34 +36,33 @@ async function _getSection(section: string): Promise<SongWithId[]> {
 
   return withFirestoreRetry(section, async () => {
     const doc = await fs.collection(COLLECTION).doc(section).get();
-    const curatedIds = doc.exists ? ((doc.data() as DiscoverSectionDoc).songIds ?? []) : [];
+    const curatedIds = doc.exists ? ((doc.data() as DiscoverSectionDoc).songIds ?? []).slice(0, MAX_CURATED_IDS_READ) : [];
     const curated = await getSongsByIds(curatedIds);
-
-    // Curated liste boşsa/eksikse, canlı veriden doldur:
-    // - deleted/rejected kayıtlar düşer
-    // - yeni kayıtlar keşfete otomatik yansır
-    const dynamic = await getDynamicSectionFallback(section, Math.max(curated.length, 12));
-    if (curated.length === 0) return dynamic;
 
     // "Yeni eklenenler" bölümünde canlı veriyi öne al ki adminden yeni eklenen şarkılar
     // curated liste dolu olsa bile anında görünsün.
     if (section === "new") {
+      const dynamic = await getDynamicSectionFallback(section, DISCOVER_TARGET_COUNT);
       const merged: SongWithId[] = [...dynamic];
       const seen = new Set(dynamic.map((s) => s.id));
       for (const s of curated) {
         if (seen.has(s.id)) continue;
         merged.push(s);
-        if (merged.length >= 12) break;
+        if (merged.length >= DISCOVER_TARGET_COUNT) break;
       }
-      return merged.slice(0, 12);
+      return merged.slice(0, DISCOVER_TARGET_COUNT);
     }
+
+    // Diğer bölümlerde curated liste hedefi dolduruyorsa pahalı fallback sorgusuna hiç gitme.
+    if (curated.length >= DISCOVER_TARGET_COUNT) return curated.slice(0, DISCOVER_TARGET_COUNT);
 
     const merged: SongWithId[] = [...curated];
     const seen = new Set(curated.map((s) => s.id));
+    const dynamic = await getDynamicSectionFallback(section, DISCOVER_TARGET_COUNT);
     for (const s of dynamic) {
       if (seen.has(s.id)) continue;
       merged.push(s);
-      if (merged.length >= 12) break;
+      if (merged.length >= DISCOVER_TARGET_COUNT) break;
     }
     return merged;
   });
