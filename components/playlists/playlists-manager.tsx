@@ -45,14 +45,24 @@ type PlaylistRow = { id: string; data: PlaylistDoc };
 
 type ItemRow = { id: string; data: PlaylistItemDoc };
 
-function chordHrefWithPlaylistReturn(artistSlug: string, songSlug: string, playlistId: string): string {
+/**
+ * Liste öğelerinden akor sayfasına giderken önce songId ile kanonik slug’a yönlendirir;
+ * snapshot’taki slug’lar güncel değilse veya eksikse doğrudan /akor/... 404 vermez.
+ */
+function playlistChordHref(item: PlaylistItemDoc, playlistId: string, opts: { scene: boolean }): string | null {
   const returnTo = `/calma-listeleri?p=${encodeURIComponent(playlistId)}`;
-  return `${chordPath(artistSlug, songSlug)}?returnTo=${encodeURIComponent(returnTo)}`;
-}
-
-function chordHrefWithPlaylistReturnAndScene(artistSlug: string, songSlug: string, playlistId: string): string {
-  const returnTo = `/calma-listeleri?p=${encodeURIComponent(playlistId)}`;
-  return `${chordPath(artistSlug, songSlug)}?returnTo=${encodeURIComponent(returnTo)}&scene=1`;
+  const params = new URLSearchParams({ returnTo });
+  if (opts.scene) params.set("scene", "1");
+  const qs = params.toString();
+  if (item.songId?.trim()) {
+    return `/api/songs/${encodeURIComponent(item.songId)}/open?${qs}`;
+  }
+  const a = item.artistSlug?.trim();
+  const s = item.songSlug?.trim();
+  if (a && s) {
+    return `${chordPath(a, s)}?${qs}`;
+  }
+  return null;
 }
 
 function formatError(err: unknown): string {
@@ -475,9 +485,7 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
     const countLabel =
       !itemsKnown ? "Şarkılar yükleniyor…" : sortedItems.length === 0 ? "Henüz şarkı yok" : `${sortedItems.length} şarkı`;
     const first = sortedItems[0]?.data ?? null;
-    const sceneHref = first
-      ? chordHrefWithPlaylistReturnAndScene(first.artistSlug, first.songSlug, row.id)
-      : null;
+    const sceneHref = first ? playlistChordHref(first, row.id, { scene: true }) : null;
 
     return (
       <div className="space-y-6">
@@ -510,6 +518,7 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
             >
               <Link
                 href={sceneHref ?? "#"}
+                prefetch={false}
                 aria-disabled={!sceneHref}
                 onClick={(e) => {
                   if (!sceneHref) e.preventDefault();
@@ -631,7 +640,7 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
             ) : (
               <ol className="space-y-2" aria-label={`${row.data.name} şarkı sırası`}>
                 {sortedItems.map((it, pos, arr) => {
-                  const href = chordHrefWithPlaylistReturn(it.data.artistSlug, it.data.songSlug, row.id);
+                  const href = playlistChordHref(it.data, row.id, { scene: false });
                   const openLabel = `${it.data.title} akor sayfasını aç`;
                   return (
                     <li
@@ -639,7 +648,12 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
                       className="relative flex flex-wrap items-center gap-2 rounded-lg border border-border bg-bg px-3 py-2.5 shadow-sm"
                     >
                       <Link
-                        href={href}
+                        href={href ?? "#"}
+                        prefetch={false}
+                        aria-disabled={!href}
+                        onClick={(e) => {
+                          if (!href) e.preventDefault();
+                        }}
                         className="absolute inset-0 z-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                         aria-label={openLabel}
                       />
