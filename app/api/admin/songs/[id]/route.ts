@@ -72,18 +72,18 @@ export async function PATCH(request: Request, ctx: Ctx) {
   const after = await getSongByIdAdmin(id);
 
   if (before) {
-    revalidateTag(songTag(before.artistSlug, before.slug), "page");
-    revalidateTag(songsArtistTag(before.artistSlug), "page");
+    revalidateTag(songTag(before.artistSlug, before.slug), "max");
+    revalidateTag(songsArtistTag(before.artistSlug), "max");
   }
   if (after) {
-    revalidateTag(songTag(after.artistSlug, after.slug), "page");
-    revalidateTag(songsArtistTag(after.artistSlug), "page");
+    revalidateTag(songTag(after.artistSlug, after.slug), "max");
+    revalidateTag(songsArtistTag(after.artistSlug), "max");
   }
-  revalidateTag(TAGS.SONGS_ALL, "page");
-  revalidateTag(TAGS.SONGS_FACETS, "page");
-  revalidateTag(TAGS.DISCOVER_POPULAR, "page");
-  revalidateTag(TAGS.DISCOVER_NEW, "page");
-  revalidateTag(TAGS.DISCOVER_FEATURED, "page");
+  revalidateTag(TAGS.SONGS_ALL, "max");
+  revalidateTag(TAGS.SONGS_FACETS, "max");
+  revalidateTag(TAGS.DISCOVER_POPULAR, "max");
+  revalidateTag(TAGS.DISCOVER_NEW, "max");
+  revalidateTag(TAGS.DISCOVER_FEATURED, "max");
 
   return NextResponse.json({ ok: true });
 }
@@ -97,14 +97,14 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   await deleteSong(id, auth.user.uid);
 
   if (song) {
-    revalidateTag(songTag(song.artistSlug, song.slug), "page");
-    revalidateTag(songsArtistTag(song.artistSlug), "page");
+    revalidateTag(songTag(song.artistSlug, song.slug), "max");
+    revalidateTag(songsArtistTag(song.artistSlug), "max");
   }
-  revalidateTag(TAGS.SONGS_ALL, "page");
-  revalidateTag(TAGS.SONGS_FACETS, "page");
-  revalidateTag(TAGS.DISCOVER_POPULAR, "page");
-  revalidateTag(TAGS.DISCOVER_NEW, "page");
-  revalidateTag(TAGS.DISCOVER_FEATURED, "page");
+  revalidateTag(TAGS.SONGS_ALL, "max");
+  revalidateTag(TAGS.SONGS_FACETS, "max");
+  revalidateTag(TAGS.DISCOVER_POPULAR, "max");
+  revalidateTag(TAGS.DISCOVER_NEW, "max");
+  revalidateTag(TAGS.DISCOVER_FEATURED, "max");
 
   return NextResponse.json({ ok: true });
 }

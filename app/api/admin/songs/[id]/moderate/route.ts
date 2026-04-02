@@ -37,14 +37,14 @@ export async function POST(request: Request, ctx: Ctx) {
   if (status === "approved") {
     const song = await getSongByIdAdmin(id);
     if (song) {
-      revalidateTag(songTag(song.artistSlug, song.slug), "page");
-      revalidateTag(songsArtistTag(song.artistSlug), "page");
+      revalidateTag(songTag(song.artistSlug, song.slug), "max");
+      revalidateTag(songsArtistTag(song.artistSlug), "max");
     }
-    revalidateTag(TAGS.SONGS_ALL, "page");
-    revalidateTag(TAGS.SONGS_FACETS, "page");
-    revalidateTag(TAGS.DISCOVER_POPULAR, "page");
-    revalidateTag(TAGS.DISCOVER_NEW, "page");
-    revalidateTag(TAGS.DISCOVER_FEATURED, "page");
+    revalidateTag(TAGS.SONGS_ALL, "max");
+    revalidateTag(TAGS.SONGS_FACETS, "max");
+    revalidateTag(TAGS.DISCOVER_POPULAR, "max");
+    revalidateTag(TAGS.DISCOVER_NEW, "max");
+    revalidateTag(TAGS.DISCOVER_FEATURED, "max");
   }
 
   return NextResponse.json({ ok: true });

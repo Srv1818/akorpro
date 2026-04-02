@@ -92,11 +92,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  revalidateTag(TAGS.SONGS_ALL, "page");
-  revalidateTag(TAGS.SONGS_FACETS, "page");
-  revalidateTag(TAGS.DISCOVER_POPULAR, "page");
-  revalidateTag(TAGS.DISCOVER_NEW, "page");
-  revalidateTag(TAGS.DISCOVER_FEATURED, "page");
+  revalidateTag(TAGS.SONGS_ALL, "max");
+  revalidateTag(TAGS.SONGS_FACETS, "max");
+  revalidateTag(TAGS.DISCOVER_POPULAR, "max");
+  revalidateTag(TAGS.DISCOVER_NEW, "max");
+  revalidateTag(TAGS.DISCOVER_FEATURED, "max");
 
   return NextResponse.json({ ok: true, id });
 }

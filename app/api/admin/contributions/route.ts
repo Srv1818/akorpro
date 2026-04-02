@@ -97,8 +97,8 @@ export async function POST(request: Request) {
 
     await updateContributionStatus(id, "approved", auth.user.uid, note, songId);
 
-    revalidateTag(TAGS.SONGS_ALL, "page");
-    revalidateTag(TAGS.SONGS_FACETS, "page");
+    revalidateTag(TAGS.SONGS_ALL, "max");
+    revalidateTag(TAGS.SONGS_FACETS, "max");
 
     await writeAuditLog(auth.user.uid, "contribution:approve", "contributions", id, { songId });
 

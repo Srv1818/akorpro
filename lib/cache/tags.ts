@@ -12,10 +12,11 @@
  *   discover:new                    — discover "new" block
  *   discover:featured               — discover "featured" block
  *
- * On-demand revalidation (moderation/approval):
- *   revalidateTag(`song:${artistSlug}/${songSlug}`)
- *   revalidateTag("songs:all")   — after any song is added/removed
- *   revalidateTag("discover:popular") — after discover list update
+ * On-demand revalidation (moderation/approval) — Next.js 16+: ikinci argüman
+ * geçerli cacheLife profili olmalı (ör. "max"); "page" geçerli profil değildir.
+ *   revalidateTag(`song:${artistSlug}/${songSlug}`, "max")
+ *   revalidateTag("songs:all", "max")
+ *   revalidateTag("discover:popular", "max")
  */
 
 /* ------------------------------------------------------------------ */
