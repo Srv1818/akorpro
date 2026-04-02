@@ -1299,6 +1299,10 @@ export function PreviewClient({
       await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistRef.id), {
         updatedAt: serverTimestamp(),
       });
+      setAddNotice({
+        variant: "success",
+        message: `“${name}” listesine eklendi.`,
+      });
       setSelectedPlaylistId(playlistRef.id);
       setSaveAndAddOpen(false);
     } catch (e) {
