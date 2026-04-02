@@ -16,13 +16,11 @@ import {
   addDoc,
   collection,
   doc,
-  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
   limit,
@@ -32,7 +30,6 @@ import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { AutoScrollButton, MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
 import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
 import type { PlaylistDoc } from "@/lib/types/playlist";
-import type { SongOverrideDoc } from "@/lib/types/song-override";
 import type { KeyMode } from "@/lib/types/content";
 import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
@@ -45,12 +42,10 @@ import {
   formatChordSymbolDisplay,
   parseTonicFromOriginalKey,
   signedSemitoneDelta,
-  transposeChordBodyText,
   transposeChordToken,
 } from "@/lib/music/transpose";
 import { X } from "lucide-react";
 
-const OVERRIDE_SCHEMA_VERSION = 1;
 const PLAYLIST_SCHEMA_VERSION = 1;
 
 type Props = {
@@ -364,7 +359,7 @@ const TRANSPOSE_SEMITONE_MAX = 5;
 const LYRICS_FONT_SIZE_MIN = 14;
 const LYRICS_FONT_SIZE_MAX = 32;
 const LYRICS_FONT_SIZE_STEP = 1;
-const LYRICS_FONT_SIZE_DEFAULT = 17;
+const LYRICS_FONT_SIZE_DEFAULT = 16;
 
 function clampTransposeSemitones(n: number): number {
   return Math.max(TRANSPOSE_SEMITONE_MIN, Math.min(TRANSPOSE_SEMITONE_MAX, n));
@@ -533,15 +528,6 @@ export function PreviewClient({
   const urlTransposeRef = useRef(0);
   const transposeLockRef = useRef(false);
 
-  const hydrateReadyRef = useRef(false);
-
-  const displayedChordBody = (() => {
-    // chordBody'yi transpoze etmek, UI transpoze state’i ile birebir senkron olmalı.
-    // Memo yerine hızlı fonksiyon çağrısı (metin boyutu küçük/orta) tercih edildi.
-    // (İstersen daha sonra useMemo ile optimize edebiliriz.)
-    return transposeChordBodyText(chordBody, semitones);
-  })();
-
   const chordStripTokens = useMemo(() => {
     const raw = extractUniqueChordTokensAsRendered(chordBody);
     return raw.map((t) =>
@@ -634,8 +620,27 @@ export function PreviewClient({
         const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistId, "items");
         const snap = await getDocs(query(itemsCol, orderBy("order", "asc")));
         if (cancelled) return;
-        const items = snap.docs.map((d) => d.data() as { songId?: unknown; title?: unknown; artistSlug?: unknown; songSlug?: unknown });
+        const items = snap.docs.map(
+          (d) =>
+            d.data() as {
+              songId?: unknown;
+              title?: unknown;
+              artistSlug?: unknown;
+              songSlug?: unknown;
+              transposeSemitones?: unknown;
+            },
+        );
         const idx = items.findIndex((it) => typeof it.songId === "string" && it.songId === songId);
+        // Playlist bağlamında (returnTo) açıldığında, sadece playlist item snapshot’ındaki transpoze kullan.
+        // Böylece "Tüm şarkılar" gibi gezinme ekranlarında orijinal şarkı görünür.
+        if (!hasTransposeParam && !transposeLockRef.current && idx >= 0) {
+          const t = items[idx]?.transposeSemitones;
+          if (typeof t === "number" && Number.isFinite(t)) {
+            urlTransposeRef.current = t;
+            transposeLockRef.current = true;
+            setTransposeSemitones(t);
+          }
+        }
         const prev = idx > 0 ? items[idx - 1] : null;
         const next = idx >= 0 ? items[idx + 1] : null;
         setPlaylistPosition(idx >= 0 ? { index1: idx + 1, total: items.length } : null);
@@ -663,7 +668,7 @@ export function PreviewClient({
     return () => {
       cancelled = true;
     };
-  }, [firebaseUid, searchParams, songId]);
+  }, [firebaseUid, searchParams, songId, hasTransposeParam, setTransposeSemitones]);
 
   useEffect(() => {
     if (!openWidgets.circle && !openWidgets.gamlar && !openWidgets.metronome) return;
@@ -961,12 +966,12 @@ export function PreviewClient({
 
   useEffect(() => {
     urlTransposeRef.current = 0;
+    // Yeni şarkıya geçince, URL/playlist dışında bir kaynaktan kilitlenmiş transpoze kalmasın.
+    transposeLockRef.current = false;
   }, [songId]);
 
   /**
-   * Yalnızca URL'de `transpose` varken senkronize et. Parametre yokken `initialClamped` her
-   * zaman 0 olduğu için bu efekt Firestore / kullanıcı transpoze sonrası tekrar çalışınca
-   * `urlTransposeRef` ile karşılaşıp store'u sıfırlıyordu (kayıtlı tonda “yarım ses geri” gibi).
+   * Yalnızca URL'de `transpose` varken senkronize et.
    */
   useEffect(() => {
     if (!hasTransposeParam) {
@@ -980,58 +985,6 @@ export function PreviewClient({
     // setTransposeSemitones is a stable Zustand action; intentionally omitted from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTransposeParam, initialClamped]);
-
-  useEffect(() => {
-    hydrateReadyRef.current = false;
-    transposeLockRef.current = false;
-  }, [songId, firebaseUid]);
-
-  useEffect(() => {
-    if (firebaseUid === undefined || firebaseUid === null || !songId) return;
-    if (hydrateReadyRef.current) return;
-    if (transposeLockRef.current) {
-      hydrateReadyRef.current = true;
-      return;
-    }
-
-    if (initial !== 0) {
-      hydrateReadyRef.current = true;
-      return;
-    }
-
-    if (!getFirebasePublicConfig()) {
-      hydrateReadyRef.current = true;
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const db = getClientFirestore();
-        const snap = await getDoc(doc(db, "users", firebaseUid, "songOverrides", songId));
-        if (cancelled) return;
-        if (transposeLockRef.current) {
-          hydrateReadyRef.current = true;
-          return;
-        }
-        hydrateReadyRef.current = true;
-        if (!snap.exists) return;
-        const data = snap.data() as Partial<SongOverrideDoc>;
-        const t = data.transposeSemitones;
-        if (typeof t === "number" && Number.isFinite(t)) {
-          urlTransposeRef.current = t;
-          setTransposeSemitones(t);
-        }
-      } catch {
-        if (!cancelled) hydrateReadyRef.current = true;
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [firebaseUid, songId, initial, setTransposeSemitones]);
 
   useEffect(() => {
     if (firebaseUid === undefined || firebaseUid === null || !getFirebasePublicConfig()) {
@@ -1166,23 +1119,15 @@ export function PreviewClient({
     }
     setSaveState("saving");
     try {
-      const db = getClientFirestore();
-      const payload: SongOverrideDoc = {
-        songId,
-        transposeSemitones: semitones,
-        schemaVersion: OVERRIDE_SCHEMA_VERSION,
-        updatedAt: serverTimestamp(),
-      };
-      await setDoc(doc(db, "users", firebaseUid, "songOverrides", songId), payload, { merge: true });
       setSaveState("saved");
-      setSaveMessage("Tercih kaydedildi.");
+      setSaveMessage("Listeyi seçin — transpoze kaydı eklenecek.");
       setSaveAndAddOpen(true);
     } catch (e) {
       setSaveState("error");
       setSaveMessage(formatError(e));
       setSaveAndAddOpen(false);
     }
-  }, [firebaseUid, semitones, serverUid, songId]);
+  }, [firebaseUid, serverUid]);
 
   const onAddToPlaylist = useCallback(async () => {
     setAddNotice(null);
@@ -2070,7 +2015,7 @@ export function PreviewClient({
 
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
-      <article className="mt-4 rounded-2xl border border-border bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
+      <article className="mt-4 rounded-2xl bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
         <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
           <pre
             className="song-chord-text overflow-x-auto whitespace-pre leading-snug text-foreground sm:leading-snug md:leading-snug"
