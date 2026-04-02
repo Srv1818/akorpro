@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { rateLimiter } from "@/lib/security/rate-limit";
 
 const COLLECTION = "takedown_requests";
 
+export const runtime = "nodejs";
+
+const takedownRl = rateLimiter({ windowMs: 60_000, max: 10 });
+
 export async function POST(request: Request) {
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  if (!takedownRl.check(clientIp)) {
+    return NextResponse.json({ error: "Çok fazla istek." }, { status: 429 });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;

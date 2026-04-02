@@ -19,14 +19,15 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.admin == true
-        || request.auth.token.email == 'buyukatakan@gmail.com'
       );
     }
 
     function rateLimitWrite(seconds) {
       return !exists(resource)
-        || !("updatedAt" in resource.data)
-        || request.time > resource.data.updatedAt + duration.value(seconds, 's');
+        ? true
+        : (resource.data.updatedAt is timestamp
+            ? request.time > resource.data.updatedAt + duration.value(seconds, 's')
+            : true);
     }
 
     /** Kullanıcı yazımlarında alan sayısını sınırla (veri kirliliği önlemi). */
