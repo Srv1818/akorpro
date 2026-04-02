@@ -20,7 +20,10 @@ export async function GET(_req: Request, ctx: Ctx) {
   const song = await getSongByIdAdmin(id);
   if (!song) return NextResponse.json({ error: "Şarkı bulunamadı." }, { status: 404 });
 
-  return NextResponse.json({ song });
+  return NextResponse.json(
+    { song },
+    { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } },
+  );
 }
 
 export async function PATCH(request: Request, ctx: Ctx) {

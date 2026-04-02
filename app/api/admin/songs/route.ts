@@ -24,7 +24,10 @@ export async function GET() {
 
   try {
     const songs = await getAllSongsAdmin();
-    return NextResponse.json({ songs });
+    return NextResponse.json(
+      { songs },
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Şarkılar alınamadı.";
     return NextResponse.json({ error: message }, { status: 500 });

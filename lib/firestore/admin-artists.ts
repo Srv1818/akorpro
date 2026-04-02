@@ -46,3 +46,8 @@ export async function getAllArtistsAdmin(): Promise<(ArtistDoc & { id: string })
   const snap = await db().collection(COLLECTION).orderBy("name").get();
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as ArtistDoc) }));
 }
+
+export async function getAllArtistsCount(): Promise<number> {
+  const snap = await db().collection(COLLECTION).count().get();
+  return snap.data().count;
+}

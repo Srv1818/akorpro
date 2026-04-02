@@ -43,6 +43,19 @@ async function _getSection(section: string): Promise<SongWithId[]> {
     const dynamic = await getDynamicSectionFallback(section, Math.max(curated.length, 12));
     if (curated.length === 0) return dynamic;
 
+    // "Yeni eklenenler" bölümünde canlı veriyi öne al ki adminden yeni eklenen şarkılar
+    // curated liste dolu olsa bile anında görünsün.
+    if (section === "new") {
+      const merged: SongWithId[] = [...dynamic];
+      const seen = new Set(dynamic.map((s) => s.id));
+      for (const s of curated) {
+        if (seen.has(s.id)) continue;
+        merged.push(s);
+        if (merged.length >= 12) break;
+      }
+      return merged.slice(0, 12);
+    }
+
     const merged: SongWithId[] = [...curated];
     const seen = new Set(curated.map((s) => s.id));
     for (const s of dynamic) {

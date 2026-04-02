@@ -78,6 +78,20 @@ export async function getAllSongsAdmin(): Promise<(SongDoc & { id: string })[]> 
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
 }
 
+export async function getAllSongsCount(): Promise<number> {
+  const snap = await db().collection(COLLECTION).count().get();
+  return snap.data().count;
+}
+
+export async function getPendingSongsCount(): Promise<number> {
+  const snap = await db()
+    .collection(COLLECTION)
+    .where("moderationStatus", "==", "pending")
+    .count()
+    .get();
+  return snap.data().count;
+}
+
 export async function getSongByIdAdmin(songId: string): Promise<(SongDoc & { id: string }) | null> {
   const doc = await db().collection(COLLECTION).doc(songId).get();
   if (!doc.exists) return null;

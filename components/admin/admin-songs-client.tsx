@@ -91,7 +91,7 @@ export function AdminSongsClient() {
   const fetchSongs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/songs");
+      const res = await fetch("/api/admin/songs", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setSongs(data.songs ?? []);
@@ -185,7 +185,7 @@ export function AdminSongsClient() {
     setLoadingEdit(true);
     setMsg("");
     try {
-      const res = await fetch(`/api/admin/songs/${song.id}`);
+      const res = await fetch(`/api/admin/songs/${song.id}`, { cache: "no-store" });
       const data = (await res.json()) as { song?: Song; error?: string };
       if (!res.ok || !data.song) {
         setMsg(data.error ?? "Şarkı detayı alınamadı.");

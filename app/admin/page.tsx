@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllSongsAdmin, getPendingSongs } from "@/lib/firestore/admin-songs";
-import { getAllArtistsAdmin } from "@/lib/firestore/admin-artists";
-import { getPendingContributions } from "@/lib/firestore/contributions";
+import { getAllSongsCount, getPendingSongsCount } from "@/lib/firestore/admin-songs";
+import { getAllArtistsCount } from "@/lib/firestore/admin-artists";
+import { getPendingContributionsCount } from "@/lib/firestore/contributions";
 
 export const metadata: Metadata = { title: "Admin pano" };
 
@@ -10,16 +10,16 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
   const [allSongsRes, pendingSongsRes, artistsRes, pendingContribsRes] = await Promise.allSettled([
-    getAllSongsAdmin(),
-    getPendingSongs(),
-    getAllArtistsAdmin(),
-    getPendingContributions(),
+    getAllSongsCount(),
+    getPendingSongsCount(),
+    getAllArtistsCount(),
+    getPendingContributionsCount(),
   ]);
 
-  const allSongs = allSongsRes.status === "fulfilled" ? allSongsRes.value : [];
-  const pendingSongs = pendingSongsRes.status === "fulfilled" ? pendingSongsRes.value : [];
-  const artists = artistsRes.status === "fulfilled" ? artistsRes.value : [];
-  const pendingContribs = pendingContribsRes.status === "fulfilled" ? pendingContribsRes.value : [];
+  const allSongsCount = allSongsRes.status === "fulfilled" ? allSongsRes.value : 0;
+  const pendingSongsCount = pendingSongsRes.status === "fulfilled" ? pendingSongsRes.value : 0;
+  const artistsCount = artistsRes.status === "fulfilled" ? artistsRes.value : 0;
+  const pendingContribsCount = pendingContribsRes.status === "fulfilled" ? pendingContribsRes.value : 0;
   const hasLoadError =
     allSongsRes.status === "rejected" ||
     pendingSongsRes.status === "rejected" ||
@@ -27,10 +27,10 @@ export default async function AdminDashboard() {
     pendingContribsRes.status === "rejected";
 
   const stats = [
-    { label: "Toplam şarkı", value: allSongs.length, href: "/admin/sarkilar" },
-    { label: "Sanatçı", value: artists.length, href: "/admin/sanatcilar" },
-    { label: "Bekleyen şarkı", value: pendingSongs.length, href: "/admin/moderasyon" },
-    { label: "Bekleyen katkı", value: pendingContribs.length, href: "/admin/moderasyon" },
+    { label: "Toplam şarkı", value: allSongsCount, href: "/admin/sarkilar" },
+    { label: "Sanatçı", value: artistsCount, href: "/admin/sanatcilar" },
+    { label: "Bekleyen şarkı", value: pendingSongsCount, href: "/admin/moderasyon" },
+    { label: "Bekleyen katkı", value: pendingContribsCount, href: "/admin/moderasyon" },
   ];
 
   return (

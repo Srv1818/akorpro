@@ -51,6 +51,11 @@ export async function getPendingContributions(): Promise<(ContributionDoc & { id
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as ContributionDoc) }));
 }
 
+export async function getPendingContributionsCount(): Promise<number> {
+  const snap = await db().collection(COLLECTION).where("status", "==", "pending").count().get();
+  return snap.data().count;
+}
+
 export async function getContributionById(
   id: string,
 ): Promise<(ContributionDoc & { id: string }) | null> {
