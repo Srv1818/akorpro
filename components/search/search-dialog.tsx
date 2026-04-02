@@ -5,6 +5,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useId,
   type KeyboardEvent,
 } from "react";
 import Link from "next/link";
@@ -41,6 +42,7 @@ type SearchDialogProps = {
 };
 
 export function SearchDialog({ placeholder = "Şarkı veya sanatçı ara..." }: SearchDialogProps) {
+  const inputId = useId();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -193,6 +195,8 @@ export function SearchDialog({ placeholder = "Şarkı veya sanatçı ara..." }: 
         </svg>
 
         <input
+          id={inputId}
+          name="q"
           ref={inputRef}
           type="search"
           value={query}

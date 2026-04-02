@@ -10,6 +10,14 @@ const MAX_CURATED_IDS_READ = 24;
 
 type SongWithId = SongDoc & { id: string };
 
+function isFailedPrecondition(err: unknown): boolean {
+  const e = err as { code?: number | string; message?: string };
+  if (e.code === 9) return true;
+  if (e.code === "FAILED_PRECONDITION" || e.code === "failed-precondition") return true;
+  const msg = typeof e.message === "string" ? e.message.toLowerCase() : "";
+  return msg.includes("requires an index") || msg.includes("composite index");
+}
+
 /** İlk istekte (soğuk başlatma / geçici UNAVAILABLE) sık görülen hatalarda birkaç kez dene. */
 async function withFirestoreRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
   const delaysMs = [0, 300, 700];
@@ -21,6 +29,9 @@ async function withFirestoreRetry<T>(label: string, fn: () => Promise<T>): Promi
     try {
       return await fn();
     } catch (e) {
+      if (isFailedPrecondition(e)) {
+        throw e;
+      }
       last = e;
       console.warn(`[discover] ${label} deneme ${i + 1}/${delaysMs.length}`, e);
     }
@@ -72,18 +83,26 @@ async function getDynamicSectionFallback(section: string, limit: number): Promis
   const fs = getAdminFirestore();
   if (!fs) return [];
 
-  let q: FirebaseFirestore.Query = fs
-    .collection("songs")
-    .where("moderationStatus", "==", "approved");
+  try {
+    let q: FirebaseFirestore.Query = fs
+      .collection("songs")
+      .where("moderationStatus", "==", "approved");
 
-  if (section === "new") {
-    q = q.orderBy("createdAt", "desc");
-  } else {
-    q = q.orderBy("popularity", "desc");
+    if (section === "new") {
+      q = q.orderBy("createdAt", "desc");
+    } else {
+      q = q.orderBy("popularity", "desc");
+    }
+
+    const snap = await q.limit(limit).get();
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
+  } catch (err: unknown) {
+    if (isFailedPrecondition(err)) {
+      console.warn(`[discover] ${section} fallback index eksik; curated liste ile devam ediliyor`);
+      return [];
+    }
+    throw err;
   }
-
-  const snap = await q.limit(limit).get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
 }
 
 function emptyDiscover(): Promise<SongWithId[]> {
