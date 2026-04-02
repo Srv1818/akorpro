@@ -1402,10 +1402,10 @@ export function PreviewClient({
   }, [lyricsFontSizePx, lyricsAutoFitEnabled, chordBody, splitLyricsEnabled, semitones, sceneMode, lyricsFitResizeTick]);
 
   return (
-    <div className={sceneMode ? "sm:rounded-2xl sm:ring-2 sm:ring-accent sm:ring-offset-2 sm:ring-offset-bg" : ""}>
+    <div>
       {sceneMode ? (
         <div
-          className="fixed inset-0 z-[70] bg-black/95 p-0 sm:p-8"
+          className="fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
           role="dialog"
           aria-modal="true"
           aria-label="Sahne modu"
@@ -1416,7 +1416,7 @@ export function PreviewClient({
           }}
         >
           <div
-            className="mx-auto flex h-full w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-black/60 shadow-none sm:max-w-4xl sm:rounded-2xl sm:border sm:border-white/10 sm:shadow-2xl sm:shadow-black/40"
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-2 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3">
