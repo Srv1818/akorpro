@@ -45,7 +45,7 @@ import {
   signedSemitoneDelta,
   transposeChordToken,
 } from "@/lib/music/transpose";
-import { X } from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
@@ -257,8 +257,18 @@ function renderAlignedBracketLine(
   );
 }
 
+function normalizeChordBodyText(text: string): string {
+  // Some admin/import flows may send literal `\\n` instead of real newlines.
+  // Normalize everything to real `\n` so both rendering and splitting work reliably.
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\n");
+}
+
 function renderChordBodyWithHighlights(text: string, semitones: number, onChordClick: () => void): ReactNode {
-  const lines = text.split("\n");
+  const lines = normalizeChordBodyText(text).split("\n");
   const rows: ReactNode[] = [];
   let i = 0;
   while (i < lines.length) {
@@ -342,8 +352,9 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
 }
 
 function splitChordBodyInTwo(text: string): [left: string, right: string] {
-  const lines = text.split("\n");
-  if (lines.length <= 1) return [text, ""];
+  const normalized = normalizeChordBodyText(text);
+  const lines = normalized.split("\n");
+  if (lines.length <= 1) return [normalized, ""];
 
   const midpoint = Math.ceil(lines.length / 2);
   let splitIndex = midpoint;
@@ -419,8 +430,10 @@ export function PreviewClient({
   const router = useRouter();
   const pathname = usePathname();
   const [sceneMode, setSceneMode] = useState(false);
+  const [sceneMoreOpen, setSceneMoreOpen] = useState(false);
   const [lyricsFontSizePx, setLyricsFontSizePx] = useState(LYRICS_FONT_SIZE_DEFAULT);
   const [effectiveLyricsFontSizePx, setEffectiveLyricsFontSizePx] = useState(LYRICS_FONT_SIZE_DEFAULT);
+  const [lyricsAutoFitEnabled, setLyricsAutoFitEnabled] = useState(true);
   const [lyricsFitResizeTick, setLyricsFitResizeTick] = useState(0);
   const [splitLyricsEnabled, setSplitLyricsEnabled] = useState(false);
 
@@ -519,6 +532,8 @@ export function PreviewClient({
     setMetronomeTimeSignature(initialTimeSignatureValue);
     setSaveAndAddOpen(false);
     setChordStripOpen(false);
+    setLyricsAutoFitEnabled(true);
+    setSceneMoreOpen(false);
   }, [songId, initialBpmNumber, initialTimeSignatureValue]);
 
   const transposeParamRaw = searchParams.get("transpose");
@@ -967,6 +982,7 @@ export function PreviewClient({
       if (e.key === "Escape") {
         setSceneMode(false);
         replaceSceneParam(false);
+        setSceneMoreOpen(false);
       }
     };
 
@@ -990,6 +1006,15 @@ export function PreviewClient({
       document.body.style.overflow = prevOverflow;
     };
   }, [replaceSceneParam, sceneMode]);
+
+  useEffect(() => {
+    if (!sceneMoreOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSceneMoreOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [sceneMoreOpen]);
 
   useEffect(() => {
     urlTransposeRef.current = 0;
@@ -1318,7 +1343,7 @@ export function PreviewClient({
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
 
-    const shouldFitLyrics = window.innerWidth < LYRICS_MOBILE_FIT_MAX_WIDTH;
+    const shouldFitLyrics = lyricsAutoFitEnabled && window.innerWidth < LYRICS_MOBILE_FIT_MAX_WIDTH;
     if (!shouldFitLyrics) {
       setEffectiveLyricsFontSizePx(lyricsFontSizePx);
       return;
@@ -1374,23 +1399,24 @@ export function PreviewClient({
     }
 
     setEffectiveLyricsFontSizePx((prev) => (prev === best ? prev : best));
-  }, [lyricsFontSizePx, chordBody, splitLyricsEnabled, semitones, sceneMode, lyricsFitResizeTick]);
+  }, [lyricsFontSizePx, lyricsAutoFitEnabled, chordBody, splitLyricsEnabled, semitones, sceneMode, lyricsFitResizeTick]);
 
   return (
-    <div className={sceneMode ? "rounded-2xl ring-2 ring-accent ring-offset-2 ring-offset-bg" : ""}>
+    <div className={sceneMode ? "sm:rounded-2xl sm:ring-2 sm:ring-accent sm:ring-offset-2 sm:ring-offset-bg" : ""}>
       {sceneMode ? (
         <div
-          className="fixed inset-0 z-[70] bg-black/95 p-4 sm:p-8"
+          className="fixed inset-0 z-[70] bg-black/95 p-0 sm:p-8"
           role="dialog"
           aria-modal="true"
           aria-label="Sahne modu"
           onMouseDown={() => {
             setSceneMode(false);
             replaceSceneParam(false);
+            setSceneMoreOpen(false);
           }}
         >
           <div
-            className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/60 shadow-2xl shadow-black/40"
+            className="mx-auto flex h-full w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-black/60 shadow-none sm:max-w-4xl sm:rounded-2xl sm:border sm:border-white/10 sm:shadow-2xl sm:shadow-black/40"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-2 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -1414,10 +1440,80 @@ export function PreviewClient({
                   onClick={() => {
                     setSceneMode(false);
                     replaceSceneParam(false);
+                    setSceneMoreOpen(false);
                   }}
                 />
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+              {/* Mobile: compact toolbar */}
+              <div className="flex items-center gap-2 sm:hidden">
+                <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} variant="scene" />
+                <button
+                  type="button"
+                  aria-pressed={splitLyricsEnabled}
+                  onClick={() => setSplitLyricsEnabled((prev) => !prev)}
+                  className={`inline-flex shrink-0 min-h-[36px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+                    splitLyricsEnabled
+                      ? "border-emerald-400/60 bg-emerald-500/25 text-white"
+                      : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                  }`}
+                  aria-label="Sözleri iki sütuna böl"
+                  title="Sözleri iki sütuna böl"
+                >
+                  Böl
+                </button>
+                <button
+                  type="button"
+                  disabled={!prevSongHref || playlistNextLoading}
+                  onClick={() => {
+                    if (!prevSongHref) return;
+                    router.push(prevSongHref);
+                  }}
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={
+                    playlistNextLoading
+                      ? "Liste sırası yükleniyor…"
+                      : prevSongHref
+                        ? `Önceki: ${(playlistPrevSong ?? prevSong)?.title ?? ""}`
+                        : "Önceki şarkı yok"
+                  }
+                  aria-label="Önceki şarkı"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  disabled={!nextSongHref || playlistNextLoading}
+                  onClick={() => {
+                    if (!nextSongHref) return;
+                    router.push(nextSongHref);
+                  }}
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  title={
+                    playlistNextLoading
+                      ? "Liste sırası yükleniyor…"
+                      : nextSongHref
+                        ? `Sıradaki: ${(playlistNextSong ?? nextSong)?.title ?? ""}`
+                        : "Sıradaki şarkı yok"
+                  }
+                  aria-label="Sıradaki şarkı"
+                >
+                  →
+                </button>
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={sceneMoreOpen}
+                  onClick={() => setSceneMoreOpen(true)}
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-white transition hover:bg-white/10"
+                  aria-label="Diğer sahne ayarları"
+                  title="Diğer ayarlar"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden />
+                </button>
+              </div>
+
+              {/* Desktop: full toolbar */}
+              <div className="hidden sm:flex items-center gap-2 overflow-x-auto pb-0">
                 <button
                   type="button"
                   onClick={() => setChordStripOpen(true)}
@@ -1431,9 +1527,10 @@ export function PreviewClient({
                 <button
                   type="button"
                   disabled={!canDecreaseLyricsFont}
-                  onClick={() =>
-                    setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP))
-                  }
+                  onClick={() => {
+                    setLyricsAutoFitEnabled(false);
+                    setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP));
+                  }}
                   className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Söz yazısını küçült"
                   title="Söz yazısını küçült"
@@ -1443,9 +1540,10 @@ export function PreviewClient({
                 <button
                   type="button"
                   disabled={!canIncreaseLyricsFont}
-                  onClick={() =>
-                    setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP))
-                  }
+                  onClick={() => {
+                    setLyricsAutoFitEnabled(false);
+                    setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP));
+                  }}
                   className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Söz yazısını büyüt"
                   title="Söz yazısını büyüt"
@@ -1553,16 +1651,104 @@ export function PreviewClient({
                   onClick={() => {
                     setSceneMode(false);
                     replaceSceneParam(false);
+                    setSceneMoreOpen(false);
                   }}
                 />
               </div>
             </div>
 
+              {sceneMoreOpen ? (
+                <>
+                  <div
+                    className="fixed inset-0 z-[75] bg-black/40 sm:hidden"
+                    aria-hidden
+                    onMouseDown={() => setSceneMoreOpen(false)}
+                  />
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Sahne ayarları"
+                    className="fixed inset-x-0 bottom-0 z-[76] max-h-[min(72vh,32rem)] overflow-hidden sm:hidden"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <div className="mx-auto flex max-h-[min(72vh,32rem)] w-full flex-col border-t border-white/10 bg-black/80 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] backdrop-blur">
+                      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
+                        <p className="text-xs font-semibold tracking-tight text-white/90">Sahne ayarları</p>
+                        <PanelCloseButton variant="scene" onClick={() => setSceneMoreOpen(false)} />
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            disabled={!canDecreaseLyricsFont}
+                            onClick={() => {
+                              setLyricsAutoFitEnabled(false);
+                              setLyricsFontSizePx((size) =>
+                                Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP),
+                              );
+                            }}
+                            className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Söz yazısını küçült"
+                          >
+                            A-
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canIncreaseLyricsFont}
+                            onClick={() => {
+                              setLyricsAutoFitEnabled(false);
+                              setLyricsFontSizePx((size) =>
+                                Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP),
+                              );
+                            }}
+                            className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Söz yazısını büyüt"
+                          >
+                            A+
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canDecreaseTranspose}
+                            onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
+                            className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Transpoze: yarım ton düşür"
+                          >
+                            T-
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canIncreaseTranspose}
+                            onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
+                            className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Transpoze: yarım ton yükselt"
+                          >
+                            T+
+                          </button>
+                        </div>
+
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              resetOriginal();
+                              setSceneMoreOpen(false);
+                            }}
+                            className="inline-flex min-h-[40px] w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                          >
+                            Orijinale dön
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
             <div ref={sceneLyricsScrollRef} className="flex-1 overflow-auto p-4 sm:p-6">
-              <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
+              <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
                 <pre
                 data-lyrics-pre="scene"
-                  className="song-chord-text overflow-x-auto whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
+                  className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
                   style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                 >
                   {renderChordBodyWithHighlights(
@@ -1574,7 +1760,7 @@ export function PreviewClient({
                 {splitLyricsEnabled ? (
                   <pre
                     data-lyrics-pre="scene"
-                    className="song-chord-text overflow-x-auto whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
+                    className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
                     style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                   >
                     {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
@@ -2021,9 +2207,10 @@ export function PreviewClient({
               <button
                 type="button"
                 disabled={!canDecreaseLyricsFont}
-                onClick={() =>
-                  setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP))
-                }
+                onClick={() => {
+                  setLyricsAutoFitEnabled(false);
+                  setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP));
+                }}
                 className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Söz yazısını küçült"
                 title="Söz yazısını küçült"
@@ -2033,9 +2220,10 @@ export function PreviewClient({
               <button
                 type="button"
                 disabled={!canIncreaseLyricsFont}
-                onClick={() =>
-                  setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP))
-                }
+                onClick={() => {
+                  setLyricsAutoFitEnabled(false);
+                  setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP));
+                }}
                 className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Söz yazısını büyüt"
                 title="Söz yazısını büyüt"
@@ -2140,10 +2328,10 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article className="mt-4 rounded-2xl bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
-        <div className={splitLyricsEnabled ? "grid grid-cols-1 gap-6 md:grid-cols-2" : ""}>
+        <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
           <pre
             data-lyrics-pre="body"
-            className="song-chord-text overflow-x-auto whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
+            className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
             style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
           >
             {renderChordBodyWithHighlights(
@@ -2155,7 +2343,7 @@ export function PreviewClient({
           {splitLyricsEnabled ? (
             <pre
               data-lyrics-pre="body"
-              className="song-chord-text overflow-x-auto whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
+              className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
               style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
             >
               {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
