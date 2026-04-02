@@ -1,12 +1,10 @@
-import type { Config } from "tailwindcss";
-
 /**
  * Tasarım sistemi (ARCHITECTURE Faz 1):
  * - Vurgu: green-500 (#22c55e) tabanlı `accent` token’ları (--color-accent, globals.css).
  * - Nötr krom: yerleşik `zinc-*` paleti (hover, ikon, kenarlık vurguları).
  * - Akor semantiği: `chord.*` → maj / min / dim / aug / extension.
  */
-export default {
+const config = {
   theme: {
     extend: {
       colors: {
@@ -37,4 +35,6 @@ export default {
       },
     },
   },
-} satisfies Config;
+};
+
+export default config;

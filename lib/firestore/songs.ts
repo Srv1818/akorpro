@@ -32,8 +32,9 @@ async function withFirestoreRetry<T>(label: string, fn: () => Promise<T>): Promi
   throw last;
 }
 
-/** unstable_cache içinde null saklanmasın diye sentinel (gerçek 404’ler önbelleklenmez). */
-const SONG_SLUG_CACHE_MISS = "SONG_SLUG_CACHE_MISS";
+type CachedSongLookup =
+  | { found: true; song: SongDoc & { id: string } }
+  | { found: false };
 
 function db() {
   const fs = getAdminFirestore();
@@ -279,29 +280,20 @@ async function _getFilterFacetOptions() {
 /*  Cached public API                                                  */
 /* ------------------------------------------------------------------ */
 
-/** Tek şarkı — slug çifti ile (ISR cached; null sonuç önbelleğe yazılmaz — v2 anahtarı eski null önbelleğini sıfırlar). */
+/** Tek şarkı — slug çifti ile (ISR cached; throw yerine tagged result döner, build log gürültüsü azalır). */
 export function getSongBySlugs(artistSlug: string, songSlug: string) {
   return unstable_cache(
-    async () => {
+    async (): Promise<CachedSongLookup> => {
       const song = await _getSongBySlugs(artistSlug, songSlug);
-      if (song === null) {
-        const e = new Error(SONG_SLUG_CACHE_MISS);
-        e.name = "SongSlugCacheMiss";
-        throw e;
-      }
-      return song;
+      if (song === null) return { found: false };
+      return { found: true, song };
     },
-    ["song-by-slugs-v2", artistSlug, songSlug],
+    ["song-by-slugs-v3", artistSlug, songSlug],
     {
       tags: [songTag(artistSlug, songSlug), TAGS.SONGS_ALL],
       revalidate: TTL.SONG_DETAIL,
     },
-  )().catch((e: unknown) => {
-    if (e instanceof Error && e.message === SONG_SLUG_CACHE_MISS) {
-      return null;
-    }
-    throw e;
-  });
+  )().then((cached) => (cached.found ? cached.song : null));
 }
 
 /** Tek şarkı — ID ile (uncached, discover resolver uses its own cache) */

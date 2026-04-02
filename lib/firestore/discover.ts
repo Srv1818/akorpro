@@ -98,7 +98,9 @@ async function getDynamicSectionFallback(section: string, limit: number): Promis
     return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
   } catch (err: unknown) {
     if (isFailedPrecondition(err)) {
-      console.warn(`[discover] ${section} fallback index eksik; curated liste ile devam ediliyor`);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[discover] ${section} fallback index eksik; curated liste ile devam ediliyor`);
+      }
       return [];
     }
     throw err;

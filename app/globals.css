@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@config "../tailwind.config.ts";
+@config "../tailwind.config.mjs";
 
 /* Faz 1 — tek token seti; .dark ile gündüz/gece (ARCHITECTURE) */
 :root {
