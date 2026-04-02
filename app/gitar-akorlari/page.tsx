@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/content/page-header";
 import { SongCard } from "@/components/content/song-card";
 import { SongFilters } from "@/components/content/song-filters";
 import { getFilteredSongs, getFilterFacetOptions } from "@/lib/firestore/songs";
+import type { SongDoc } from "@/lib/types/firestore";
 import { firstParam } from "@/lib/search-params";
 
 type Props = {
@@ -11,6 +12,27 @@ type Props = {
 
 function hasActiveFilters(p: Record<string, string | undefined>): boolean {
   return Boolean(p.harf || p.sanatci || p.ton || p.zorluk);
+}
+
+function deriveFacetOptionsFromSongs(songs: Array<SongDoc & { id: string }>) {
+  const artistMap = new Map<string, string>();
+  const keysSet = new Set<string>();
+
+  for (const s of songs) {
+    artistMap.set(s.artistSlug, s.artistName);
+    keysSet.add(s.originalKey);
+  }
+
+  const artists = [...artistMap.entries()]
+    .map(([slug, name]) => ({ slug, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+
+  return {
+    artists,
+    keys: [...keysSet].sort(),
+    difficulties: ["kolay", "orta", "zor"] as const,
+    letters: "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ".split(""),
+  };
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -44,10 +66,10 @@ export default async function GitarAkorlariPage({ searchParams }: Props) {
     zorluk: firstParam(sp.zorluk),
   };
 
-  const [songs, facets] = await Promise.all([
-    getFilteredSongs(current),
-    getFilterFacetOptions(),
-  ]);
+  const filtered = hasActiveFilters(current);
+  const songsPromise = getFilteredSongs(current);
+  const facetsPromise = filtered ? getFilterFacetOptions() : songsPromise.then(deriveFacetOptionsFromSongs);
+  const [songs, facets] = await Promise.all([songsPromise, facetsPromise]);
 
   return (
     <>

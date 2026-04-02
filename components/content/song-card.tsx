@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SongCardPlaylistAdd } from "@/components/content/song-card-playlist-add";
-import { artistPath, chordPath } from "@/lib/paths";
+import { chordPath } from "@/lib/paths";
 import type { SongSummary } from "@/lib/types/content";
 
 export function SongCard({
@@ -32,11 +32,7 @@ export function SongCard({
       <div className="relative z-10 min-w-0 flex-1 pointer-events-none">
         <h2 className="line-clamp-1 text-sm font-semibold text-foreground">{song.title}</h2>
         {showArtist ? (
-          <p className="mt-0.5 line-clamp-1 text-xs text-muted">
-            <Link href={artistPath(song.artistSlug)} className="pointer-events-auto hover:text-accent">
-              {song.artistName}
-            </Link>
-          </p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted">{song.artistName}</p>
         ) : null}
       </div>
       {showPlaylistAdd ? <SongCardPlaylistAdd song={playlistSong} /> : null}
