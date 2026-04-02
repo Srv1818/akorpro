@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { moderateSong, getSongByIdAdmin } from "@/lib/firestore/admin-songs";
 import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
+import { chordPath } from "@/lib/paths";
 import type { ModerationStatus } from "@/lib/types/firestore";
 
 export const runtime = "nodejs";
@@ -39,6 +40,7 @@ export async function POST(request: Request, ctx: Ctx) {
     if (song) {
       revalidateTag(songTag(song.artistSlug, song.slug), "max");
       revalidateTag(songsArtistTag(song.artistSlug), "max");
+      revalidatePath(chordPath(song.artistSlug, song.slug), "page");
     }
     revalidateTag(TAGS.SONGS_ALL, "max");
     revalidateTag(TAGS.SONGS_FACETS, "max");

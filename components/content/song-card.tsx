@@ -26,6 +26,7 @@ export function SongCard({
     <article className="relative flex flex-row items-start gap-2 rounded-lg border border-border bg-surface p-3 shadow-sm transition hover:border-accent/30">
       <Link
         href={chordHref}
+        prefetch={false}
         className="absolute inset-0 z-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         aria-label={label}
       />

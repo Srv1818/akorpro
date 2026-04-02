@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getSongByIdAdmin, updateSong, deleteSong } from "@/lib/firestore/admin-songs";
 import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
+import { chordPath } from "@/lib/paths";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
 import type { KeyMode } from "@/lib/types/content";
 
@@ -74,10 +75,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (before) {
     revalidateTag(songTag(before.artistSlug, before.slug), "max");
     revalidateTag(songsArtistTag(before.artistSlug), "max");
+    revalidatePath(chordPath(before.artistSlug, before.slug), "page");
   }
   if (after) {
     revalidateTag(songTag(after.artistSlug, after.slug), "max");
     revalidateTag(songsArtistTag(after.artistSlug), "max");
+    revalidatePath(chordPath(after.artistSlug, after.slug), "page");
   }
   revalidateTag(TAGS.SONGS_ALL, "max");
   revalidateTag(TAGS.SONGS_FACETS, "max");
@@ -99,6 +102,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if (song) {
     revalidateTag(songTag(song.artistSlug, song.slug), "max");
     revalidateTag(songsArtistTag(song.artistSlug), "max");
+    revalidatePath(chordPath(song.artistSlug, song.slug), "page");
   }
   revalidateTag(TAGS.SONGS_ALL, "max");
   revalidateTag(TAGS.SONGS_FACETS, "max");

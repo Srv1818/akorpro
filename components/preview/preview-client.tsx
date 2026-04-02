@@ -569,6 +569,8 @@ export function PreviewClient({
 
   const urlTransposeRef = useRef(0);
   const transposeLockRef = useRef(false);
+  /** URL güncellenene kadar eski `?transpose` ile store'un ezilmesini engeller. `0` yarım ton da geçerli; parametre kalkışı `"cleared"`. */
+  const pendingTransposeRef = useRef<number | "cleared" | null>(null);
 
   const chordStripTokens = useMemo(() => {
     const raw = extractUniqueChordTokensAsRendered(chordBody);
@@ -1020,15 +1022,36 @@ export function PreviewClient({
     urlTransposeRef.current = 0;
     // Yeni şarkıya geçince, URL/playlist dışında bir kaynaktan kilitlenmiş transpoze kalmasın.
     transposeLockRef.current = false;
+    pendingTransposeRef.current = null;
   }, [songId]);
 
   /**
-   * Yalnızca URL'de `transpose` varken senkronize et.
+   * URL ↔ store: ilk yükleme / geri tuşu / paylaşılan linkte URL kaynak;
+   * `replaceTranspose` sonrası kısa süre eski query ile çalışan render'larda store'u geri çekme.
    */
   useEffect(() => {
     if (!hasTransposeParam) {
+      if (pendingTransposeRef.current === "cleared") {
+        pendingTransposeRef.current = null;
+        urlTransposeRef.current = 0;
+        transposeLockRef.current = true;
+      }
       return;
     }
+
+    const pending = pendingTransposeRef.current;
+    if (pending !== null) {
+      if (pending === "cleared") {
+        return;
+      }
+      if (initialClamped === pending) {
+        pendingTransposeRef.current = null;
+        urlTransposeRef.current = initialClamped;
+        transposeLockRef.current = true;
+      }
+      return;
+    }
+
     if (initialClamped !== urlTransposeRef.current) {
       setTransposeSemitones(initialClamped);
     }
@@ -1089,6 +1112,7 @@ export function PreviewClient({
       transposeLockRef.current = true;
       setTransposeSemitones(n);
       urlTransposeRef.current = n;
+      pendingTransposeRef.current = n === 0 ? "cleared" : n;
       const params = new URLSearchParams(searchParams.toString());
       if (n === 0) params.delete("transpose");
       else params.set("transpose", String(n));
@@ -1139,6 +1163,7 @@ export function PreviewClient({
     transposeLockRef.current = true;
     resetTonalAndTranspose();
     urlTransposeRef.current = 0;
+    pendingTransposeRef.current = "cleared";
     setMetronomeActive(false);
     setOpenWidgets((w) => ({ ...w, metronome: false }));
     setMetronomeBpm(initialBpmNumber);

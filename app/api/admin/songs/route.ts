@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { createSong, getAllSongsAdmin } from "@/lib/firestore/admin-songs";
-import { TAGS } from "@/lib/cache/tags";
+import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
+import { chordPath } from "@/lib/paths";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
 import type { Difficulty, KeyMode } from "@/lib/types/content";
 
@@ -92,11 +93,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
+  revalidateTag(songTag(artistSlug, slug), "max");
+  revalidateTag(songsArtistTag(artistSlug), "max");
   revalidateTag(TAGS.SONGS_ALL, "max");
   revalidateTag(TAGS.SONGS_FACETS, "max");
   revalidateTag(TAGS.DISCOVER_POPULAR, "max");
   revalidateTag(TAGS.DISCOVER_NEW, "max");
   revalidateTag(TAGS.DISCOVER_FEATURED, "max");
+  revalidatePath(chordPath(artistSlug, slug), "page");
 
   return NextResponse.json({ ok: true, id });
 }
