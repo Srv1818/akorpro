@@ -236,7 +236,7 @@ function renderAlignedBracketLine(
     caret = Math.max(caret, item.pos + item.token.length);
   });
 
-  const pairClass = isLastSourceLine ? "flex flex-col gap-0" : "flex flex-col gap-0 sm:mb-1";
+  const pairClass = isLastSourceLine ? "flex flex-col gap-0.5" : "flex flex-col gap-0.5 mb-1.5 sm:mb-1";
   const chordRow = (
     <span className="block leading-none sm:leading-[1.05] [&_button]:align-baseline">{nodes}</span>
   );
@@ -297,7 +297,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       const pairEndsSong = i + 1 >= lines.length - 1;
       rows.push(
         <Fragment key={`line-${i}`}>
-            <span className={pairEndsSong ? "flex flex-col gap-0" : "flex flex-col gap-0 sm:mb-1"}>
+            <span className={pairEndsSong ? "flex flex-col gap-0.5" : "flex flex-col gap-0.5 mb-1.5 sm:mb-1"}>
             <span className="block leading-none sm:leading-[1.05] [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
