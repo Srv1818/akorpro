@@ -56,31 +56,55 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SanatciPage({ params }: Props) {
   const { slug } = await params;
-  const artist = await getArtistBySlug(slug);
-  if (!artist) notFound();
-
+  // Önce şarkıları çekiyoruz: Bazen `artists/{slug}` dokümanı yokken,
+  // aynı slug ile onaylı şarkılar var olabiliyor (seed/admin akışı veya cache gecikmesi).
+  // Bu durumda 404 yerine şarkılardan "fallback" sanatçı gösteriyoruz.
   const songs = await getSongsByArtist(slug);
+  const artist = await getArtistBySlug(slug);
+
+  const artistForPage = (() => {
+    if (artist) return artist;
+    if (songs.length === 0) return null;
+    const first = songs[0]!;
+    return {
+      // JsonLd/PageHeader için gerekli alanlar
+      id: "fallback",
+      name: first.artistName,
+      slug,
+      imageUrl: undefined,
+      genre: first.genre,
+      songCount: songs.length,
+      popularity: undefined,
+
+      // Tip uyumu için placeholder (UI tarafında kullanılmıyor)
+      schemaVersion: 1,
+      createdAt: null,
+      updatedAt: null,
+    } as unknown as Awaited<ReturnType<typeof getArtistBySlug>>;
+  })();
+
+  if (!artistForPage) notFound();
 
   return (
     <>
-      <JsonLd data={artistJsonLd(artist)} />
+      <JsonLd data={artistJsonLd(artistForPage as Exclude<typeof artistForPage, null>)} />
       <Breadcrumbs
         items={[
           { label: "Ana Sayfa", href: "/" },
-          { label: artist.name, href: artistPath(slug) },
+          { label: artistForPage.name, href: artistPath(slug) },
         ]}
       />
       <PageHeader
-        title={artist.name}
+        title={artistForPage.name}
         description={
-          artist.genre
-            ? `${artist.genre} · ${artist.songCount} şarkı`
-            : `${artist.songCount} şarkı`
+          artistForPage.genre
+            ? `${artistForPage.genre} · ${artistForPage.songCount} şarkı`
+            : `${artistForPage.songCount} şarkı`
         }
         leading={
           <CoverImage
-            src={artist.imageUrl}
-            alt={`${artist.name} profil`}
+            src={artistForPage.imageUrl}
+            alt={`${artistForPage.name} profil`}
             priority
             className="h-20 w-20 rounded-full sm:h-24 sm:w-24"
             width={384}

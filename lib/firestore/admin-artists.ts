@@ -13,14 +13,19 @@ function db() {
 
 type ArtistInput = Omit<ArtistDoc, "schemaVersion" | "createdAt" | "updatedAt">;
 
+function omitUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined));
+}
+
 export async function createArtist(input: ArtistInput, actorUid: string): Promise<string> {
   const now = admin.firestore.FieldValue.serverTimestamp();
-  const data: Record<string, unknown> = {
+  // Firestore `undefined` değerli alanları kabul etmez; opsiyonelleri temizliyoruz.
+  const data: Record<string, unknown> = omitUndefined({
     ...input,
     schemaVersion: 1,
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   const ref = await db().collection(COLLECTION).add(data);
   await writeAuditLog(actorUid, "artist:create", COLLECTION, ref.id, { name: input.name });

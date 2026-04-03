@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   createArtist,
@@ -6,6 +7,8 @@ import {
   deleteArtist,
   getAllArtistsAdmin,
 } from "@/lib/firestore/admin-artists";
+import { artistTag, TAGS } from "@/lib/cache/tags";
+import { artistPath } from "@/lib/paths";
 import { sanitizePlainField } from "@/lib/security/sanitize";
 
 export const runtime = "nodejs";
@@ -49,6 +52,11 @@ export async function POST(request: Request) {
     auth.user.uid,
   );
 
+  // Invalidate `unstable_cache` for artist pages so "new artist" is reflected immediately.
+  revalidateTag(artistTag(slug), "max");
+  revalidateTag(TAGS.ARTISTS_ALL, "max");
+  revalidatePath(artistPath(slug), "page");
+
   return NextResponse.json({ ok: true, id });
 }
 
@@ -76,6 +84,13 @@ export async function PATCH(request: Request) {
   if (typeof b.popularity === "number") updates.popularity = b.popularity;
 
   await updateArtist(id, updates, auth.user.uid);
+
+  // Slug might have changed; refresh both "all artists" and the updated slug (if provided).
+  revalidateTag(TAGS.ARTISTS_ALL, "max");
+  if (typeof updates.slug === "string") {
+    revalidateTag(artistTag(updates.slug), "max");
+    revalidatePath(artistPath(updates.slug), "page");
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -88,5 +103,9 @@ export async function DELETE(request: Request) {
   if (!id) return NextResponse.json({ error: "id zorunlu." }, { status: 400 });
 
   await deleteArtist(id, auth.user.uid);
+
+  // We don't know the deleted artist's slug here; invalidating the global list is still enough.
+  revalidateTag(TAGS.ARTISTS_ALL, "max");
+
   return NextResponse.json({ ok: true });
 }
