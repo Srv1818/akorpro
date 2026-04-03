@@ -2,24 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type DiscoverSection = "popular" | "new" | "featured";
-
 type SongRow = { id: string; title: string; artistName: string; moderationStatus?: string };
-
-const SECTION_META: Record<DiscoverSection, { title: string; hint: string }> = {
-  popular: {
-    title: "Popüler",
-    hint: "Ana sayfadaki “Popüler” sırası bu listedir. Üstteki ID önce gösterilir.",
-  },
-  new: {
-    title: "Yeni eklenenler (kürasyon)",
-    hint: "Bu liste, dinamik “en yeni onaylı şarkılar” ile birleştirilir; buraya eklediklerin öne alınır.",
-  },
-  featured: {
-    title: "Editör seçimi",
-    hint: "Ana sayfadaki “Editör seçimi” sırası bu listedir.",
-  },
-};
 
 function parseIds(text: string): string[] {
   return text
@@ -31,11 +14,9 @@ function parseIds(text: string): string[] {
 export function AdminDiscoverClient() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
-  const [popularText, setPopularText] = useState("");
-  const [newText, setNewText] = useState("");
   const [featuredText, setFeaturedText] = useState("");
   const [songs, setSongs] = useState<SongRow[]>([]);
-  const [saving, setSaving] = useState<DiscoverSection | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const songMap = useMemo(() => {
     const m = new Map<string, SongRow>();
@@ -51,10 +32,7 @@ export function AdminDiscoverClient() {
         fetch("/api/admin/discover", { cache: "no-store" }),
         fetch("/api/admin/songs", { cache: "no-store" }),
       ]);
-      const dJson = (await dRes.json()) as {
-        sections?: Record<DiscoverSection, string[]>;
-        error?: string;
-      };
+      const dJson = (await dRes.json()) as { featured?: string[]; error?: string };
       const sJson = (await sRes.json()) as { songs?: SongRow[]; error?: string };
 
       if (!dRes.ok) {
@@ -64,13 +42,7 @@ export function AdminDiscoverClient() {
       if (sRes.ok && Array.isArray(sJson.songs)) {
         setSongs(sJson.songs);
       }
-
-      const sec = dJson.sections;
-      if (sec) {
-        setPopularText((sec.popular ?? []).join("\n"));
-        setNewText((sec.new ?? []).join("\n"));
-        setFeaturedText((sec.featured ?? []).join("\n"));
-      }
+      setFeaturedText((dJson.featured ?? []).join("\n"));
     } catch {
       setMsg("Veri yüklenemedi.");
     } finally {
@@ -82,15 +54,15 @@ export function AdminDiscoverClient() {
     void load();
   }, [load]);
 
-  async function saveSection(section: DiscoverSection, text: string) {
-    setSaving(section);
+  async function saveFeatured() {
+    setSaving(true);
     setMsg("");
     try {
-      const songIds = parseIds(text);
+      const songIds = parseIds(featuredText);
       const res = await fetch("/api/admin/discover", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section, songIds }),
+        body: JSON.stringify({ songIds }),
       });
       const data = (await res.json()) as { ok?: boolean; songIds?: string[]; error?: string };
       if (!res.ok) {
@@ -98,21 +70,18 @@ export function AdminDiscoverClient() {
         return;
       }
       if (Array.isArray(data.songIds)) {
-        const joined = data.songIds.join("\n");
-        if (section === "popular") setPopularText(joined);
-        if (section === "new") setNewText(joined);
-        if (section === "featured") setFeaturedText(joined);
+        setFeaturedText(data.songIds.join("\n"));
       }
-      setMsg(`“${SECTION_META[section].title}” kaydedildi. Ana sayfa önbelleği yenilendi.`);
+      setMsg("Editör seçimi kaydedildi. Ana sayfa önbelleği yenilendi.");
     } catch {
       setMsg("Kayıt başarısız.");
     } finally {
-      setSaving(null);
+      setSaving(false);
     }
   }
 
-  function Preview({ text }: { text: string }) {
-    const ids = parseIds(text);
+  function Preview() {
+    const ids = parseIds(featuredText);
     if (ids.length === 0) return <p className="text-xs text-muted">Önizleme için en az bir ID girin.</p>;
     return (
       <ol className="mt-2 max-h-40 list-decimal space-y-1 overflow-y-auto pl-5 text-xs text-muted">
@@ -145,45 +114,47 @@ export function AdminDiscoverClient() {
     <div className="space-y-8">
       {msg ? <p className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground">{msg}</p> : null}
 
-      <p className="text-sm text-muted">
-        Her satıra bir şarkı <strong className="text-foreground">Firestore doküman ID</strong> yazın (en fazla 24). ID’yi{" "}
-        <a href="/admin/sarkilar" className="text-accent hover:underline">
-          Şarkılar
-        </a>{" "}
-        tablosundaki “Firestore ID” sütunundan kopyalayın. Sıra = ana sayfadaki gösterim sırası.
-      </p>
+      <section className="rounded-2xl border border-border bg-bg/50 p-4 text-sm text-muted">
+        <p>
+          <span className="font-medium text-foreground">Popüler:</span> Onaylı şarkılar{" "}
+          <code className="text-foreground">popularity</code> alanına göre sıralanır; liste sunucu önbelleğinde yaklaşık{" "}
+          <span className="font-medium text-foreground">23 saatte</span> bir yenilenir. Puanı şarkı formunda veya içe aktarımda
+          verebilirsin.
+        </p>
+        <p className="mt-2">
+          <span className="font-medium text-foreground">Yeni eklenenler:</span> Otomatik —{" "}
+          <code className="text-foreground">createdAt</code> en yeni onaylı şarkılar.
+        </p>
+      </section>
 
-      {(Object.keys(SECTION_META) as DiscoverSection[]).map((section) => {
-        const text =
-          section === "popular" ? popularText : section === "new" ? newText : featuredText;
-        const setText =
-          section === "popular" ? setPopularText : section === "new" ? setNewText : setFeaturedText;
-        const meta = SECTION_META[section];
-        return (
-          <section key={section} className="rounded-2xl border border-border bg-surface p-5">
-            <h2 className="text-lg font-semibold text-foreground">{meta.title}</h2>
-            <p className="mt-1 text-sm text-muted">{meta.hint}</p>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={10}
-              className="mt-4 w-full rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-foreground"
-              spellCheck={false}
-              placeholder="örn.&#10;abcSongDocId1&#10;abcSongDocId2"
-              aria-label={`${meta.title} şarkı ID listesi`}
-            />
-            <Preview text={text} />
-            <button
-              type="button"
-              disabled={saving !== null}
-              onClick={() => void saveSection(section, text)}
-              className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
-            >
-              {saving === section ? "Kaydediliyor…" : "Kaydet"}
-            </button>
-          </section>
-        );
-      })}
+      <section className="rounded-2xl border border-border bg-surface p-5">
+        <h2 className="text-lg font-semibold text-foreground">Editör seçimi</h2>
+        <p className="mt-1 text-sm text-muted">
+          Ana sayfadaki sıra buradaki listedir. Her satıra bir{" "}
+          <a href="/admin/sarkilar" className="text-accent hover:underline">
+            Firestore şarkı ID
+          </a>{" "}
+          (en fazla 24).
+        </p>
+        <textarea
+          value={featuredText}
+          onChange={(e) => setFeaturedText(e.target.value)}
+          rows={10}
+          className="mt-4 w-full rounded-lg border border-border bg-bg px-3 py-2 font-mono text-sm text-foreground"
+          spellCheck={false}
+          placeholder="Şarkı doküman ID'leri, her satırda biri"
+          aria-label="Editör seçimi şarkı ID listesi"
+        />
+        <Preview />
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void saveFeatured()}
+          className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted disabled:opacity-50"
+        >
+          {saving ? "Kaydediliyor…" : "Kaydet"}
+        </button>
+      </section>
     </div>
   );
 }

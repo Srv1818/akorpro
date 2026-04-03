@@ -5,7 +5,7 @@ import { getServerSessionUser } from "@/lib/auth/server-session";
 
 const adminNav = [
   { href: "/admin", label: "Pano" },
-  { href: "/admin/kesfet", label: "Keşfet" },
+  { href: "/admin/kesfet", label: "Editör seçimi" },
   { href: "/admin/sarkilar", label: "Şarkılar" },
   { href: "/admin/sanatcilar", label: "Sanatçılar" },
   { href: "/admin/moderasyon", label: "Moderasyon" },

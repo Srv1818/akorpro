@@ -1,31 +1,19 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
-import {
-  DISCOVER_MAX_SONG_IDS,
-  getDiscoverSectionsAdmin,
-  isDiscoverSection,
-  setDiscoverSectionSongIds,
-} from "@/lib/firestore/admin-discover";
+import { DISCOVER_MAX_SONG_IDS, getFeaturedSongIdsAdmin, setFeaturedSongIds } from "@/lib/firestore/admin-discover";
 import { TAGS } from "@/lib/cache/tags";
 
 export const runtime = "nodejs";
-
-function discoverTagForSection(section: string): string | null {
-  if (section === "popular") return TAGS.DISCOVER_POPULAR;
-  if (section === "new") return TAGS.DISCOVER_NEW;
-  if (section === "featured") return TAGS.DISCOVER_FEATURED;
-  return null;
-}
 
 export async function GET() {
   const auth = await requireAdmin();
   if ("error" in auth) return auth.error;
 
   try {
-    const sections = await getDiscoverSectionsAdmin();
+    const songIds = await getFeaturedSongIdsAdmin();
     return NextResponse.json(
-      { sections },
+      { featured: songIds },
       { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } },
     );
   } catch (error) {
@@ -46,9 +34,11 @@ export async function PUT(request: Request) {
   }
 
   const b = body as Record<string, unknown>;
-  const section = typeof b.section === "string" ? b.section : "";
-  if (!isDiscoverSection(section)) {
-    return NextResponse.json({ error: "Geçersiz bölüm (popular | new | featured)." }, { status: 400 });
+  if (b.section != null && b.section !== "featured") {
+    return NextResponse.json(
+      { error: "Popüler ve yeni eklenenler otomatik; yalnızca editör seçimi (featured) düzenlenebilir." },
+      { status: 400 },
+    );
   }
 
   if (!Array.isArray(b.songIds)) {
@@ -64,11 +54,10 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const normalized = await setDiscoverSectionSongIds(section, songIds, auth.user.uid);
-    const tag = discoverTagForSection(section);
-    if (tag) revalidateTag(tag, "max");
+    const normalized = await setFeaturedSongIds(songIds, auth.user.uid);
+    revalidateTag(TAGS.DISCOVER_FEATURED, "max");
     revalidatePath("/", "page");
-    return NextResponse.json({ ok: true, section, songIds: normalized });
+    return NextResponse.json({ ok: true, section: "featured" as const, songIds: normalized });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Kayıt başarısız.";
     return NextResponse.json({ error: message }, { status: 500 });

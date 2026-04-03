@@ -4,9 +4,7 @@ import { writeAuditLog } from "@/lib/security/audit-log";
 import type { DiscoverSectionDoc } from "@/lib/types/firestore";
 
 const COLLECTION = "discover";
-
-export const DISCOVER_SECTIONS = ["popular", "new", "featured"] as const;
-export type DiscoverSection = (typeof DISCOVER_SECTIONS)[number];
+const FEATURED_DOC = "featured";
 
 export const DISCOVER_MAX_SONG_IDS = 24;
 
@@ -29,31 +27,18 @@ function normalizeSongIds(raw: string[]): string[] {
   return out;
 }
 
-export function isDiscoverSection(v: string): v is DiscoverSection {
-  return (DISCOVER_SECTIONS as readonly string[]).includes(v);
+export async function getFeaturedSongIdsAdmin(): Promise<string[]> {
+  const doc = await db().collection(COLLECTION).doc(FEATURED_DOC).get();
+  if (!doc.exists) return [];
+  const data = doc.data() as DiscoverSectionDoc;
+  const ids = Array.isArray(data.songIds) ? data.songIds : [];
+  return ids.filter((id): id is string => typeof id === "string" && id.trim() !== "");
 }
 
-export async function getDiscoverSectionsAdmin(): Promise<Record<DiscoverSection, string[]>> {
-  const fs = db();
-  const result: Record<DiscoverSection, string[]> = { popular: [], new: [], featured: [] };
-  for (const section of DISCOVER_SECTIONS) {
-    const doc = await fs.collection(COLLECTION).doc(section).get();
-    if (!doc.exists) continue;
-    const data = doc.data() as DiscoverSectionDoc;
-    const ids = Array.isArray(data.songIds) ? data.songIds : [];
-    result[section] = ids.filter((id): id is string => typeof id === "string" && id.trim() !== "");
-  }
-  return result;
-}
-
-export async function setDiscoverSectionSongIds(
-  section: DiscoverSection,
-  songIds: string[],
-  actorUid: string,
-): Promise<string[]> {
+export async function setFeaturedSongIds(songIds: string[], actorUid: string): Promise<string[]> {
   const normalized = normalizeSongIds(songIds);
   const now = admin.firestore.FieldValue.serverTimestamp();
-  await db().collection(COLLECTION).doc(section).set({ songIds: normalized, updatedAt: now }, { merge: true });
-  await writeAuditLog(actorUid, "discover:update", COLLECTION, section, { count: normalized.length });
+  await db().collection(COLLECTION).doc(FEATURED_DOC).set({ songIds: normalized, updatedAt: now }, { merge: true });
+  await writeAuditLog(actorUid, "discover:update", COLLECTION, FEATURED_DOC, { count: normalized.length });
   return normalized;
 }

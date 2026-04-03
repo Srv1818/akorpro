@@ -4,7 +4,7 @@ import { DiscoverBlock } from "@/components/content/discover-block";
 import { PageHeader } from "@/components/content/page-header";
 import { getDiscoverFeatured, getDiscoverNew, getDiscoverPopular } from "@/lib/firestore/discover";
 
-/** ISR: 5 minutes (see lib/cache/tags.ts TTL.DISCOVER) */
+/** ISR: ana sayfa iskeleti; popüler bloğu ayrıca ~23s TTL (lib/cache/tags.ts TTL.DISCOVER_POPULAR). */
 export const revalidate = 300;
 
 export const metadata: Metadata = {

@@ -49,41 +49,43 @@ async function withFirestoreRetry<T>(label: string, fn: () => Promise<T>): Promi
   throw last;
 }
 
-async function _getSection(section: string): Promise<SongWithId[]> {
-  const fs = getAdminFirestore();
-  if (!fs) {
-    throw new Error("Firestore Admin başlatılamadı — FIREBASE_SERVICE_ACCOUNT_KEY eksik.");
-  }
-
-  return withFirestoreRetry(section, async () => {
-    const doc = await fs.collection(COLLECTION).doc(section).get();
-    const curatedIds = doc.exists ? ((doc.data() as DiscoverSectionDoc).songIds ?? []).slice(0, MAX_CURATED_IDS_READ) : [];
-    const curated = await getSongsByIds(curatedIds);
-
-    // Popüler ve editör seçimi yalnızca `discover/{section}.songIds` ile yönetilir (admin).
-    if (section === "popular" || section === "featured") {
-      return curated.slice(0, DISCOVER_TARGET_COUNT);
-    }
-
-    // "Yeni eklenenler" bölümünde canlı veriyi öne al ki adminden yeni eklenen şarkılar
-    // curated liste dolu olsa bile anında görünsün.
-    if (section === "new") {
-      const dynamic = await getNewSongsFallback(DISCOVER_TARGET_COUNT);
-      const merged: SongWithId[] = [...dynamic];
-      const seen = new Set(dynamic.map((s) => s.id));
-      for (const s of curated) {
-        if (seen.has(s.id)) continue;
-        merged.push(s);
-        if (merged.length >= DISCOVER_TARGET_COUNT) break;
-      }
-      return merged.slice(0, DISCOVER_TARGET_COUNT);
-    }
-
-    return curated.slice(0, DISCOVER_TARGET_COUNT);
-  });
+function comparePopular(a: SongWithId, b: SongWithId): number {
+  const pa = a.popularity ?? 0;
+  const pb = b.popularity ?? 0;
+  if (pb !== pa) return pb - pa;
+  return timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt);
 }
 
-async function getNewSongsFallback(limit: number): Promise<SongWithId[]> {
+/** Onaylı şarkılar: `popularity` desc (şemada elle veya içe aktarım ile). */
+async function getPopularSongsDynamic(limit: number): Promise<SongWithId[]> {
+  const fs = getAdminFirestore();
+  if (!fs) return [];
+
+  try {
+    const q = fs
+      .collection("songs")
+      .where("moderationStatus", "==", "approved")
+      .orderBy("popularity", "desc");
+
+    const snap = await q.limit(limit).get();
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
+  } catch (err: unknown) {
+    if (isFailedPrecondition(err)) {
+      const snap = await fs
+        .collection("songs")
+        .where("moderationStatus", "==", "approved")
+        .limit(limit * 5)
+        .get();
+      return snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as SongDoc) }))
+        .sort(comparePopular)
+        .slice(0, limit);
+    }
+    throw err;
+  }
+}
+
+async function getNewSongsDynamic(limit: number): Promise<SongWithId[]> {
   const fs = getAdminFirestore();
   if (!fs) return [];
 
@@ -97,7 +99,6 @@ async function getNewSongsFallback(limit: number): Promise<SongWithId[]> {
     return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
   } catch (err: unknown) {
     if (isFailedPrecondition(err)) {
-      // createdAt composite index yoksa bile "yeni eklenenler"i boş bırakma.
       const snap = await fs
         .collection("songs")
         .where("moderationStatus", "==", "approved")
@@ -110,6 +111,22 @@ async function getNewSongsFallback(limit: number): Promise<SongWithId[]> {
     }
     throw err;
   }
+}
+
+async function getFeaturedCurated(): Promise<SongWithId[]> {
+  const fs = getAdminFirestore();
+  if (!fs) {
+    throw new Error("Firestore Admin başlatılamadı — FIREBASE_SERVICE_ACCOUNT_KEY eksik.");
+  }
+
+  return withFirestoreRetry("featured", async () => {
+    const doc = await fs.collection(COLLECTION).doc("featured").get();
+    const curatedIds = doc.exists
+      ? ((doc.data() as DiscoverSectionDoc).songIds ?? []).slice(0, MAX_CURATED_IDS_READ)
+      : [];
+    const curated = await getSongsByIds(curatedIds);
+    return curated.slice(0, DISCOVER_TARGET_COUNT);
+  });
 }
 
 function emptyDiscover(): Promise<SongWithId[]> {
@@ -132,9 +149,9 @@ export function getDiscoverPopular() {
   return discoverCatch(
     "popular",
     unstable_cache(
-      () => _getSection("popular"),
+      () => withFirestoreRetry("popular", () => getPopularSongsDynamic(DISCOVER_TARGET_COUNT)),
       ["discover-popular"],
-      { tags: [TAGS.DISCOVER_POPULAR], revalidate: TTL.DISCOVER },
+      { tags: [TAGS.DISCOVER_POPULAR], revalidate: TTL.DISCOVER_POPULAR },
     )(),
   );
 }
@@ -144,7 +161,7 @@ export function getDiscoverNew() {
   return discoverCatch(
     "new",
     unstable_cache(
-      () => _getSection("new"),
+      () => withFirestoreRetry("new", () => getNewSongsDynamic(DISCOVER_TARGET_COUNT)),
       ["discover-new"],
       { tags: [TAGS.DISCOVER_NEW], revalidate: TTL.DISCOVER },
     )(),
@@ -156,7 +173,7 @@ export function getDiscoverFeatured() {
   return discoverCatch(
     "featured",
     unstable_cache(
-      () => _getSection("featured"),
+      () => getFeaturedCurated(),
       ["discover-featured"],
       { tags: [TAGS.DISCOVER_FEATURED], revalidate: TTL.DISCOVER },
     )(),

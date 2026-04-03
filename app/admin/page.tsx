@@ -56,7 +56,7 @@ export default async function AdminDashboard() {
 
       <div className="mt-8 flex flex-wrap gap-3">
         <Link href="/admin/kesfet" className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground hover:bg-bg">
-          Keşfet listeleri
+          Editör seçimi (keşfet)
         </Link>
         <Link href="/admin/sarkilar?action=new" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted">
           Yeni şarkı
