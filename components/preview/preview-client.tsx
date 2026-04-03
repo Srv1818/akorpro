@@ -66,7 +66,8 @@ type Props = {
 
 type PlaylistRow = { id: string; name: string };
 type WidgetId = "circle" | "gamlar" | "metronome";
-const INLINE_CHORD_REGEX = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/g;
+const INLINE_CHORD_REGEX =
+  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?(?![\p{L}\p{M}\p{N}_])/gu;
 const BRACKET_CHORD_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/g;
 
 function lineHasBracketChords(line: string): boolean {
@@ -77,7 +78,7 @@ function lineHasBracketChords(line: string): boolean {
 function isChordOnlySourceLine(line: string): boolean {
   if (!line.trim()) return false;
   if (lineHasBracketChords(line)) return false;
-  const re = new RegExp(INLINE_CHORD_REGEX.source, "g");
+  const re = new RegExp(INLINE_CHORD_REGEX.source, INLINE_CHORD_REGEX.flags);
   const rest = line.replace(re, "").replace(/\s/g, "");
   return rest.length === 0;
 }
@@ -187,7 +188,7 @@ function renderChordLine(
   const out: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  const regex = new RegExp(INLINE_CHORD_REGEX.source, "g");
+  const regex = new RegExp(INLINE_CHORD_REGEX.source, INLINE_CHORD_REGEX.flags);
   while ((match = regex.exec(line)) !== null) {
     const full = match[0];
     const displayed = transposeChordToken(full, semitones);

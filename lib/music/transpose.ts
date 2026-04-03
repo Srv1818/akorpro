@@ -47,12 +47,14 @@ export function formatChordSymbolDisplay(token: string): string {
 }
 
 /** Metindeki akor tokenlarıyla aynı desen (transpose ile uyumlu). */
-const CHORD_TOKEN_REGEX = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
+const CHORD_TOKEN_REGEX =
+  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?(?![\p{L}\p{M}\p{N}_])/giu;
 const BRACKETED_CHORD_TOKEN_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/gi;
 
 /** `preview-client` ile aynı: köşeli akor satırı tespiti + inline akorlar (ham metin; `i` ham küçük harf için). */
 const AS_RENDERED_BRACKET_CHORD = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/gi;
-const AS_RENDERED_INLINE_CHORD = /\b([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?\b/gi;
+const AS_RENDERED_INLINE_CHORD =
+  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?(?![\p{L}\p{M}\p{N}_])/giu;
 
 function normalizeBracketedChordTokens(text: string): string {
   return text.replace(BRACKETED_CHORD_TOKEN_REGEX, (full, chordToken: string, offset: number, source: string) => {
@@ -71,7 +73,7 @@ export function extractUniqueChordTokensInOrder(text: string): string[] {
   if (!text) return [];
   const seen = new Set<string>();
   const out: string[] = [];
-  const re = new RegExp(CHORD_TOKEN_REGEX.source, "gi");
+  const re = new RegExp(CHORD_TOKEN_REGEX.source, CHORD_TOKEN_REGEX.flags);
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const full = m[0];

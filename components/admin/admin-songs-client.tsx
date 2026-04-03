@@ -401,6 +401,7 @@ export function AdminSongsClient() {
         <table className="w-full min-w-[48rem] text-left text-sm">
           <thead className="border-b border-border bg-bg text-muted">
             <tr>
+              <th className="px-4 py-3 font-medium">Firestore ID</th>
               <th className="px-4 py-3 font-medium">Başlık</th>
               <th className="px-4 py-3 font-medium">Sanatçı</th>
               <th className="px-4 py-3 font-medium">Ton</th>
@@ -412,6 +413,11 @@ export function AdminSongsClient() {
           <tbody>
             {songs.map((s) => (
               <tr key={s.id} className="border-b border-border last:border-0">
+                <td className="max-w-[10rem] px-4 py-3">
+                  <code className="break-all text-[11px] text-muted" title={s.id}>
+                    {s.id}
+                  </code>
+                </td>
                 <td className="px-4 py-3">
                   <Link href={chordPath(s.artistSlug, s.slug)} className="font-medium text-foreground hover:text-accent">
                     {s.title}
