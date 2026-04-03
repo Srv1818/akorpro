@@ -60,10 +60,15 @@ async function _getSection(section: string): Promise<SongWithId[]> {
     const curatedIds = doc.exists ? ((doc.data() as DiscoverSectionDoc).songIds ?? []).slice(0, MAX_CURATED_IDS_READ) : [];
     const curated = await getSongsByIds(curatedIds);
 
+    // Popüler ve editör seçimi yalnızca `discover/{section}.songIds` ile yönetilir (admin).
+    if (section === "popular" || section === "featured") {
+      return curated.slice(0, DISCOVER_TARGET_COUNT);
+    }
+
     // "Yeni eklenenler" bölümünde canlı veriyi öne al ki adminden yeni eklenen şarkılar
     // curated liste dolu olsa bile anında görünsün.
     if (section === "new") {
-      const dynamic = await getDynamicSectionFallback(section, DISCOVER_TARGET_COUNT);
+      const dynamic = await getNewSongsFallback(DISCOVER_TARGET_COUNT);
       const merged: SongWithId[] = [...dynamic];
       const seen = new Set(dynamic.map((s) => s.id));
       for (const s of curated) {
@@ -74,56 +79,34 @@ async function _getSection(section: string): Promise<SongWithId[]> {
       return merged.slice(0, DISCOVER_TARGET_COUNT);
     }
 
-    // Diğer bölümlerde curated liste hedefi dolduruyorsa pahalı fallback sorgusuna hiç gitme.
-    if (curated.length >= DISCOVER_TARGET_COUNT) return curated.slice(0, DISCOVER_TARGET_COUNT);
-
-    const merged: SongWithId[] = [...curated];
-    const seen = new Set(curated.map((s) => s.id));
-    const dynamic = await getDynamicSectionFallback(section, DISCOVER_TARGET_COUNT);
-    for (const s of dynamic) {
-      if (seen.has(s.id)) continue;
-      merged.push(s);
-      if (merged.length >= DISCOVER_TARGET_COUNT) break;
-    }
-    return merged;
+    return curated.slice(0, DISCOVER_TARGET_COUNT);
   });
 }
 
-async function getDynamicSectionFallback(section: string, limit: number): Promise<SongWithId[]> {
+async function getNewSongsFallback(limit: number): Promise<SongWithId[]> {
   const fs = getAdminFirestore();
   if (!fs) return [];
 
   try {
-    let q: FirebaseFirestore.Query = fs
+    const q = fs
       .collection("songs")
-      .where("moderationStatus", "==", "approved");
-
-    if (section === "new") {
-      q = q.orderBy("createdAt", "desc");
-    } else {
-      q = q.orderBy("popularity", "desc");
-    }
+      .where("moderationStatus", "==", "approved")
+      .orderBy("createdAt", "desc");
 
     const snap = await q.limit(limit).get();
     return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
   } catch (err: unknown) {
     if (isFailedPrecondition(err)) {
-      if (section === "new") {
-        // createdAt composite index yoksa bile "yeni eklenenler"i boş bırakma.
-        const snap = await fs
-          .collection("songs")
-          .where("moderationStatus", "==", "approved")
-          .limit(limit * 3)
-          .get();
-        return snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as SongDoc) }))
-          .sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt))
-          .slice(0, limit);
-      }
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(`[discover] ${section} fallback index eksik; curated liste ile devam ediliyor`);
-      }
-      return [];
+      // createdAt composite index yoksa bile "yeni eklenenler"i boş bırakma.
+      const snap = await fs
+        .collection("songs")
+        .where("moderationStatus", "==", "approved")
+        .limit(limit * 3)
+        .get();
+      return snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as SongDoc) }))
+        .sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt))
+        .slice(0, limit);
     }
     throw err;
   }
