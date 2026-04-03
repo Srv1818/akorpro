@@ -1,5 +1,7 @@
 # Disaster Recovery — AkorPro
 
+Siber olay, sızıntı veya yetkisiz erişim senaryoları için operasyonel adımlar: [security-incident-procedure.md](./security-incident-procedure.md).
+
 ## Yedekleme Stratejisi
 
 **Firestore PITR (Point-in-Time Recovery)** kullanılır.

@@ -137,11 +137,20 @@ body {
   line-height: 1.8;
 }
 
-/* Preview'de hizalama için monospace kalırken, daha okunakli bir stack kullan. */
+/* Preview / sahne: Geist Mono çoklu font-weight destekler; Consolas/Cascadia çoğu kurulumda
+   tek ağırlık olduğu için söz (ince) / akor (kalın) ayrımı görünmez kalıyordu. */
 .song-chord-text {
-  font-family: Consolas, "Cascadia Mono", "Segoe UI Mono", "Roboto Mono", ui-monospace, monospace;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
   /* Akor + söz aynı ızgarada: letter-spacing ve buton padding hizayı kaydırır */
   letter-spacing: 0;
+}
+
+.song-chord-text .song-chord-lyric {
+  font-weight: 300;
+}
+
+.song-chord-text button.song-chord-token {
+  font-weight: 700;
 }
 
 /* Akor satırı hover — okunabilirlik yardımcısı */

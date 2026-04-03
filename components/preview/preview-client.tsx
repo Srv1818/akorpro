@@ -170,7 +170,7 @@ function renderChordTokenNode(token: string, key: string, onClick: () => void): 
       key={key}
       type="button"
       onClick={onClick}
-      className="m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 font-inherit font-normal text-green-500 align-baseline hover:text-green-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+      className="song-chord-token m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 align-baseline [font-family:inherit] [font-size:inherit] font-bold text-green-500 hover:text-green-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
       aria-label={`${token} akoru, Akorlar panelini aç`}
     >
       {token}
@@ -192,11 +192,29 @@ function renderChordLine(
     const full = match[0];
     const displayed = transposeChordToken(full, semitones);
     const index = match.index;
-    if (index > lastIndex) out.push(line.slice(lastIndex, index));
+    if (index > lastIndex) {
+      const slice = line.slice(lastIndex, index);
+      if (slice.length > 0) {
+        out.push(
+          <span key={`${keyPrefix}ly-${index}-${lastIndex}`} className="song-chord-lyric font-light">
+            {slice}
+          </span>,
+        );
+      }
+    }
     out.push(renderChordTokenNode(displayed, `${keyPrefix}${displayed}-${index}`, onChordClick));
     lastIndex = index + full.length;
   }
-  if (lastIndex < line.length) out.push(line.slice(lastIndex));
+  if (lastIndex < line.length) {
+    const slice = line.slice(lastIndex);
+    if (slice.length > 0) {
+      out.push(
+        <span key={`${keyPrefix}ly-end-${lastIndex}`} className="song-chord-lyric font-light">
+          {slice}
+        </span>,
+      );
+    }
+  }
   return out;
 }
 
@@ -252,7 +270,7 @@ function renderAlignedBracketLine(
   return (
     <span key={`pair-${lineIndex}`} className={pairClass}>
       {chordRow}
-      <span className="block leading-none sm:leading-[1.05]">{lyrics}</span>
+      <span className="song-chord-lyric block font-light leading-none sm:leading-[1.05]">{lyrics}</span>
     </span>
   );
 }
@@ -1437,7 +1455,10 @@ export function PreviewClient({
           role="dialog"
           aria-modal="true"
           aria-label="Sahne modu"
-          onMouseDown={() => {
+          onMouseDown={(e) => {
+            // Mobilde bazen içerideki dokunuşlar backdrop handler'ına da düşebiliyor.
+            // Yalnızca gerçek "arka plan" alanına tıklanırsa kapat.
+            if (e.target !== e.currentTarget) return;
             setSceneMode(false);
             replaceSceneParam(false);
             setSceneMoreOpen(false);
