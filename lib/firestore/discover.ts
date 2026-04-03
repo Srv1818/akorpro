@@ -10,6 +10,16 @@ const MAX_CURATED_IDS_READ = 24;
 
 type SongWithId = SongDoc & { id: string };
 
+function timestampToMillis(value: unknown): number {
+  if (value && typeof value === "object" && "toMillis" in (value as Record<string, unknown>)) {
+    const toMillis = (value as { toMillis?: () => number }).toMillis;
+    if (typeof toMillis === "function") {
+      return toMillis.call(value as object);
+    }
+  }
+  return 0;
+}
+
 function isFailedPrecondition(err: unknown): boolean {
   const e = err as { code?: number | string; message?: string };
   if (e.code === 9) return true;
@@ -98,6 +108,18 @@ async function getDynamicSectionFallback(section: string, limit: number): Promis
     return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
   } catch (err: unknown) {
     if (isFailedPrecondition(err)) {
+      if (section === "new") {
+        // createdAt composite index yoksa bile "yeni eklenenler"i boş bırakma.
+        const snap = await fs
+          .collection("songs")
+          .where("moderationStatus", "==", "approved")
+          .limit(limit * 3)
+          .get();
+        return snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as SongDoc) }))
+          .sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt))
+          .slice(0, limit);
+      }
       if (process.env.NODE_ENV !== "production") {
         console.warn(`[discover] ${section} fallback index eksik; curated liste ile devam ediliyor`);
       }
