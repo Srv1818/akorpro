@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import admin from "firebase-admin";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { TAGS } from "@/lib/cache/tags";
 import { validateImportPayload } from "@/lib/firestore/import-validator";
 import { writeAuditLog } from "@/lib/security/audit-log";
 import type { KeyMode } from "@/lib/types/content";
@@ -108,6 +110,13 @@ export async function POST(request: Request) {
     imported,
     errorCount: errors.length,
   });
+
+  // Keşfet blokları `unstable_cache` ile tag'leniyor; bulk import sonrası hemen invalidation yap.
+  revalidateTag(TAGS.SONGS_ALL, "max");
+  revalidateTag(TAGS.SONGS_FACETS, "max");
+  revalidateTag(TAGS.DISCOVER_POPULAR, "max");
+  revalidateTag(TAGS.DISCOVER_NEW, "max");
+  revalidateTag(TAGS.DISCOVER_FEATURED, "max");
 
   return NextResponse.json({
     ok: true,
