@@ -50,17 +50,25 @@ export function PreviewToolsProvider({
   initialTonalCenter?: number;
   initialScaleId?: string | null;
 }) {
-  const store = useMemo(
-    () =>
-      createPreviewToolsStore({
-        transposeSemitones: initialTranspose,
-        tonalCenterIndex: initialTonalCenter,
-        selectedScaleId: initialScaleId,
-      }),
-    // Yalnızca instanceKey değişince yeni store; initial* yalnızca o anda okunur.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- instanceKey dışındaki prop değişimleri store’u sıfırlamaz
-    [instanceKey],
-  );
+  const storeInitKey = JSON.stringify([
+    instanceKey,
+    initialTranspose,
+    initialTonalCenter,
+    initialScaleId,
+  ] as const);
+  const store = useMemo(() => {
+    const [, transpose, tonal, scale] = JSON.parse(storeInitKey) as [
+      string,
+      number,
+      number,
+      string | null,
+    ];
+    return createPreviewToolsStore({
+      transposeSemitones: transpose,
+      tonalCenterIndex: tonal,
+      selectedScaleId: scale,
+    });
+  }, [storeInitKey]);
 
   return <PreviewToolsContext.Provider value={store}>{children}</PreviewToolsContext.Provider>;
 }

@@ -36,15 +36,25 @@ function makeProvider(
     initialTonalCenter = 0,
     initialScaleId = null,
   }: ProviderProps) {
-    const store = useMemo(
-      () =>
-        createPreviewToolsStore({
-          transposeSemitones: initialTranspose,
-          tonalCenterIndex: initialTonalCenter,
-          selectedScaleId: initialScaleId,
-        }),
-      [instanceKey],
-    );
+    const storeInitKey = JSON.stringify([
+      instanceKey,
+      initialTranspose,
+      initialTonalCenter,
+      initialScaleId,
+    ] as const);
+    const store = useMemo(() => {
+      const [, transpose, tonal, scale] = JSON.parse(storeInitKey) as [
+        string,
+        number,
+        number,
+        string | null,
+      ];
+      return createPreviewToolsStore({
+        transposeSemitones: transpose,
+        tonalCenterIndex: tonal,
+        selectedScaleId: scale,
+      });
+    }, [storeInitKey]);
     return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
   }
   ToolingPageToolsProvider.displayName = displayName;
