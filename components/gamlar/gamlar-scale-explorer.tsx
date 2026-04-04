@@ -2,12 +2,14 @@
 
 import { useMemo } from "react";
 import { Note, Scale } from "tonal";
-import { GAMLAR_SCALE_CATALOG, gamlarScaleById } from "@/data/gamlar-scale-catalog";
+import { GamlarScaleControls } from "@/components/gamlar/gamlar-scale-controls";
+import { defaultGamlarScaleId, gamlarScaleById, normalizeGamlarScaleId } from "@/data/gamlar-scale-catalog";
 import { GUITAR_ROOT_ENTRIES } from "@/lib/chords-db/guitar";
 import { gamlarCatalogAndTonicToPitchClassSet } from "@/lib/music/fretboard-from-scale-notes";
 import { noteNameToPitchClass, OPEN_STRING_PC_TOP_FIRST, PC_TO_NAME } from "@/lib/music/note-utils";
-import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
+import { useGamlarPageToolsStore } from "@/lib/stores/tooling-page-stores";
 import type { KeyMode } from "@/lib/types/content";
+import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
 
 const STRING_NAMES = ["E", "B", "G", "D", "A", "E"] as const;
 const FRET_COUNT = 16;
@@ -15,11 +17,6 @@ const STRING_COUNT = 6;
 const INLAY_SINGLE_FRETS = [3, 5, 7, 9, 15] as const;
 const INLAY_DOUBLE_FRET = 12;
 const FRET_COL_STYLE = { gridTemplateColumns: "repeat(16, minmax(1.6rem, 1fr))" } as const;
-
-const btnSelected =
-  "bg-[#FFB800] text-zinc-950 shadow-sm ring-1 ring-amber-500/60";
-const btnRootIdle =
-  "bg-bg text-foreground ring-1 ring-border hover:bg-surface hover:ring-zinc-500/35";
 
 function pitchClassAtStringFret(stringIndexTopFirst: number, fret: number): number {
   const open = OPEN_STRING_PC_TOP_FIRST[stringIndexTopFirst];
@@ -47,29 +44,26 @@ type Props = {
   lockedMode?: KeyMode;
 };
 
-function modeToGamlarScaleId(mode: KeyMode | undefined): string {
-  if (mode === "harmonic") return "harmonic-minor";
-  if (mode === "melodic") return "melodic-minor";
-  if (mode === "natural") return "natural-minor";
-  return "major";
-}
-
 export function GamlarScaleExplorer({ lockedTonicPc, lockedMode }: Props) {
-  const tonal = usePreviewToolsStore((s) => s.tonalCenterIndex);
-  const setTonal = usePreviewToolsStore((s) => s.setTonalCenterIndex);
-  const scaleId = usePreviewToolsStore((s) => s.selectedScaleId);
-  const setScaleId = usePreviewToolsStore((s) => s.setSelectedScaleId);
+  const tonal = useGamlarPageToolsStore((s) => s.tonalCenterIndex);
+  const scaleId = useGamlarPageToolsStore((s) => s.selectedScaleId);
   const lockSelection = lockedTonicPc != null || lockedMode != null;
 
   const effectiveTonal =
     lockedTonicPc != null ? ((lockedTonicPc % 12) + 12) % 12 : ((tonal % 12) + 12) % 12;
-  const effectiveScaleId = lockSelection ? modeToGamlarScaleId(lockedMode) : scaleId;
+  const storeScaleNormalized = normalizeGamlarScaleId(scaleId);
+  const effectiveScaleId = lockSelection
+    ? resolveSongGamlarScaleId(lockedMode, storeScaleNormalized ?? undefined)
+    : scaleId;
 
-  const scaleEntry = gamlarScaleById(effectiveScaleId) ?? GAMLAR_SCALE_CATALOG[0];
+  const resolvedScaleId =
+    normalizeGamlarScaleId(effectiveScaleId) ?? defaultGamlarScaleId();
+
+  const scaleEntry = gamlarScaleById(resolvedScaleId);
 
   const activePcs = useMemo(
-    () => gamlarCatalogAndTonicToPitchClassSet(effectiveTonal, effectiveScaleId),
-    [effectiveTonal, effectiveScaleId]
+    () => gamlarCatalogAndTonicToPitchClassSet(effectiveTonal, resolvedScaleId),
+    [effectiveTonal, resolvedScaleId]
   );
 
   /** Tonal.js gam notaları — vurgu kümesi `gamlarCatalogAndTonicToPitchClassSet` ile uyumlu */
@@ -92,11 +86,6 @@ export function GamlarScaleExplorer({ lockedTonicPc, lockedMode }: Props) {
   const rootEntry = rootEntryForPitchClass(effectiveTonal);
   const rootLabel = rootEntry?.label ?? PC_TO_NAME[effectiveTonal] ?? "C";
   const scaleLabel = scaleEntry?.name ?? "Gam";
-
-  const scalesSorted = useMemo(
-    () => [...GAMLAR_SCALE_CATALOG].sort((a, b) => a.sortOrder - b.sortOrder),
-    []
-  );
 
   const rootPc = effectiveTonal;
 
@@ -234,52 +223,7 @@ export function GamlarScaleExplorer({ lockedTonicPc, lockedMode }: Props) {
         </div>
       </section>
 
-      {!lockSelection ? (
-        <>
-          <section aria-label="Tonal merkez (kök nota)">
-            <div className="flex flex-wrap justify-center gap-1 rounded-2xl border border-border bg-surface/90 p-2 sm:gap-1.5 sm:p-2.5">
-              {GUITAR_ROOT_ENTRIES.map(({ label }) => {
-                const pc = noteNameToPitchClass(label);
-                const selected = pc !== null && pc === ((tonal % 12) + 12) % 12;
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => pc !== null && setTonal(pc)}
-                    className={[
-                      "min-h-8 min-w-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-9 sm:min-w-9 sm:text-[0.8125rem]",
-                      selected ? btnSelected : btnRootIdle,
-                    ].join(" ")}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section aria-label="Gam tipi seçimi">
-            <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border bg-surface/90 p-2 sm:grid-cols-6 sm:gap-1.5 sm:p-2.5">
-              {scalesSorted.map((sc) => {
-                const selected = (scaleId ?? GAMLAR_SCALE_CATALOG[0]?.id) === sc.id;
-                return (
-                  <button
-                    key={sc.id}
-                    type="button"
-                    onClick={() => setScaleId(sc.id)}
-                    className={[
-                      "rounded-lg px-2 py-1.5 text-center text-xs font-medium transition-colors sm:py-2",
-                      selected ? btnSelected : "border border-border bg-bg text-foreground hover:border-zinc-500/45",
-                    ].join(" ")}
-                  >
-                    {sc.name}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        </>
-      ) : null}
+      {!lockSelection ? <GamlarScaleControls lockedTonicPc={lockedTonicPc} lockedMode={lockedMode} /> : null}
     </div>
   );
 }

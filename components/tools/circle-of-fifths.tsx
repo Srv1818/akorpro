@@ -3,8 +3,15 @@
 import { Chord, Key, Note } from "tonal";
 import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-import { CO5_LABELS, CO5_PITCH_CLASSES } from "@/lib/music/note-utils";
+import { defaultGamlarScaleId, gamlarScaleById, normalizeGamlarScaleId } from "@/data/gamlar-scale-catalog";
+import type { Co5ChordEntry } from "@/lib/music/co5-chord-types";
+import { buildChordEntriesFromGamlarScale } from "@/lib/music/gamlar-scale-triads";
+import { CO5_LABELS, CO5_PITCH_CLASSES, PC_TO_NAME } from "@/lib/music/note-utils";
+import type { PreviewToolsState } from "@/lib/stores/preview-tools-store";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
+import { useBesliCemberPageToolsStore } from "@/lib/stores/tooling-page-stores";
+
+type UseToolingHook = <T>(selector: (s: PreviewToolsState) => T) => T;
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -14,21 +21,14 @@ type ScaleMode = "major" | "natural" | "harmonic" | "melodic";
 type ChordQuality = "major" | "minor" | "diminished" | "augmented" | "dominant" | "half-dim";
 type Panel = "major" | "minor" | "dim";
 
-type ChordEntry = {
-  degree: number;
-  roman: string;
-  symbol: string;
-  quality: ChordQuality;
-  panel: Panel;
-  alteration?: string;
-};
-
 type Props = {
   variant?: "widget" | "full";
   className?: string;
   lockedMode?: ScaleMode;
   selectedPitchClass?: number | null;
   onPitchClassSelect?: (pitchClass: number) => void;
+  /** Gamlar sayfasıyla aynı gam/mod seçimi + katalogdan diyatonik üçlüler */
+  chordSource?: "legacy" | "gamlar";
 };
 
 /* ------------------------------------------------------------------ */
@@ -95,7 +95,7 @@ function panelOf(q: ChordQuality): Panel {
 /*  Chord computation for each mode                                    */
 /* ------------------------------------------------------------------ */
 
-function buildChords(majorTonic: string, mode: ScaleMode): ChordEntry[] {
+function buildChords(majorTonic: string, mode: ScaleMode): Co5ChordEntry[] {
   if (mode === "major") {
     const k = Key.majorKey(majorTonic);
     return k.triads.map((sym, i) => {
@@ -172,20 +172,30 @@ function buildAltText(changes: DegChange[], natSym: string, newSym: string, natC
 /*  SVG helpers                                                        */
 /* ------------------------------------------------------------------ */
 
+/** Node ile tarayıcıda cos/sin sonrası aynı ondalık (hidrasyon uyumu). */
+function roundSvgCoord(n: number): number {
+  return Math.round(n * 10_000) / 10_000;
+}
+
 function wedgePath(cx: number, cy: number, r1: number, r2: number, startDeg: number, endDeg: number): string {
   const rad = (d: number) => (d * Math.PI) / 180;
   const a0 = rad(startDeg), a1 = rad(endDeg);
   const large = endDeg - startDeg > 180 ? 1 : 0;
-  const x0o = cx + r2 * Math.cos(a0), y0o = cy + r2 * Math.sin(a0);
-  const x1o = cx + r2 * Math.cos(a1), y1o = cy + r2 * Math.sin(a1);
-  const x0i = cx + r1 * Math.cos(a0), y0i = cy + r1 * Math.sin(a0);
-  const x1i = cx + r1 * Math.cos(a1), y1i = cy + r1 * Math.sin(a1);
-  return `M${x0o},${y0o} A${r2},${r2} 0 ${large} 1 ${x1o},${y1o} L${x1i},${y1i} A${r1},${r1} 0 ${large} 0 ${x0i},${y0i}Z`;
+  const x0o = roundSvgCoord(cx + r2 * Math.cos(a0)), y0o = roundSvgCoord(cy + r2 * Math.sin(a0));
+  const x1o = roundSvgCoord(cx + r2 * Math.cos(a1)), y1o = roundSvgCoord(cy + r2 * Math.sin(a1));
+  const x0i = roundSvgCoord(cx + r1 * Math.cos(a0)), y0i = roundSvgCoord(cy + r1 * Math.sin(a0));
+  const x1i = roundSvgCoord(cx + r1 * Math.cos(a1)), y1i = roundSvgCoord(cy + r1 * Math.sin(a1));
+  const rr2 = roundSvgCoord(r2);
+  const rr1 = roundSvgCoord(r1);
+  return `M${x0o},${y0o} A${rr2},${rr2} 0 ${large} 1 ${x1o},${y1o} L${x1i},${y1i} A${rr1},${rr1} 0 ${large} 0 ${x0i},${y0i}Z`;
 }
 
 function polarXY(cx: number, cy: number, r: number, deg: number) {
   const rad = (deg * Math.PI) / 180;
-  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  return {
+    x: roundSvgCoord(cx + r * Math.cos(rad)),
+    y: roundSvgCoord(cy + r * Math.sin(rad)),
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -237,7 +247,7 @@ function co5IndexForDimPanelChord(symbol: string): number | null {
   return null;
 }
 
-function ringHighlightsFromChordEntries(entries: ChordEntry[]): RingHighlights {
+function ringHighlightsFromChordEntries(entries: Co5ChordEntry[]): RingHighlights {
   const outer = new Set<number>();
   const mid = new Set<number>();
   const inner = new Set<number>();
@@ -365,7 +375,7 @@ function ModeTabBar({ mode, onChange }: { mode: ScaleMode; onChange: (m: ScaleMo
   );
 }
 
-function ChordBadge({ entry, side }: { entry: ChordEntry; side: "left" | "right" | "bottom" }) {
+function ChordBadge({ entry, side }: { entry: Co5ChordEntry; side: "left" | "right" | "bottom" }) {
   const badgeBg = {
     major: "bg-amber-500 text-zinc-900",
     minor: "bg-green-500 text-zinc-900",
@@ -415,7 +425,7 @@ function ChordPanel({
   side,
 }: {
   title: string;
-  entries: ChordEntry[];
+  entries: Co5ChordEntry[];
   side: "left" | "right" | "bottom";
 }) {
   if (entries.length === 0) return null;
@@ -487,21 +497,25 @@ function CircleSVG({
   mode,
   ringHighlights,
   onWedgeClick,
+  centerLabelOverride,
 }: {
   size: number;
   majorKeyIdx: number;
   mode: ScaleMode;
   ringHighlights: RingHighlights;
   onWedgeClick: (idx: number, ring: "outer" | "inner") => void;
+  /** Doluysa merkezde gam adı (örn. kök + mod); aksi halde majör/minör anahtar etiketi */
+  centerLabelOverride?: string | null;
 }) {
   const isDark = useIsDarkHtmlClass();
   const c = useMemo(() => co5Palette(isDark), [isDark]);
 
-  const cx = size / 2, cy = size / 2;
-  const rOuter = size * 0.46;
-  const rMid = rOuter * 0.72;
-  const rInner = rMid * 0.65;
-  const hubR = rInner * 0.72;
+  const cx = roundSvgCoord(size / 2);
+  const cy = roundSvgCoord(size / 2);
+  const rOuter = roundSvgCoord(size * 0.46);
+  const rMid = roundSvgCoord(rOuter * 0.72);
+  const rInner = roundSvgCoord(rMid * 0.65);
+  const hubR = roundSvgCoord(rInner * 0.72);
 
   const minorTonic = useMemo(() => relativeMinorName(CO5_LABELS[majorKeyIdx]), [majorKeyIdx]);
   const centerLabel = useMemo(() => {
@@ -511,11 +525,18 @@ function CircleSVG({
     return `${minorTonic} ${labels[mode]}`;
   }, [majorKeyIdx, minorTonic, mode]);
 
-  const centerLines = centerLabel.split("\n");
+  const centerLines = (centerLabelOverride ?? centerLabel).split("\n");
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="max-w-full text-foreground">
-      <circle cx={cx} cy={cy} r={rOuter + 4} fill="var(--surface)" stroke={c.rimStrokeCss} strokeWidth={c.rimStroke} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={roundSvgCoord(rOuter + 4)}
+        fill="var(--surface)"
+        stroke={c.rimStrokeCss}
+        strokeWidth={c.rimStroke}
+      />
 
       {CO5_PITCH_CLASSES.map((_, i) => {
         const startDeg = i * 30 - 105;
@@ -540,11 +561,11 @@ function CircleSVG({
 
         const pOuter = wedgePath(cx, cy, rMid, rOuter, startDeg, endDeg);
         const pMid = wedgePath(cx, cy, rInner, rMid, startDeg, endDeg);
-        const pInner = wedgePath(cx, cy, hubR + 2, rInner, startDeg, endDeg);
+        const pInner = wedgePath(cx, cy, roundSvgCoord(hubR + 2), rInner, startDeg, endDeg);
 
-        const oPos = polarXY(cx, cy, (rOuter + rMid) / 2, midDeg);
-        const mPos = polarXY(cx, cy, (rMid + rInner) / 2, midDeg);
-        const iPos = polarXY(cx, cy, (rInner + hubR + 2) / 2, midDeg);
+        const oPos = polarXY(cx, cy, roundSvgCoord((rOuter + rMid) / 2), midDeg);
+        const mPos = polarXY(cx, cy, roundSvgCoord((rMid + rInner) / 2), midDeg);
+        const iPos = polarXY(cx, cy, roundSvgCoord((rInner + hubR + 2) / 2), midDeg);
 
         const outerFontSize = size > 300 ? 13 : isDark ? 10 : 10.5;
         const midFontSize = size > 300 ? 10.5 : isDark ? 8 : 8.5;
@@ -591,13 +612,26 @@ function CircleSVG({
 
       {/* Hub */}
       <circle cx={cx} cy={cy} r={hubR} fill="var(--bg)" stroke={c.rimStrokeCss} strokeWidth={c.hubStrokeW} />
-      <text x={cx} y={cy - (centerLines.length > 1 ? 14 : 6)} textAnchor="middle" dominantBaseline="central"
-        className="pointer-events-none select-none fill-current" style={{ fontSize: 22 }}>
+      <text
+        x={cx}
+        y={roundSvgCoord(cy - (centerLines.length > 1 ? 14 : 6))}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="pointer-events-none select-none fill-current"
+        style={{ fontSize: 22 }}
+      >
         {"\u{1D11E}"}
       </text>
       {centerLines.map((line, li) => (
-        <text key={li} x={cx} y={cy + 8 + li * 13} textAnchor="middle" dominantBaseline="central"
-          className="pointer-events-none select-none fill-current font-bold" style={{ fontSize: 10.5 }}>
+        <text
+          key={li}
+          x={cx}
+          y={roundSvgCoord(cy + 8 + li * 13)}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="pointer-events-none select-none fill-current font-bold"
+          style={{ fontSize: 10.5 }}
+        >
           {line}
         </text>
       ))}
@@ -609,23 +643,36 @@ function CircleSVG({
 /*  Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-function CircleOfFifthsInner({
-  variant = "widget",
-  className = "",
-  lockedMode,
-  selectedPitchClass,
-  onPitchClassSelect,
-}: Props) {
-  const setStoreTonal = usePreviewToolsStore((s) => s.setTonalCenterIndex);
+function createCircleOfFifths(useToolsStore: UseToolingHook) {
+  function CircleOfFifthsInner({
+    variant = "widget",
+    className = "",
+    lockedMode,
+    selectedPitchClass,
+    onPitchClassSelect,
+    chordSource = "legacy",
+  }: Props) {
+    const setStoreTonal = useToolsStore((s) => s.setTonalCenterIndex);
+    const storeTonal = useToolsStore((s) => s.tonalCenterIndex);
+    const selectedScaleId = useToolsStore((s) => s.selectedScaleId);
 
   const [majorKeyIdx, setMajorKeyIdx] = useState(1); // G
   const [mode, setMode] = useState<ScaleMode>(lockedMode ?? "major");
 
   const svgSize = variant === "full" ? 340 : 260;
 
+  const tonicPcNorm = ((storeTonal % 12) + 12) % 12;
+
   const handleWedgeClick = useCallback(
     (idx: number, ring: "outer" | "inner") => {
       setMajorKeyIdx(idx);
+      if (chordSource === "gamlar") {
+        const majorPc = CO5_PITCH_CLASSES[idx];
+        const nextTonic = ring === "outer" ? majorPc : (majorPc + 9) % 12;
+        setStoreTonal(nextTonic);
+        onPitchClassSelect?.(nextTonic);
+        return;
+      }
       if (!lockedMode) {
         if (ring === "outer") setMode("major");
         else if (mode === "major") setMode("natural");
@@ -634,7 +681,7 @@ function CircleOfFifthsInner({
       setStoreTonal(selectedPc);
       onPitchClassSelect?.(selectedPc);
     },
-    [lockedMode, mode, onPitchClassSelect, setStoreTonal],
+    [chordSource, lockedMode, mode, onPitchClassSelect, setStoreTonal],
   );
 
   const handleModeChange = useCallback((m: ScaleMode) => {
@@ -648,20 +695,50 @@ function CircleOfFifthsInner({
   }, [lockedMode]);
 
   useEffect(() => {
+    if (chordSource !== "gamlar") return;
+    const idx = co5IndexForRootPc(tonicPcNorm);
+    if (idx != null) queueMicrotask(() => setMajorKeyIdx(idx));
+  }, [chordSource, tonicPcNorm]);
+
+  useEffect(() => {
+    if (chordSource === "gamlar") return;
     if (selectedPitchClass == null) return;
     const wedgePc = majorWedgePcFromSongTonicPc(selectedPitchClass, mode);
     const idx = co5IndexForRootPc(wedgePc);
     if (idx == null) return;
     queueMicrotask(() => setMajorKeyIdx(idx));
-  }, [selectedPitchClass, mode]);
+  }, [chordSource, selectedPitchClass, mode]);
 
-  const chords = useMemo(() => buildChords(CO5_LABELS[majorKeyIdx], mode), [majorKeyIdx, mode]);
+  const gamlarChords = useMemo(
+    () =>
+      chordSource === "gamlar"
+        ? buildChordEntriesFromGamlarScale(tonicPcNorm, selectedScaleId)
+        : ([] as Co5ChordEntry[]),
+    [chordSource, tonicPcNorm, selectedScaleId]
+  );
+
+  const legacyChords = useMemo(() => buildChords(CO5_LABELS[majorKeyIdx], mode), [majorKeyIdx, mode]);
+
+  const chords = chordSource === "gamlar" ? gamlarChords : legacyChords;
+
   const ringHighlights = useMemo(() => {
+    if (chordSource === "gamlar") {
+      return ringHighlightsFromChordEntries(gamlarChords);
+    }
     if (mode === "harmonic" || mode === "melodic") {
       return ringHighlightsFromChordEntries(buildChords(CO5_LABELS[majorKeyIdx], "natural"));
     }
-    return ringHighlightsFromChordEntries(chords);
-  }, [majorKeyIdx, mode, chords]);
+    return ringHighlightsFromChordEntries(legacyChords);
+  }, [chordSource, gamlarChords, legacyChords, majorKeyIdx, mode]);
+
+  const centerLabelOverride = useMemo(() => {
+    if (chordSource !== "gamlar") return null;
+    const root = PC_TO_NAME[tonicPcNorm] ?? "C";
+    const sid = normalizeGamlarScaleId(selectedScaleId) ?? defaultGamlarScaleId();
+    const entry = gamlarScaleById(sid);
+    if (!entry) return root;
+    return `${root}\n${entry.name}`;
+  }, [chordSource, tonicPcNorm, selectedScaleId]);
 
   const majorChords = useMemo(() => chords.filter((c) => c.panel === "major"), [chords]);
   const minorChords = useMemo(() => chords.filter((c) => c.panel === "minor"), [chords]);
@@ -676,6 +753,7 @@ function CircleOfFifthsInner({
           mode={mode}
           ringHighlights={ringHighlights}
           onWedgeClick={handleWedgeClick}
+          centerLabelOverride={chordSource === "gamlar" ? centerLabelOverride : null}
         />
       </div>
     );
@@ -683,13 +761,13 @@ function CircleOfFifthsInner({
 
   return (
     <div className={`flex flex-col gap-6 ${className}`}>
-      {!lockedMode ? (
+      {!lockedMode && chordSource !== "gamlar" ? (
         <ModeTabBar mode={mode} onChange={handleModeChange} />
-      ) : (
+      ) : lockedMode && chordSource !== "gamlar" ? (
         <div className="mx-auto w-fit rounded-lg border border-border bg-surface/70 px-3 py-1.5 text-xs font-semibold text-muted">
           Mod: <span className="text-foreground">{MODE_LABELS[mode]}</span>
         </div>
-      )}
+      ) : null}
 
       <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-center lg:justify-center lg:gap-3">
         {/* Left panel - MAJOR chords */}
@@ -705,6 +783,7 @@ function CircleOfFifthsInner({
             mode={mode}
             ringHighlights={ringHighlights}
             onWedgeClick={handleWedgeClick}
+            centerLabelOverride={chordSource === "gamlar" ? centerLabelOverride : null}
           />
         </div>
 
@@ -722,4 +801,10 @@ function CircleOfFifthsInner({
   );
 }
 
-export const CircleOfFifths = memo(CircleOfFifthsInner);
+  return memo(CircleOfFifthsInner);
+}
+
+/** Akor önizleme vb. — `PreviewToolsProvider` */
+export const CircleOfFifths = createCircleOfFifths(usePreviewToolsStore);
+/** 5'li çember sayfası — `BesliCemberPageToolsProvider` */
+export const BesliCemberCircleOfFifths = createCircleOfFifths(useBesliCemberPageToolsStore);

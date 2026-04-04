@@ -3,7 +3,15 @@
 import { useMemo, useState, useEffect, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 import { chordPath } from "@/lib/paths";
+import { gamlarModesForFamily } from "@/data/gamlar-scale-catalog";
+import {
+  inferKeyModeFromOriginalKey,
+  keyModeToGamlarCatalogScaleId,
+  keyModeToGamlarFamily,
+  resolveSongGamlarScaleId,
+} from "@/lib/music/key-mode-gamlar";
 import { slugify } from "@/lib/seo/slug";
+import type { KeyMode } from "@/lib/types/content";
 
 type Song = {
   id: string;
@@ -15,6 +23,7 @@ type Song = {
   originalKey: string;
   difficulty: string;
   keyMode?: string;
+  gamlarScaleId?: string;
   genre: string;
   tempo?: number | string;
   timeSignature?: string;
@@ -27,6 +36,8 @@ type Song = {
 };
 
 const EMPTY: Song[] = [];
+
+const KEY_MODES: readonly KeyMode[] = ["major", "natural", "harmonic", "melodic"];
 
 export function AdminSongsClient() {
   const [songs, setSongs] = useState(EMPTY);
@@ -45,6 +56,7 @@ export function AdminSongsClient() {
   const [originalKey, setOriginalKey] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [keyMode, setKeyMode] = useState("");
+  const [gamlarScaleId, setGamlarScaleId] = useState("");
   const [genre, setGenre] = useState("");
   const [tempo, setTempo] = useState("");
   const [timeSignature, setTimeSignature] = useState("");
@@ -65,6 +77,7 @@ export function AdminSongsClient() {
     setOriginalKey("");
     setDifficulty("");
     setKeyMode("");
+    setGamlarScaleId("");
     setGenre("");
     setTempo("");
     setTimeSignature("");
@@ -77,6 +90,11 @@ export function AdminSongsClient() {
 
   const nextSongSlug = useMemo(() => slugify(title), [title]);
   const nextArtistSlug = useMemo(() => slugify(artistName), [artistName]);
+
+  const gamlarSubModes = useMemo(() => {
+    if (!keyMode || !KEY_MODES.includes(keyMode as KeyMode)) return [];
+    return [...gamlarModesForFamily(keyModeToGamlarFamily(keyMode as KeyMode))];
+  }, [keyMode]);
 
   useEffect(() => {
     if (!showForm) return;
@@ -116,6 +134,7 @@ export function AdminSongsClient() {
       originalKey: originalKey.trim(),
       difficulty: difficulty.trim(),
       keyMode: keyMode.trim(),
+      gamlarScaleId: gamlarScaleId.trim(),
       genre: genre.trim(),
       chordBody: chordBody.trim(),
     };
@@ -201,6 +220,12 @@ export function AdminSongsClient() {
       setOriginalKey(s.originalKey ?? "");
       setDifficulty(s.difficulty ?? "");
       setKeyMode(s.keyMode ?? "");
+      setGamlarScaleId(
+        resolveSongGamlarScaleId(
+          (s.keyMode as KeyMode | undefined) ?? inferKeyModeFromOriginalKey(s.originalKey ?? "C"),
+          s.gamlarScaleId,
+        ),
+      );
       setGenre(s.genre ?? "");
       setTempo(typeof s.tempo === "number" || typeof s.tempo === "string" ? String(s.tempo) : "");
       setTimeSignature(s.timeSignature ?? "");
@@ -303,7 +328,15 @@ export function AdminSongsClient() {
             name="keyMode"
             required
             value={keyMode}
-            onChange={(e) => setKeyMode(e.currentTarget.value)}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setKeyMode(v);
+              if (v && KEY_MODES.includes(v as KeyMode)) {
+                setGamlarScaleId(keyModeToGamlarCatalogScaleId(v as KeyMode));
+              } else {
+                setGamlarScaleId("");
+              }
+            }}
             className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
           >
             <option value="">Ton modu *</option>
@@ -311,6 +344,22 @@ export function AdminSongsClient() {
             <option value="natural">Doğal Minör</option>
             <option value="harmonic">Harmonik Minör</option>
             <option value="melodic">Melodik Minör</option>
+          </select>
+          <select
+            name="gamlarScaleId"
+            required
+            disabled={gamlarSubModes.length === 0}
+            value={gamlarScaleId}
+            onChange={(e) => setGamlarScaleId(e.currentTarget.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm disabled:opacity-60"
+            title="Seçilen ton moduna göre gam / mod"
+          >
+            <option value="">{keyMode ? "Alt gam (mod) *" : "Önce ton modunu seçin"}</option>
+            {gamlarSubModes.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
           </select>
           <input
             name="genre"

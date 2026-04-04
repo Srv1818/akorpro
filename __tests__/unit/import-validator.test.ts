@@ -95,6 +95,22 @@ describe("validateImportPayload", () => {
     expect(errors).toHaveLength(0);
   });
 
+  it("rejects gamlarScaleId that does not match keyMode family", () => {
+    const { valid, errors } = validateImportPayload([
+      { ...validRow(), keyMode: "major", gamlarScaleId: "nm-aeolian" },
+    ]);
+    expect(valid).toHaveLength(0);
+    expect(errors.some((e) => e.field === "gamlarScaleId")).toBe(true);
+  });
+
+  it("accepts gamlarScaleId matching keyMode", () => {
+    const { valid, errors } = validateImportPayload([
+      { ...validRow(), keyMode: "harmonic", gamlarScaleId: "hm-phrygian-dom" },
+    ]);
+    expect(valid).toHaveLength(1);
+    expect(errors).toHaveLength(0);
+  });
+
   it("rejects negative capo", () => {
     const { valid, errors } = validateImportPayload([{ ...validRow(), capo: -1 }]);
     expect(valid).toHaveLength(0);

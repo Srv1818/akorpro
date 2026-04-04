@@ -15,6 +15,7 @@ import { chordPath } from "@/lib/paths";
 import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
 import { songJsonLd } from "@/lib/seo/structured-data";
 import { getServerSessionUser } from "@/lib/auth/server-session";
+import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
 import { firstParam } from "@/lib/search-params";
 
 /** ISR: 1 hour (see lib/cache/tags.ts TTL.SONG_DETAIL) */
@@ -68,6 +69,8 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
 
   const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) notFound();
+
+  const initialGamlarScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
 
   const sessionUser = await getServerSessionUser();
   const artistSongs = await getSongsByArtist(sanatciSlug);
@@ -158,17 +161,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
           <PreviewShell
             instanceKey={song.id}
             initialTranspose={initialTranspose}
-            initialScaleId={
-              song.keyMode === "major"
-                ? "ionian"
-                : song.keyMode === "natural"
-                  ? "aeolian"
-                  : song.keyMode === "harmonic"
-                    ? "harmonic-minor"
-                    : song.keyMode === "melodic"
-                      ? "melodic-minor"
-                      : "ionian"
-            }
+            initialScaleId={initialGamlarScaleId}
           >
             <PreviewClient
               songId={song.id}
@@ -177,6 +170,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
               songSlug={song.slug}
               originalKey={song.originalKey}
               keyMode={song.keyMode}
+              initialGamlarScaleId={initialGamlarScaleId}
               chordBody={song.chordBody}
               tempo={song.tempo}
               timeSignature={song.timeSignature}

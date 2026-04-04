@@ -8,6 +8,7 @@ import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getSongBySlugs } from "@/lib/firestore/songs";
+import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
 import { getServerSessionUser } from "@/lib/auth/server-session";
 import { firstParam } from "@/lib/search-params";
 import { chordPath } from "@/lib/paths";
@@ -52,6 +53,8 @@ export default async function PreviewPage({ params, searchParams }: Props) {
   const [artistSlug, songSlug] = slug;
   const song = await getSongBySlugs(artistSlug, songSlug);
   if (!song) notFound();
+
+  const initialGamlarScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
 
   const sp = await searchParams;
   const rawTranspose = firstParam(sp.transpose);
@@ -115,17 +118,7 @@ export default async function PreviewPage({ params, searchParams }: Props) {
           <PreviewShell
             instanceKey={song.id}
             initialTranspose={initialTranspose}
-            initialScaleId={
-              song.keyMode === "major"
-                ? "ionian"
-                : song.keyMode === "natural"
-                  ? "aeolian"
-                  : song.keyMode === "harmonic"
-                    ? "harmonic-minor"
-                    : song.keyMode === "melodic"
-                      ? "melodic-minor"
-                      : "ionian"
-            }
+            initialScaleId={initialGamlarScaleId}
           >
             <PreviewClient
               songId={song.id}
@@ -134,6 +127,7 @@ export default async function PreviewPage({ params, searchParams }: Props) {
               songSlug={song.slug}
               originalKey={song.originalKey}
               keyMode={song.keyMode}
+              initialGamlarScaleId={initialGamlarScaleId}
               chordBody={song.chordBody}
               tempo={song.tempo}
               timeSignature={song.timeSignature}

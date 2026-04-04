@@ -24,6 +24,8 @@ export interface SongDoc {
   difficulty: Difficulty;
   /** Ton modu (minör varyantları / majör). Mevcut kayıtlar için geriye dönük uyumluluk adına opsiyonel. */
   keyMode?: KeyMode;
+  /** Gamlar kataloğu ölçek kimliği (majör / doğal-harmonik-melodik minör ailelerindeki alt mod). `keyMode` ile uyumlu olmalı. */
+  gamlarScaleId?: string;
   genre: string;
   /** BPM veya metin ("Andante" vb.) — isteğe bağlı */
   tempo?: number | string;

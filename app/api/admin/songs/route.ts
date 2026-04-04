@@ -5,17 +5,14 @@ import { createSong, getAllSongsAdmin } from "@/lib/firestore/admin-songs";
 import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
 import { chordPath } from "@/lib/paths";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
+import {
+  inferKeyModeFromOriginalKey,
+  keyModeToGamlarCatalogScaleId,
+  normalizeGamlarScaleIdForKeyMode,
+} from "@/lib/music/key-mode-gamlar";
 import type { Difficulty, KeyMode } from "@/lib/types/content";
 
 const VALID_KEY_MODES: KeyMode[] = ["major", "natural", "harmonic", "melodic"];
-
-function inferKeyModeFromOriginalKey(originalKey: string): KeyMode {
-  const k = originalKey.trim().toLowerCase();
-  // Örn "Am", "Em", "Dm" -> doğal minör kabul edilir.
-  if (k.endsWith("maj")) return "major";
-  if (k.endsWith("m")) return "natural";
-  return "major";
-}
 
 export const runtime = "nodejs";
 
@@ -59,6 +56,9 @@ export async function POST(request: Request) {
   const keyModeRaw = sanitizePlainField(b.keyMode);
   const keyMode = keyModeRaw && VALID_KEY_MODES.includes(keyModeRaw as KeyMode) ? (keyModeRaw as KeyMode) : undefined;
   const finalKeyMode = keyMode ?? inferKeyModeFromOriginalKey(originalKey);
+  const gamlarRaw = sanitizePlainField(b.gamlarScaleId);
+  const finalGamlarScaleId =
+    normalizeGamlarScaleIdForKeyMode(gamlarRaw, finalKeyMode) ?? keyModeToGamlarCatalogScaleId(finalKeyMode);
 
   if (!title || !slug || !artistName || !artistSlug || !chordBody || !originalKey || !difficulty || !genre) {
     return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
         originalKey,
         difficulty: difficulty as Difficulty,
         keyMode: finalKeyMode,
+        gamlarScaleId: finalGamlarScaleId,
         genre,
         tempo: typeof b.tempo === "number" || typeof b.tempo === "string" ? b.tempo : undefined,
         timeSignature: typeof b.timeSignature === "string" ? b.timeSignature : undefined,

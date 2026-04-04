@@ -142,6 +142,7 @@ export function AdminImportClient() {
       "originalKey": "Am",         // zorunlu
       "difficulty": "kolay|orta|zor", // zorunlu
       "keyMode": "major|natural|harmonic|melodic", // opsiyonel (eksikse originalKey’den türetilir)
+      "gamlarScaleId": "nm-aeolian", // opsiyonel — alt gam; keyMode ile aynı ailede olmalı (data/gamlar-scale-catalog.ts). Eksikse keyMode için varsayılan gam yazılır.
       "genre": "Rock",             // zorunlu
       "tempo": 120,                // opsiyonel
       "timeSignature": "4/4",      // opsiyonel

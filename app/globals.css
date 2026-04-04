@@ -153,6 +153,14 @@ body {
   font-weight: 700;
 }
 
+/* Mobil: klasik üst akor satırı söz satırından bir tık büyük. Köşeli [Am] ile söz hizası
+   aynı monospace genişliğine bağlı olduğundan o düzende üst satır büyütülmez. */
+@media (max-width: 639px) {
+  .song-chord-text .song-chord-row-stacked {
+    font-size: 1.075em;
+  }
+}
+
 /* Akor satırı hover — okunabilirlik yardımcısı */
 pre:has(.chord-line):hover .chord-line {
   text-decoration: underline;

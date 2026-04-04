@@ -1,12 +1,12 @@
 "use client";
 
 import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
-import { PreviewToolsProvider } from "@/lib/stores/preview-tools-store";
+import { GamlarPageToolsProvider } from "@/lib/stores/tooling-page-stores";
 
 export function GamlarTools() {
   return (
-    <PreviewToolsProvider instanceKey="gamlar-page" initialScaleId="major">
+    <GamlarPageToolsProvider instanceKey="gamlar-page" initialScaleId="maj-ionian">
       <GamlarScaleExplorer />
-    </PreviewToolsProvider>
+    </GamlarPageToolsProvider>
   );
 }

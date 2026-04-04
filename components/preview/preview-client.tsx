@@ -30,12 +30,15 @@ import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diag
 import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { AutoScrollButton, MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
 import { GamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
+import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { KeyMode } from "@/lib/types/content";
 import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { getClientFirestore } from "@/lib/firebase/client";
+import { keyModeToGamlarCatalogScaleId } from "@/lib/music/key-mode-gamlar";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
+import { GamlarPageToolsProvider } from "@/lib/stores/tooling-page-stores";
 import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
 import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
 import {
@@ -56,6 +59,8 @@ type Props = {
   songSlug: string;
   originalKey: string;
   keyMode?: KeyMode;
+  /** Sunucunun çözdüğü gamlar kataloğu kimliği; yoksa `keyMode` varsayılanı kullanılır. */
+  initialGamlarScaleId?: string;
   chordBody: string;
   tempo?: number | string;
   timeSignature?: string;
@@ -157,6 +162,18 @@ function keyModeToLabel(mode: KeyMode | undefined, originalKey: string): string 
   return "Majör";
 }
 
+/** Sahne çubuğu: ton modu (TR) + adminin seçtiği alt gam adı (katalog). */
+function formatModLineLabel(
+  mode: KeyMode | undefined,
+  originalKey: string,
+  gamlarCatalogScaleId: string,
+): string {
+  const main = keyModeToLabel(mode, originalKey);
+  const sub = gamlarScaleById(gamlarCatalogScaleId)?.name?.trim();
+  if (!sub) return main;
+  return `${main} - ${sub}`;
+}
+
 function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): KeyMode {
   if (mode) return mode;
   const k = originalKey.trim().toLowerCase();
@@ -171,7 +188,7 @@ function renderChordTokenNode(token: string, key: string, onClick: () => void): 
       key={key}
       type="button"
       onClick={onClick}
-      className="song-chord-token m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 align-baseline [font-family:inherit] [font-size:inherit] font-bold text-green-500 hover:text-green-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+      className="song-chord-token m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 align-baseline [font-family:inherit] font-bold text-green-500 hover:text-green-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
       aria-label={`${token} akoru, Akorlar panelini aç`}
     >
       {token}
@@ -256,9 +273,10 @@ function renderAlignedBracketLine(
   });
 
   const pairClass = isLastSourceLine ? "flex flex-col gap-0.5" : "flex flex-col gap-0.5 mb-1.5 sm:mb-1";
-  const chordRow = (
-    <span className="block leading-none sm:leading-[1.05] [&_button]:align-baseline">{nodes}</span>
-  );
+  /* Köşeli [Am] hizasında üst satırı büyütmek monospace sütun hizasını bozar; yalnızca söz yokken (yalnız akor) güvenli. */
+  const chordRowClass =
+    "block leading-none sm:leading-[1.05] [&_button]:align-baseline" + (!lyrics ? " song-chord-row-stacked" : "");
+  const chordRow = <span className={chordRowClass}>{nodes}</span>;
 
   if (!lyrics) {
     return (
@@ -327,7 +345,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       rows.push(
         <Fragment key={`line-${i}`}>
             <span className={pairEndsSong ? "flex flex-col gap-0.5" : "flex flex-col gap-0.5 mb-1.5 sm:mb-1"}>
-            <span className="block leading-none sm:leading-[1.05] [&_button]:align-baseline">
+            <span className="song-chord-row-stacked block leading-none sm:leading-[1.05] [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
             <span className="block leading-none sm:leading-[1.05]">
@@ -438,6 +456,7 @@ export function PreviewClient({
   songSlug,
   originalKey,
   keyMode,
+  initialGamlarScaleId,
   chordBody,
   tempo,
   timeSignature,
@@ -567,6 +586,7 @@ export function PreviewClient({
     return noteNameToPitchClass(tonic);
   })();
   const originalMode = resolveOriginalMode(keyMode, originalKey);
+  const gamlarWidgetScaleId = initialGamlarScaleId ?? keyModeToGamlarCatalogScaleId(keyMode);
   const transposedTonicPc = originalTonicPc === null ? null : (originalTonicPc + semitones + 120) % 12;
 
   const firebaseUid = useFirebaseUidFromSession();
@@ -2132,8 +2152,8 @@ export function PreviewClient({
           </div>
           <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             Mod:{" "}
-            <span className="font-mono text-foreground">
-              {keyModeToLabel(keyMode, originalKey)}
+            <span className="text-foreground">
+              {formatModLineLabel(keyMode, originalKey, gamlarWidgetScaleId)}
             </span>
           </div>
           <button
@@ -2184,6 +2204,7 @@ export function PreviewClient({
                     <div className="mx-auto max-w-5xl">
                       <CircleOfFifths
                         variant="full"
+                        chordSource="gamlar"
                         lockedMode={originalMode}
                         selectedPitchClass={transposedTonicPc}
                         onPitchClassSelect={handleCirclePitchClassSelect}
@@ -2191,10 +2212,16 @@ export function PreviewClient({
                     </div>
                   ) : widget === "gamlar" ? (
                     <div className="mx-auto max-w-6xl">
-                      <GamlarScaleExplorer
-                        lockedTonicPc={transposedTonicPc}
-                        lockedMode={originalMode}
-                      />
+                      <GamlarPageToolsProvider
+                        instanceKey={`${songId}-preview-gamlar`}
+                        initialTonalCenter={originalTonicPc ?? 0}
+                        initialScaleId={gamlarWidgetScaleId}
+                      >
+                        <GamlarScaleExplorer
+                          lockedTonicPc={transposedTonicPc}
+                          lockedMode={originalMode}
+                        />
+                      </GamlarPageToolsProvider>
                     </div>
                   ) : (
                     <MetronomeControls

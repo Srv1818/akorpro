@@ -9,7 +9,7 @@ export function SiteNavbar() {
   const items = [...mainNav];
 
   return (
-    <header id="ana-menu" className="sticky top-0 z-50 border-b border-border bg-bg/80 backdrop-blur-md" role="banner">
+    <header id="ana-menu" className="border-b border-border bg-bg/80 backdrop-blur-md" role="banner">
       {/* Kapsayıcıyı flex-col (alt alta sıralama) yaptık ki iki satır oluşturabilelim */}
       <div className="mx-auto flex flex-col max-w-6xl px-4 sm:px-6 lg:px-8">
         

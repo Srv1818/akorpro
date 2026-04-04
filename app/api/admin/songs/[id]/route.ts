@@ -5,6 +5,11 @@ import { getSongByIdAdmin, updateSong, deleteSong } from "@/lib/firestore/admin-
 import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
 import { chordPath } from "@/lib/paths";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
+import {
+  inferKeyModeFromOriginalKey,
+  keyModeToGamlarCatalogScaleId,
+  normalizeGamlarScaleIdForKeyMode,
+} from "@/lib/music/key-mode-gamlar";
 import type { KeyMode } from "@/lib/types/content";
 
 const VALID_KEY_MODES: KeyMode[] = ["major", "natural", "harmonic", "melodic"];
@@ -40,6 +45,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Geçersiz JSON." }, { status: 400 });
   }
 
+  const existing = await getSongByIdAdmin(id);
+  if (!existing) return NextResponse.json({ error: "Şarkı bulunamadı." }, { status: 404 });
+
   const b = body as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
 
@@ -64,11 +72,25 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (typeof b.moderationStatus === "string") updates.moderationStatus = b.moderationStatus;
   if (typeof b.popularity === "number") updates.popularity = b.popularity;
 
+  const existingKeyMode: KeyMode = existing.keyMode ?? inferKeyModeFromOriginalKey(existing.originalKey);
+  const nextKeyMode: KeyMode =
+    typeof updates.keyMode !== "undefined" ? (updates.keyMode as KeyMode) : existingKeyMode;
+
+  if (typeof b.gamlarScaleId === "string") {
+    const gRaw = sanitizePlainField(b.gamlarScaleId);
+    updates.gamlarScaleId =
+      gRaw === ""
+        ? keyModeToGamlarCatalogScaleId(nextKeyMode)
+        : (normalizeGamlarScaleIdForKeyMode(gRaw, nextKeyMode) ?? keyModeToGamlarCatalogScaleId(nextKeyMode));
+  } else if (typeof updates.keyMode !== "undefined" && updates.keyMode !== existingKeyMode) {
+    updates.gamlarScaleId = keyModeToGamlarCatalogScaleId(updates.keyMode as KeyMode);
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Güncellenecek alan yok." }, { status: 400 });
   }
 
-  const before = await getSongByIdAdmin(id);
+  const before = existing;
   await updateSong(id, updates, auth.user.uid);
   const after = await getSongByIdAdmin(id);
 

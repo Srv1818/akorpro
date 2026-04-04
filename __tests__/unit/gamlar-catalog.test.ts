@@ -7,7 +7,7 @@ import {
 
 describe("GAMLAR_SCALE_CATALOG", () => {
   it("has at least 10 entries", () => {
-    expect(GAMLAR_SCALE_CATALOG.length).toBeGreaterThanOrEqual(10);
+    expect(GAMLAR_SCALE_CATALOG.length).toBeGreaterThanOrEqual(32);
   });
 
   it("each entry has required fields", () => {
@@ -30,7 +30,8 @@ describe("gamlarScaleById", () => {
   it("returns entry for known id", () => {
     const entry = gamlarScaleById("major");
     expect(entry).toBeDefined();
-    expect(entry!.name).toBe("Major");
+    expect(entry!.id).toBe("maj-ionian");
+    expect(entry!.name).toBe("Ionian (Major)");
   });
 
   it("returns undefined for unknown id", () => {
