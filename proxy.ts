@@ -5,7 +5,7 @@ import { verifyFirebaseJwt } from "@/lib/auth/verify-firebase-jwt";
 import { getAdminAuth } from "@/lib/firebase/admin";
 
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const AUTH_ROUTES = ["/calma-listeleri", "/katki", "/admin"];
+const AUTH_ROUTES = ["/calma-listeleri", "/admin"];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some(

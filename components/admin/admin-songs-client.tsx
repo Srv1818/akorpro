@@ -32,6 +32,8 @@ type Song = {
   popularity?: number;
   copyrightSource?: string;
   chordBody?: string;
+  showHarmonyDetails?: boolean;
+  harmonyDetailsNotes?: string;
   moderationStatus: string;
 };
 
@@ -64,6 +66,8 @@ export function AdminSongsClient() {
   const [capo, setCapo] = useState("");
   const [popularity, setPopularity] = useState("");
   const [copyrightSource, setCopyrightSource] = useState("");
+  const [showHarmonyDetails, setShowHarmonyDetails] = useState(true);
+  const [harmonyDetailsNotes, setHarmonyDetailsNotes] = useState("");
   const [chordBody, setChordBody] = useState("");
 
   function resetFormState() {
@@ -85,6 +89,8 @@ export function AdminSongsClient() {
     setCapo("");
     setPopularity("");
     setCopyrightSource("");
+    setShowHarmonyDetails(true);
+    setHarmonyDetailsNotes("");
     setChordBody("");
   }
 
@@ -144,6 +150,8 @@ export function AdminSongsClient() {
     if (capo.trim()) body.capo = Number(capo.trim());
     if (popularity.trim()) body.popularity = Number(popularity.trim());
     if (copyrightSource.trim()) body.copyrightSource = copyrightSource.trim();
+    body.showHarmonyDetails = showHarmonyDetails;
+    body.harmonyDetailsNotes = harmonyDetailsNotes;
 
     const url = editId ? `/api/admin/songs/${editId}` : "/api/admin/songs";
     const method = editId ? "PATCH" : "POST";
@@ -233,6 +241,8 @@ export function AdminSongsClient() {
       setCapo(typeof s.capo === "number" ? String(s.capo) : "");
       setPopularity(typeof s.popularity === "number" ? String(s.popularity) : "");
       setCopyrightSource(s.copyrightSource ?? "");
+      setShowHarmonyDetails(s.showHarmonyDetails !== false);
+      setHarmonyDetailsNotes(s.harmonyDetailsNotes ?? "");
       setChordBody(s.chordBody ?? "");
     } catch {
       setMsg("Şarkı detayı alınamadı.");
@@ -423,6 +433,31 @@ export function AdminSongsClient() {
             onChange={(e) => setChordBody(e.currentTarget.value)}
             className="col-span-full rounded-lg border border-border bg-bg px-3 py-2 text-sm font-mono"
           />
+          <label className="col-span-full flex cursor-pointer items-start gap-2 rounded-lg border border-border/80 bg-bg/50 px-3 py-2.5 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={showHarmonyDetails}
+              onChange={(e) => setShowHarmonyDetails(e.currentTarget.checked)}
+              className="mt-0.5 rounded border-border text-accent"
+            />
+            <span>
+              Önizlemede &quot;Meraklısına daha fazla detay&quot; (armoni özeti) gösterilsin. Kapatırsanız önizleme ve
+              akor sayfasında bu bağlantı gizlenir.
+            </span>
+          </label>
+          <label className="col-span-full block text-xs font-medium text-muted-foreground">
+            Armoni penceresi metni (isteğe bağlı)
+            <textarea
+              name="harmonyDetailsNotes"
+              rows={5}
+              value={harmonyDetailsNotes}
+              onChange={(e) => setHarmonyDetailsNotes(e.currentTarget.value)}
+              placeholder={
+                "Örn.: Köprüde II–V–I geçişi, nakarat majör moda kayar…\nBu kutu doluysa açılır pencerenin üstünde gösterilir; altta otomatik özet (ton, akor listesi) yine gelir."
+              }
+              className="mt-1.5 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70"
+            />
+          </label>
           {loadingEdit ? <p className="col-span-full text-xs text-muted">Mevcut kayıt yükleniyor…</p> : null}
           <div className="col-span-full flex gap-2">
             <button

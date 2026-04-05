@@ -164,7 +164,7 @@ type Props = {
   storageKey?: string;
 };
 
-function createGamlarScaleControls(useToolsStore: UseToolingHook, defaultStorageKey: string) {
+export function createGamlarScaleControls(useToolsStore: UseToolingHook, defaultStorageKey: string) {
   const FormulaPanel = createGamlarScaleFormulaPanel(useToolsStore);
 
   return function GamlarScaleControls({

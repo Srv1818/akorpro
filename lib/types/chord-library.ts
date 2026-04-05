@@ -30,6 +30,17 @@ export interface ScaleDoc {
 
 export const IMPORT_SONG_SCHEMA = {
   required: ["title", "slug", "artistName", "artistSlug", "chordBody", "originalKey", "difficulty", "genre"],
-  optional: ["tempo", "timeSignature", "tuning", "capo", "copyrightSource", "popularity", "keyMode", "gamlarScaleId"],
+  optional: [
+    "tempo",
+    "timeSignature",
+    "tuning",
+    "capo",
+    "copyrightSource",
+    "popularity",
+    "keyMode",
+    "gamlarScaleId",
+    "showHarmonyDetails",
+    "harmonyDetailsNotes",
+  ],
   difficulties: ["kolay", "orta", "zor"],
 } as const;

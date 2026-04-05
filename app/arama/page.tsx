@@ -74,8 +74,8 @@ export default async function AramaPage({ searchParams }: Props) {
             ) : null}
             <p className="mt-6 text-sm">
               Bu şarkı eksik mi?{" "}
-              <Link href="/katki" className="font-medium text-accent hover:underline">
-                Katkıda bulunun &rarr;
+              <Link href="/iletisim" className="font-medium text-accent hover:underline">
+                İletişimden talep edin &rarr;
               </Link>
             </p>
           </div>

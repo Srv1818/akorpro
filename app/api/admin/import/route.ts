@@ -6,6 +6,7 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import { TAGS } from "@/lib/cache/tags";
 import { validateImportPayload } from "@/lib/firestore/import-validator";
 import { writeAuditLog } from "@/lib/security/audit-log";
+import { sanitizeTextContent } from "@/lib/security/sanitize";
 import {
   inferKeyModeFromOriginalKey,
   keyModeToGamlarCatalogScaleId,
@@ -98,6 +99,10 @@ export async function POST(request: Request) {
         capo: row.capo ?? null,
         copyrightSource: row.copyrightSource ?? null,
         popularity: row.popularity ?? 0,
+        ...(row.showHarmonyDetails !== undefined ? { showHarmonyDetails: row.showHarmonyDetails } : {}),
+        ...(typeof row.harmonyDetailsNotes === "string"
+          ? { harmonyDetailsNotes: sanitizeTextContent(row.harmonyDetailsNotes) }
+          : {}),
         schemaVersion: 1,
         createdAt: now,
         updatedAt: now,

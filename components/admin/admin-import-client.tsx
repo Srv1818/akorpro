@@ -134,25 +134,36 @@ export function AdminImportClient() {
         <pre className="mt-2 overflow-auto text-xs text-muted">{`{
   "songs": [
     {
-      "title": "Şarkı Adı",       // zorunlu
-      "slug": "sarki-adi",         // zorunlu
-      "artistName": "Sanatçı",     // zorunlu
-      "artistSlug": "sanatci",     // zorunlu
-      "chordBody": "[Verse]\\nAm F",// zorunlu
-      "originalKey": "Am",         // zorunlu
-      "difficulty": "kolay|orta|zor", // zorunlu
-      "keyMode": "major|natural|harmonic|melodic", // opsiyonel (eksikse originalKey’den türetilir)
-      "gamlarScaleId": "nm-aeolian", // opsiyonel — alt gam; keyMode ile aynı ailede olmalı (data/gamlar-scale-catalog.ts). Eksikse keyMode için varsayılan gam yazılır.
-      "genre": "Rock",             // zorunlu
-      "tempo": 120,                // opsiyonel
-      "timeSignature": "4/4",      // opsiyonel
-      "tuning": "Standard",        // opsiyonel
-      "capo": 0,                   // opsiyonel
-      "copyrightSource": "...",    // opsiyonel
-      "popularity": 50             // opsiyonel
+      "title": "Şarkı Adı",
+      "slug": "sarki-adi",
+      "artistName": "Sanatçı",
+      "artistSlug": "sanatci",
+      "chordBody": "[Verse]\\nAm F",
+      "originalKey": "Am",
+      "difficulty": "kolay",
+      "genre": "Rock",
+
+      "keyMode": "natural",
+      "gamlarScaleId": "nm-aeolian",
+
+      "tempo": 120,
+      "timeSignature": "4/4",
+      "tuning": "Standard",
+      "capo": 0,
+      "copyrightSource": "Kaynak notu",
+      "popularity": 50,
+
+      "showHarmonyDetails": true,
+      "harmonyDetailsNotes": "Köprüde II–V–I…\\nÇok satır yazabilirsiniz."
     }
   ]
-}`}</pre>
+}
+
+// Zorunlu alanlar: title, slug, artistName, artistSlug, chordBody, originalKey, difficulty, genre
+// keyMode: major | natural | harmonic | melodic — yoksa originalKey’den çıkarılır
+// gamlarScaleId: keyMode ile uyumlu katalog id (data/gamlar-scale-catalog.ts); yoksa varsayılan gam
+// showHarmonyDetails: boolean — false ise önizleme/akor sayfasında armoni özeti gizlenir; yoksa true kabul edilir
+// harmonyDetailsNotes: string — isteğe bağlı; armoni penceresinin üstünde serbest metin`}</pre>
       </details>
     </div>
   );

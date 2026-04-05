@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  extractChordTokensInOrderAsRendered,
   extractUniqueChordTokensAsRendered,
   extractUniqueChordTokensInOrder,
   formatChordSymbolDisplay,
@@ -211,6 +212,17 @@ describe("extractUniqueChordTokensAsRendered", () => {
 
   it("dedupes and keeps first-seen order across lines", () => {
     expect(extractUniqueChordTokensAsRendered("[Am] x\n[F] y\nAm")).toEqual(["Am", "F"]);
+  });
+});
+
+describe("extractChordTokensInOrderAsRendered", () => {
+  it("keeps repeats and order (bracket lines)", () => {
+    expect(extractChordTokensInOrderAsRendered("[Am] x\n[Am] y\n[F] z")).toEqual(["Am", "Am", "F"]);
+  });
+
+  it("keeps repeats on inline chord rows", () => {
+    const body = "Am          F\nAm          F";
+    expect(extractChordTokensInOrderAsRendered(body)).toEqual(["Am", "F", "Am", "F"]);
   });
 });
 

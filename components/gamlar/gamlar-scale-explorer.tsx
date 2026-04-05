@@ -2,14 +2,19 @@
 
 import { useMemo } from "react";
 import { Note, Scale } from "tonal";
-import { GamlarScaleControls } from "@/components/gamlar/gamlar-scale-controls";
+import {
+  createGamlarScaleControls,
+  GAMLAR_SELECTION_STORAGE_KEY,
+} from "@/components/gamlar/gamlar-scale-controls";
 import { defaultGamlarScaleId, gamlarScaleById, normalizeGamlarScaleId } from "@/data/gamlar-scale-catalog";
 import { GUITAR_ROOT_ENTRIES } from "@/lib/chords-db/guitar";
 import { gamlarCatalogAndTonicToPitchClassSet } from "@/lib/music/fretboard-from-scale-notes";
 import { noteNameToPitchClass, OPEN_STRING_PC_TOP_FIRST, PC_TO_NAME } from "@/lib/music/note-utils";
+import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
+import type { PreviewToolsState } from "@/lib/stores/preview-tools-store";
+import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import { useGamlarPageToolsStore } from "@/lib/stores/tooling-page-stores";
 import type { KeyMode } from "@/lib/types/content";
-import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
 
 const STRING_NAMES = ["E", "B", "G", "D", "A", "E"] as const;
 const FRET_COUNT = 16;
@@ -44,9 +49,17 @@ type Props = {
   lockedMode?: KeyMode;
 };
 
-export function GamlarScaleExplorer({ lockedTonicPc, lockedMode }: Props) {
-  const tonal = useGamlarPageToolsStore((s) => s.tonalCenterIndex);
-  const scaleId = useGamlarPageToolsStore((s) => s.selectedScaleId);
+type UseToolingHook = <T>(selector: (s: PreviewToolsState) => T) => T;
+
+function createGamlarScaleExplorer(useToolsStore: UseToolingHook) {
+  const GamlarScaleControlsBound = createGamlarScaleControls(
+    useToolsStore,
+    GAMLAR_SELECTION_STORAGE_KEY,
+  );
+
+  return function GamlarScaleExplorer({ lockedTonicPc, lockedMode }: Props) {
+  const tonal = useToolsStore((s) => s.tonalCenterIndex);
+  const scaleId = useToolsStore((s) => s.selectedScaleId);
   const lockSelection = lockedTonicPc != null || lockedMode != null;
 
   const effectiveTonal =
@@ -223,7 +236,15 @@ export function GamlarScaleExplorer({ lockedTonicPc, lockedMode }: Props) {
         </div>
       </section>
 
-      {!lockSelection ? <GamlarScaleControls lockedTonicPc={lockedTonicPc} lockedMode={lockedMode} /> : null}
+      {!lockSelection ? (
+        <GamlarScaleControlsBound lockedTonicPc={lockedTonicPc} lockedMode={lockedMode} />
+      ) : null}
     </div>
   );
+  };
 }
+
+/** Gamlar sayfası — `GamlarPageToolsProvider` gerekir */
+export const GamlarScaleExplorer = createGamlarScaleExplorer(useGamlarPageToolsStore);
+/** Önizleme — `PreviewToolsProvider` ile aynı tonal/gam store (5'li çember ile senkron) */
+export const PreviewGamlarScaleExplorer = createGamlarScaleExplorer(usePreviewToolsStore);

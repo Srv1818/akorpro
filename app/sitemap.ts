@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/akor-kutuphanesi`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${SITE_URL}/gamlar`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${SITE_URL}/besli-cember`, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${SITE_URL}/katki`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${SITE_URL}/iletisim`, changeFrequency: "monthly", priority: 0.4 },
   ];
 
   const artistEntries: MetadataRoute.Sitemap = artists.map((a) => ({

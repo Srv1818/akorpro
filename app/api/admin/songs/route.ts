@@ -59,6 +59,10 @@ export async function POST(request: Request) {
   const gamlarRaw = sanitizePlainField(b.gamlarScaleId);
   const finalGamlarScaleId =
     normalizeGamlarScaleIdForKeyMode(gamlarRaw, finalKeyMode) ?? keyModeToGamlarCatalogScaleId(finalKeyMode);
+  const showHarmonyDetails =
+    typeof b.showHarmonyDetails === "boolean" ? b.showHarmonyDetails : undefined;
+  const harmonyDetailsNotes =
+    typeof b.harmonyDetailsNotes === "string" ? sanitizeTextContent(b.harmonyDetailsNotes) : undefined;
 
   if (!title || !slug || !artistName || !artistSlug || !chordBody || !originalKey || !difficulty || !genre) {
     return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
@@ -86,6 +90,8 @@ export async function POST(request: Request) {
         copyrightSource: typeof b.copyrightSource === "string" ? b.copyrightSource : undefined,
         contributorIds: Array.isArray(b.contributorIds) ? (b.contributorIds as string[]) : undefined,
         popularity: typeof b.popularity === "number" ? b.popularity : undefined,
+        showHarmonyDetails,
+        harmonyDetailsNotes,
       },
       auth.user.uid,
     );

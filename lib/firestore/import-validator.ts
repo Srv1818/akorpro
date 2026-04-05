@@ -22,6 +22,10 @@ export type ImportSongRow = {
   capo?: number;
   copyrightSource?: string;
   popularity?: number;
+  /** Önizlemede armoni özeti; false ise gizlenir. */
+  showHarmonyDetails?: boolean;
+  /** Armoni penceresinde gösterilecek serbest metin (çok satır). */
+  harmonyDetailsNotes?: string;
 };
 
 export type ValidationError = {
@@ -100,6 +104,16 @@ export function validateImportPayload(
 
     if (rec.capo !== undefined && (typeof rec.capo !== "number" || rec.capo < 0)) {
       errors.push({ row: i, field: "capo", message: "capo negatif olamaz." });
+      rowValid = false;
+    }
+
+    if (rec.showHarmonyDetails !== undefined && typeof rec.showHarmonyDetails !== "boolean") {
+      errors.push({ row: i, field: "showHarmonyDetails", message: "showHarmonyDetails true veya false olmalı." });
+      rowValid = false;
+    }
+
+    if (rec.harmonyDetailsNotes !== undefined && typeof rec.harmonyDetailsNotes !== "string") {
+      errors.push({ row: i, field: "harmonyDetailsNotes", message: "harmonyDetailsNotes metin olmalı." });
       rowValid = false;
     }
 

@@ -132,6 +132,8 @@ export default async function PreviewPage({ params, searchParams }: Props) {
               tempo={song.tempo}
               timeSignature={song.timeSignature}
               serverUid={sessionUser?.uid ?? null}
+              showHarmonyDetails={song.showHarmonyDetails !== false}
+              harmonyDetailsNotes={song.harmonyDetailsNotes}
             />
           </PreviewShell>
         </Suspense>

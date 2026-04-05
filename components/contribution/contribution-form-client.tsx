@@ -22,15 +22,22 @@ export function ContributionFormClient() {
       const res = await fetch("/api/contributions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      let data: { error?: string } = {};
+      try {
+        data = (await res.json()) as { error?: string };
+      } catch {
+        setMsg("Sunucu yanıtı okunamadı.");
+        return;
+      }
       if (res.ok) {
         setMsg("Katkınız gönderildi! Moderatör onayı bekliyor.");
         e.currentTarget.reset();
       } else {
-        setMsg(data.error ?? "Bir hata oluştu.");
+        setMsg(data.error ?? `Bir hata oluştu (${res.status}).`);
       }
     } catch {
       setMsg("Ağ hatası.");

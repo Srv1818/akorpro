@@ -49,6 +49,9 @@ function sanitizeSong(raw: SongDoc & { id: string }): SongDoc & { id: string } {
     artistName: sanitizePlainField(raw.artistName),
     chordBody: sanitizeTextContent(raw.chordBody),
     copyrightSource: raw.copyrightSource ? sanitizePlainField(raw.copyrightSource) : undefined,
+    harmonyDetailsNotes: raw.harmonyDetailsNotes
+      ? sanitizeTextContent(raw.harmonyDetailsNotes)
+      : undefined,
   };
 }
 

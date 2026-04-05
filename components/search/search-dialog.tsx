@@ -289,11 +289,11 @@ export function SearchDialog({ placeholder = "Şarkı veya sanatçı ara..." }: 
                 ))}
                 <li className="mt-2 border-t border-border px-3 pb-1 pt-3">
                   <Link
-                    href="/katki"
+                    href="/iletisim"
                     onClick={() => setIsOpen(false)}
                     className="text-sm font-medium text-accent hover:underline"
                   >
-                    Bu şarkı eksik mi? Katkıda bulunun &rarr;
+                    Bu şarkı eksik mi? İletişimden talep edin &rarr;
                   </Link>
                 </li>
               </>

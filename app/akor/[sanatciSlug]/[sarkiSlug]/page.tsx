@@ -175,6 +175,8 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
               tempo={song.tempo}
               timeSignature={song.timeSignature}
               serverUid={sessionUser?.uid ?? null}
+              showHarmonyDetails={song.showHarmonyDetails !== false}
+              harmonyDetailsNotes={song.harmonyDetailsNotes}
               prevSong={
                 prevSong
                   ? { title: prevSong.title, href: chordPath(prevSong.artistSlug, prevSong.slug) }

@@ -30,7 +30,7 @@ export function ContributionListClient() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/contributions")
+    fetch("/api/contributions", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => setContribs(d.contributions ?? []))
       .finally(() => setLoading(false));

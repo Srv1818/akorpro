@@ -7,6 +7,8 @@ import { defaultGamlarScaleId, gamlarScaleById, normalizeGamlarScaleId } from "@
 import type { Co5ChordEntry } from "@/lib/music/co5-chord-types";
 import { buildChordEntriesFromGamlarScale } from "@/lib/music/gamlar-scale-triads";
 import { CO5_LABELS, CO5_PITCH_CLASSES, PC_TO_NAME } from "@/lib/music/note-utils";
+import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
+import type { KeyMode } from "@/lib/types/content";
 import type { PreviewToolsState } from "@/lib/stores/preview-tools-store";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import { useBesliCemberPageToolsStore } from "@/lib/stores/tooling-page-stores";
@@ -26,9 +28,15 @@ type Props = {
   className?: string;
   lockedMode?: ScaleMode;
   selectedPitchClass?: number | null;
-  onPitchClassSelect?: (pitchClass: number) => void;
+  /** `ring`: gamlar modunda orta halka (minör etiket) ile dış halka (majör kök) ayrımı — transpoze hedefi */
+  onPitchClassSelect?: (pitchClass: number, meta?: { ring: "outer" | "mid" }) => void;
   /** Gamlar sayfasıyla aynı gam/mod seçimi + katalogdan diyatonik üçlüler */
   chordSource?: "legacy" | "gamlar";
+  /**
+   * chordSource=gamlar iken: şarkı `keyMode` ile `selectedScaleId` birlikte `resolveSongGamlarScaleId` ile çözümlenir
+   * (önizlemede Gamlar keşifçisiyle aynı gam/alt mod).
+   */
+  resolveGamlarScaleWithKeyMode?: KeyMode;
 };
 
 /* ------------------------------------------------------------------ */
@@ -651,26 +659,50 @@ function createCircleOfFifths(useToolsStore: UseToolingHook) {
     selectedPitchClass,
     onPitchClassSelect,
     chordSource = "legacy",
+    resolveGamlarScaleWithKeyMode,
   }: Props) {
     const setStoreTonal = useToolsStore((s) => s.setTonalCenterIndex);
     const storeTonal = useToolsStore((s) => s.tonalCenterIndex);
     const selectedScaleId = useToolsStore((s) => s.selectedScaleId);
 
-  const [majorKeyIdx, setMajorKeyIdx] = useState(1); // G
-  const [mode, setMode] = useState<ScaleMode>(lockedMode ?? "major");
+    const gamlarCatalogScaleId = useMemo(() => {
+      if (chordSource !== "gamlar") return null;
+      if (resolveGamlarScaleWithKeyMode !== undefined) {
+        const raw = typeof selectedScaleId === "string" ? selectedScaleId.trim() : "";
+        return resolveSongGamlarScaleId(
+          resolveGamlarScaleWithKeyMode,
+          raw ? raw : undefined,
+        );
+      }
+      return normalizeGamlarScaleId(selectedScaleId) ?? defaultGamlarScaleId();
+    }, [chordSource, resolveGamlarScaleWithKeyMode, selectedScaleId]);
 
-  const svgSize = variant === "full" ? 340 : 260;
+    const [majorKeyIdx, setMajorKeyIdx] = useState(1); // G
+    const [mode, setMode] = useState<ScaleMode>(lockedMode ?? "major");
 
-  const tonicPcNorm = ((storeTonal % 12) + 12) % 12;
+    const svgSize = variant === "full" ? 340 : 260;
 
-  const handleWedgeClick = useCallback(
+    const tonicPcNorm = ((storeTonal % 12) + 12) % 12;
+
+    /** Önizleme vb.: transpoze `selectedPitchClass` ile senkron; besli sayfasında yalnızca store */
+    const tonicPcForGamlar = useMemo(() => {
+      if (chordSource !== "gamlar") return tonicPcNorm;
+      if (selectedPitchClass != null && Number.isFinite(selectedPitchClass)) {
+        return (((selectedPitchClass as number) % 12) + 12) % 12;
+      }
+      return tonicPcNorm;
+    }, [chordSource, selectedPitchClass, tonicPcNorm]);
+
+    const handleWedgeClick = useCallback(
     (idx: number, ring: "outer" | "inner") => {
       setMajorKeyIdx(idx);
       if (chordSource === "gamlar") {
         const majorPc = CO5_PITCH_CLASSES[idx];
         const nextTonic = ring === "outer" ? majorPc : (majorPc + 9) % 12;
         setStoreTonal(nextTonic);
-        onPitchClassSelect?.(nextTonic);
+        onPitchClassSelect?.(nextTonic, {
+          ring: ring === "outer" ? "outer" : "mid",
+        });
         return;
       }
       if (!lockedMode) {
@@ -711,10 +743,10 @@ function createCircleOfFifths(useToolsStore: UseToolingHook) {
 
   const gamlarChords = useMemo(
     () =>
-      chordSource === "gamlar"
-        ? buildChordEntriesFromGamlarScale(tonicPcNorm, selectedScaleId)
+      chordSource === "gamlar" && gamlarCatalogScaleId != null
+        ? buildChordEntriesFromGamlarScale(tonicPcForGamlar, gamlarCatalogScaleId)
         : ([] as Co5ChordEntry[]),
-    [chordSource, tonicPcNorm, selectedScaleId]
+    [chordSource, tonicPcForGamlar, gamlarCatalogScaleId]
   );
 
   const legacyChords = useMemo(() => buildChords(CO5_LABELS[majorKeyIdx], mode), [majorKeyIdx, mode]);
@@ -732,13 +764,12 @@ function createCircleOfFifths(useToolsStore: UseToolingHook) {
   }, [chordSource, gamlarChords, legacyChords, majorKeyIdx, mode]);
 
   const centerLabelOverride = useMemo(() => {
-    if (chordSource !== "gamlar") return null;
-    const root = PC_TO_NAME[tonicPcNorm] ?? "C";
-    const sid = normalizeGamlarScaleId(selectedScaleId) ?? defaultGamlarScaleId();
-    const entry = gamlarScaleById(sid);
+    if (chordSource !== "gamlar" || gamlarCatalogScaleId == null) return null;
+    const root = PC_TO_NAME[tonicPcForGamlar] ?? "C";
+    const entry = gamlarScaleById(gamlarCatalogScaleId);
     if (!entry) return root;
     return `${root}\n${entry.name}`;
-  }, [chordSource, tonicPcNorm, selectedScaleId]);
+  }, [chordSource, tonicPcForGamlar, gamlarCatalogScaleId]);
 
   const majorChords = useMemo(() => chords.filter((c) => c.panel === "major"), [chords]);
   const minorChords = useMemo(() => chords.filter((c) => c.panel === "minor"), [chords]);

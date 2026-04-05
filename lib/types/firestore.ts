@@ -46,6 +46,11 @@ export interface SongDoc {
   /** Popülerlik skoru (sayısal — indeks için) */
   popularity?: number;
 
+  /** Önizlemede "Meraklısına daha fazla detay" (armoni özeti) gösterilsin mi. Yoksa veya true ise gösterilir. */
+  showHarmonyDetails?: boolean;
+  /** Açılır pencerede üstte gösterilen isteğe bağlı düzenleyici notu (armoni, form, bağlama vb.). */
+  harmonyDetailsNotes?: string;
+
   /* Meta -------------------------------------------------------------- */
   schemaVersion: number;
   createdAt: FirebaseFirestore.Timestamp | unknown;

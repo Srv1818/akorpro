@@ -59,24 +59,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Geçersiz zorluk." }, { status: 400 });
   }
 
-  const id = await createContribution({
-    songTitle,
-    artistName,
-    chordBody,
-    originalKey,
-    keyMode: finalKeyMode,
-    genre,
-    difficulty: difficulty as "kolay" | "orta" | "zor",
-    tempo: typeof b.tempo === "number" || typeof b.tempo === "string" ? b.tempo : undefined,
-    timeSignature: typeof b.timeSignature === "string" ? b.timeSignature : undefined,
-    tuning: typeof b.tuning === "string" ? b.tuning : undefined,
-    capo: typeof b.capo === "number" ? b.capo : undefined,
-    copyrightSource: typeof b.copyrightSource === "string" ? b.copyrightSource : undefined,
-    contributorUid: user.uid,
-    contributorDisplayName: user.email ?? "Anonim",
-  });
-
-  return NextResponse.json({ ok: true, id });
+  try {
+    const id = await createContribution({
+      songTitle,
+      artistName,
+      chordBody,
+      originalKey,
+      keyMode: finalKeyMode,
+      genre,
+      difficulty: difficulty as "kolay" | "orta" | "zor",
+      tempo: typeof b.tempo === "number" || typeof b.tempo === "string" ? b.tempo : undefined,
+      timeSignature: typeof b.timeSignature === "string" ? b.timeSignature : undefined,
+      tuning: typeof b.tuning === "string" ? b.tuning : undefined,
+      capo: typeof b.capo === "number" ? b.capo : undefined,
+      copyrightSource: typeof b.copyrightSource === "string" ? b.copyrightSource : undefined,
+      contributorUid: user.uid,
+      contributorDisplayName: user.email ?? "Anonim",
+    });
+    return NextResponse.json({ ok: true, id });
+  } catch (e) {
+    console.error("contributions POST", e);
+    return NextResponse.json(
+      {
+        error:
+          "Katkı şu an kaydedilemiyor. Yerelde Firebase Admin (FIREBASE_SERVICE_ACCOUNT_KEY) yapılandırılmış mı kontrol edin.",
+      },
+      { status: 503 },
+    );
+  }
 }
 
 export async function GET(request: Request) {

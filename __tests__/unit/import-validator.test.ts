@@ -128,6 +128,35 @@ describe("validateImportPayload", () => {
     expect(valid).toHaveLength(1);
   });
 
+  it("accepts boolean showHarmonyDetails", () => {
+    const { valid, errors } = validateImportPayload([
+      { ...validRow(), showHarmonyDetails: false },
+      { ...validRow(), slug: "b", showHarmonyDetails: true },
+    ]);
+    expect(valid).toHaveLength(2);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("rejects non-boolean showHarmonyDetails", () => {
+    const { valid, errors } = validateImportPayload([{ ...validRow(), showHarmonyDetails: "yes" }]);
+    expect(valid).toHaveLength(0);
+    expect(errors.some((e) => e.field === "showHarmonyDetails")).toBe(true);
+  });
+
+  it("accepts string harmonyDetailsNotes", () => {
+    const { valid, errors } = validateImportPayload([
+      { ...validRow(), harmonyDetailsNotes: "Nakarat majör moda kayar." },
+    ]);
+    expect(valid).toHaveLength(1);
+    expect(errors).toHaveLength(0);
+  });
+
+  it("rejects non-string harmonyDetailsNotes", () => {
+    const { valid, errors } = validateImportPayload([{ ...validRow(), harmonyDetailsNotes: 42 }]);
+    expect(valid).toHaveLength(0);
+    expect(errors.some((e) => e.field === "harmonyDetailsNotes")).toBe(true);
+  });
+
   it("preserves row index in errors", () => {
     const { errors } = validateImportPayload([validRow(), null, validRow({ title: "" })]);
     expect(errors.some((e) => e.row === 1)).toBe(true);

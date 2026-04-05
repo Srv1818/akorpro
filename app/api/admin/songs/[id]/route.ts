@@ -71,6 +71,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (typeof b.copyrightSource === "string") updates.copyrightSource = b.copyrightSource;
   if (typeof b.moderationStatus === "string") updates.moderationStatus = b.moderationStatus;
   if (typeof b.popularity === "number") updates.popularity = b.popularity;
+  if (typeof b.showHarmonyDetails === "boolean") updates.showHarmonyDetails = b.showHarmonyDetails;
+  if (typeof b.harmonyDetailsNotes === "string") updates.harmonyDetailsNotes = sanitizeTextContent(b.harmonyDetailsNotes);
 
   const existingKeyMode: KeyMode = existing.keyMode ?? inferKeyModeFromOriginalKey(existing.originalKey);
   const nextKeyMode: KeyMode =

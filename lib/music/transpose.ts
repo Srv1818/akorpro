@@ -124,6 +124,34 @@ export function extractUniqueChordTokensAsRendered(text: string): string[] {
   return out;
 }
 
+/**
+ * `extractUniqueChordTokensAsRendered` ile aynı satır/köşeli kuralları; yinelenen akorlar dahil
+ * parçada geçtikleri sırayla döner (akor akışı / armoni özeti için).
+ */
+export function extractChordTokensInOrderAsRendered(text: string): string[] {
+  if (!text) return [];
+  const out: string[] = [];
+
+  for (const line of text.split("\n")) {
+    const bracketMatches = [...line.matchAll(AS_RENDERED_BRACKET_CHORD)];
+    if (bracketMatches.length > 0) {
+      for (const m of bracketMatches) {
+        const inner = m[1]?.trim() ?? "";
+        if (inner) out.push(inner);
+      }
+      continue;
+    }
+
+    const re = new RegExp(AS_RENDERED_INLINE_CHORD.source, AS_RENDERED_INLINE_CHORD.flags);
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(line)) !== null) {
+      out.push(m[0]);
+    }
+  }
+
+  return out;
+}
+
 export function transposeChordBodyText(text: string, semitones: number): string {
   if (!text) return text;
   const normalized = normalizeBracketedChordTokens(text);
