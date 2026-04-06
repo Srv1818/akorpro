@@ -10,7 +10,7 @@ import type { ChordQuality, Co5ChordEntry, Co5ChordPanel } from "@/lib/music/co5
 import { PC_TO_NAME } from "@/lib/music/note-utils";
 
 function formatSym(s: string): string {
-  return s.replace(/dim/gi, "°").replace(/aug/gi, "aug");
+  return s.replace(/Maj/g, "maj");
 }
 
 function qualityOf(sym: string): ChordQuality {
@@ -236,12 +236,13 @@ export function buildChordEntriesFromGamlarScale(
       const s7 = Interval.semitones(Interval.distance(root, seventh));
       const typeTok = chordTypeTokenFromSeventhIntervals(s3, s5, s7);
       const raw = Chord.getChord(typeTok, root);
+      q = qualityOf(raw.symbol);
       sym = formatSym(raw.symbol);
-      q = qualityOf(sym);
     } else {
       const rawName = triadChordName(root, kind);
-      sym = formatSym(Chord.get(rawName).symbol);
-      q = qualityOf(sym);
+      const rawSym = Chord.get(rawName).symbol;
+      q = qualityOf(rawSym);
+      sym = formatSym(rawSym);
     }
 
     out.push({

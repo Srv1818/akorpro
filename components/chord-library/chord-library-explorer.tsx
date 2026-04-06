@@ -8,7 +8,7 @@ import {
   parseFretChar,
   type GuitarChordDef,
   type GuitarChordPosition,
-  type GuitarQualitySuffix,
+  type GuitarChordResult,
   type GuitarRootDbKey,
 } from "@/lib/chords-db/guitar";
 
@@ -64,14 +64,15 @@ function barreStringSpan(
 }
 
 function ChordDiagram({
-  chord,
+  result,
   positionIndex,
   embedded = false,
 }: {
-  chord: GuitarChordDef | null;
+  result: GuitarChordResult | null;
   positionIndex: number;
   embedded?: boolean;
 }) {
+  const chord = result?.chord ?? null;
   const position: GuitarChordPosition | null =
     chord?.positions[positionIndex] ?? chord?.positions[0] ?? null;
 
@@ -259,6 +260,7 @@ function ChordDiagram({
         <p className="pl-7 text-center text-[0.65rem] leading-tight text-muted sm:pl-8">
           chords-db · Perdeler 0–15 (a–f = 10–15) · Pozisyon {positionIndex + 1}/{chord.positions.length}
           {position.capo ? " · kapo" : ""}
+          {result?.fallbackSuffix ? ` · yaklaşık (${result.fallbackSuffix})` : ""}
         </p>
       </div>
     </div>
@@ -267,16 +269,21 @@ function ChordDiagram({
 
 export function ChordLibraryExplorer() {
   const [root, setRoot] = useState<GuitarRootDbKey>("C");
-  const [suffix, setSuffix] = useState<GuitarQualitySuffix>("major");
+  const [suffix, setSuffix] = useState<string>("major");
   const [variation, setVariation] = useState(1);
 
-  const chord = useMemo(() => getGuitarChord(root, suffix), [root, suffix]);
+  const result = useMemo(() => getGuitarChord(root, suffix), [root, suffix]);
 
-  const maxVar = chord?.positions.length ?? 1;
+  const maxVar = result?.chord.positions.length ?? 1;
   const safeVariation = Math.min(Math.max(1, variation), maxVar);
 
-  const selectedLabel = GUITAR_QUALITY_OPTIONS.find((q) => q.suffix === suffix)?.label ?? suffix;
   const rootLabel = GUITAR_ROOT_ENTRIES.find((r) => r.dbKey === root)?.label ?? root;
+
+  const selectedLabel =
+    GUITAR_QUALITY_OPTIONS.find((q) => q.suffix === suffix)?.label ?? suffix;
+
+  const chordTitle =
+    suffix === "major" ? rootLabel : `${rootLabel} ${selectedLabel}`;
 
   return (
     <div className="space-y-3">
@@ -313,11 +320,11 @@ export function ChordLibraryExplorer() {
               Seçili akor
             </p>
             <p className="text-xl font-bold leading-tight tracking-tight text-foreground sm:text-2xl">
-              {suffix === "major" ? rootLabel : `${rootLabel} ${selectedLabel}`}
+              {chordTitle}
             </p>
           </div>
         </div>
-        <ChordDiagram chord={chord} positionIndex={safeVariation - 1} embedded />
+        <ChordDiagram result={result} positionIndex={safeVariation - 1} embedded />
       </section>
 
       <section aria-label="Kök nota seçimi">
@@ -331,6 +338,7 @@ export function ChordLibraryExplorer() {
                 onClick={() => {
                   setRoot(dbKey);
                   setVariation(1);
+                  setSuffix((prev) => (getGuitarChord(dbKey, prev) ? prev : "major"));
                 }}
                 className={[
                   "min-h-8 min-w-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-9 sm:min-w-9 sm:text-[0.8125rem]",
@@ -345,20 +353,24 @@ export function ChordLibraryExplorer() {
       </section>
 
       <section aria-label="Akor kalitesi seçimi">
-        <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border bg-surface/90 p-2 sm:grid-cols-6 sm:gap-1.5 sm:p-2.5">
+        <div className="grid grid-cols-5 gap-1 rounded-2xl border border-border bg-surface/90 p-2 sm:gap-1.5 sm:p-2.5 md:grid-cols-10">
           {GUITAR_QUALITY_OPTIONS.map(({ label, suffix: suf }) => {
             const selected = suf === suffix;
+            const available = getGuitarChord(root, suf) != null;
             return (
               <button
                 key={suf}
                 type="button"
+                disabled={!available}
+                title={!available ? "Bu kök için kütüphanede yok" : undefined}
                 onClick={() => {
                   setSuffix(suf);
                   setVariation(1);
                 }}
                 className={[
-                  "rounded-lg px-2 py-1.5 text-center text-xs font-medium transition-colors sm:py-2",
+                  "rounded-lg px-1 py-1.5 text-center text-[0.65rem] font-medium leading-tight transition-colors sm:px-2 sm:py-2 sm:text-xs",
                   selected ? btnSelected : "border border-border bg-bg text-foreground hover:border-zinc-500/45",
+                  !available ? "cursor-not-allowed opacity-40 hover:border-border" : "",
                 ].join(" ")}
               >
                 {label}

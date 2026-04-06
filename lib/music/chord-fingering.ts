@@ -72,11 +72,11 @@ export function resolveChordTokenToFingering(token: string): ResolvedChordFinger
 
   for (const suffix of candidates) {
     if (!SUPPORTED_SUFFIXES.has(suffix)) continue;
-    const chord = getGuitarChord(dbKey, suffix);
-    if (chord) return { token, dbKey, suffix, chord };
+    const result = getGuitarChord(dbKey, suffix);
+    if (result) return { token, dbKey, suffix, chord: result.chord };
   }
 
   const fallback = qualityFallbackSuffix(parsed.quality);
-  const fallbackChord = getGuitarChord(dbKey, fallback) ?? null;
-  return { token, dbKey, suffix: fallback, chord: fallbackChord };
+  const fallbackResult = getGuitarChord(dbKey, fallback);
+  return { token, dbKey, suffix: fallback, chord: fallbackResult?.chord ?? null };
 }

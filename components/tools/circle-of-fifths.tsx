@@ -75,7 +75,7 @@ function relativeMinorName(majorTonic: string): string {
 }
 
 function formatSym(s: string): string {
-  return s.replace(/dim/gi, "°").replace(/aug/gi, "aug");
+  return s.replace(/Maj/g, "maj");
 }
 
 function qualityOf(sym: string): ChordQuality {
@@ -225,8 +225,13 @@ function majorWedgePcFromSongTonicPc(tonicPc: number, mode: ScaleMode): number {
 
 function chordEntryRootPc(symbol: string): number | null {
   const c = Chord.get(symbol);
-  if (c.empty || c.tonic == null) return null;
-  return Note.get(c.tonic).chroma;
+  if (!c.empty && c.tonic != null) return Note.get(c.tonic).chroma;
+  const m = symbol.match(/^([A-G][#b]?)/);
+  if (m) {
+    const n = Note.get(m[1]);
+    if (n.chroma != null) return n.chroma;
+  }
+  return null;
 }
 
 /** Dış halka: majör anahtar adı; orta: minör etiket; iç: o majör gamın vii°’si — panel akoru hangi halkada yazılıysa o dilimde vurgu. */
