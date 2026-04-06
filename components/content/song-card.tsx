@@ -31,7 +31,7 @@ export function SongCard({
         aria-label={label}
       />
       <div className="relative z-10 min-w-0 flex-1 pointer-events-none">
-        <h2 className="line-clamp-1 text-sm font-semibold text-foreground">{song.title}</h2>
+        <h2 className="line-clamp-1 text-sm font-semibold text-display">{song.title}</h2>
         {showArtist ? (
           <p className="mt-0.5 line-clamp-1 text-xs text-muted">{song.artistName}</p>
         ) : null}

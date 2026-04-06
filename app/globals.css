@@ -15,8 +15,10 @@
   --color-accent: 34 197 94;
   --color-accent-foreground: 255 255 255;
   --color-accent-muted: 22 163 74;
+  /* Ana başlık / şarkı adı / marka sözcüğü — tam beyaza yakın değil, menüdeki muted ile uyumlu taş tonu */
+  --color-display: 24 24 27;
   --chord-root: 63 63 70;
-  --chord-major: 22 163 74;
+  --chord-major: 3 97 73;
   --chord-minor: 2 112 175;
   --chord-diminished: 225 29 72;
   --chord-augmented: 217 119 6;
@@ -41,8 +43,11 @@
   --color-accent: 34 197 94;
   --color-accent-foreground: 9 9 11;
   --color-accent-muted: 74 222 128;
+  /* Stone 200 — gece yüzeyinde parlamayan başlık/şarkı/marka metni (#E7E5E4) */
+  --color-display: 231 229 228;
   --chord-root: 212 212 216;
-  --chord-major: 74 222 128;
+  /* Akor satırı / token — #036149 (koyu zümrüt), light ile aynı ton */
+  --chord-major: 3 97 73;
   --chord-minor: 56 189 248;
   --chord-diminished: 251 113 133;
   --chord-augmented: 251 191 36;
@@ -119,10 +124,13 @@ body {
 /* Faz 8 — Okunabilir akor satırları (dark/light kontrast WCAG AA)    */
 /* ------------------------------------------------------------------ */
 .chord-line {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: var(--font-inter), "Inter", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.8;
+  font-size: 0.875rem;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "liga" 0;
 }
 
 :root .chord-line {
@@ -130,27 +138,104 @@ body {
 }
 .dark .chord-line {
   color: rgb(var(--chord-major));
-  text-shadow: 0 0 8px rgb(var(--chord-major) / 0.15);
 }
 
 .lyric-line {
-  line-height: 1.8;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
 }
 
 /* Preview / sahne: Geist Mono çoklu font-weight destekler; Consolas/Cascadia çoğu kurulumda
    tek ağırlık olduğu için söz (ince) / akor (kalın) ayrımı görünmez kalıyordu. */
 .song-chord-text {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: var(--font-inter), "Inter", "Segoe UI", system-ui, sans-serif;
+  font-weight: 400;
   /* Akor + söz aynı ızgarada: letter-spacing ve buton padding hizayı kaydırır */
-  letter-spacing: 0;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "liga" 0;
+  white-space: pre;
 }
 
 .song-chord-text .song-chord-lyric {
-  font-weight: 300;
+  letter-spacing: -0.005em;
 }
 
 .song-chord-text button.song-chord-token {
-  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+/*
+ * Sözler: 300 + yumuşatma + gölgesiz; koyu zemin / sahne’de beyaz yerine #d1d5db.
+ * Akor #10b981 ayrı blokta — !important Tailwind ile çakışmayı keser.
+ */
+.song-chord-text .song-chord-lyric,
+pre.song-chord-text[data-lyrics-pre] span.song-chord-lyric,
+#chord-body pre.song-chord-text span.song-chord-lyric {
+  font-weight: 300 !important;
+  font-style: normal !important;
+  font-synthesis: none !important;
+  font-variation-settings: "wght" 300 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-shadow: none !important;
+}
+
+.dark pre.song-chord-text[data-lyrics-pre] span.song-chord-lyric,
+.dark .song-chord-text .song-chord-lyric,
+.dark #chord-body pre.song-chord-text span.song-chord-lyric {
+  color: #d1d5db !important;
+}
+
+pre.song-chord-text[data-lyrics-pre="scene"] span.song-chord-lyric {
+  color: #d1d5db !important;
+}
+
+pre.song-chord-text[data-lyrics-pre] {
+  font-weight: 300 !important;
+  font-variation-settings: "wght" 300 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-shadow: none !important;
+}
+
+/* Veriye gömülü / ileride HTML sızarsa: semantic kalınlık ve başlık stillerini nötrle */
+.song-chord-text :where(strong, b, h1, h2, h3, h4, h5, h6) {
+  font-weight: 300 !important;
+  font-size: inherit !important;
+  font-style: normal !important;
+  margin: 0 !important;
+  line-height: inherit !important;
+  font-variation-settings: "wght" 300 !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-shadow: none !important;
+}
+
+.dark .song-chord-text :where(strong, b, h1, h2, h3, h4, h5, h6) {
+  color: #d1d5db !important;
+}
+
+.song-chord-text button.song-chord-token,
+pre.song-chord-text[data-lyrics-pre] button.song-chord-token,
+#chord-body pre.song-chord-text button.song-chord-token {
+  font-weight: 600 !important;
+  color: #036149 !important;
+  font-variation-settings: "wght" 600;
+}
+
+.song-chord-text button.song-chord-token:hover,
+pre.song-chord-text[data-lyrics-pre] button.song-chord-token:hover,
+#chord-body pre.song-chord-text button.song-chord-token:hover {
+  color: #064e3b !important;
+}
+
+#chord-body .song-chord-text {
+  width: min(100%, 42rem);
+  max-width: 42rem;
+  margin-left: 0;
+  margin-right: auto;
 }
 
 /* Mobil: klasik üst akor satırı söz satırından bir tık büyük. Köşeli [Am] ile söz hizası

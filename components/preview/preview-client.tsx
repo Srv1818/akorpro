@@ -49,9 +49,13 @@ import {
   signedSemitoneDelta,
   transposeChordToken,
 } from "@/lib/music/transpose";
-import { ChevronRight, MoreHorizontal, X } from "lucide-react";
+import { ChevronRight, Info, MoreHorizontal, X } from "lucide-react";
 
 const PLAYLIST_SCHEMA_VERSION = 1;
+
+/** «Meraklısına daha fazla detay» modalı — varsayılan eğitim / sorumluluk reddi. */
+const HARMONY_DETAIL_DEFAULT_DISCLAIMER =
+  "Bu özet yalnızca eğitim ve genel bilgi amaçlıdır; hata veya eksiklik olabilir. Metin veya yapılandırma otomatik veya yapay zeka araçlarıyla oluşturulmuş olabilir; kesin veya profesyonel referans olarak kullanılmamalıdır.";
 
 type Props = {
   songId: string;
@@ -193,7 +197,7 @@ function renderChordTokenNode(token: string, key: string, onClick: () => void): 
       key={key}
       type="button"
       onClick={onClick}
-      className="song-chord-token m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 align-baseline [font-family:inherit] font-bold text-green-500 hover:text-green-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+      className="song-chord-token m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 align-baseline [font-family:inherit] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
       aria-label={`${token} akoru, Akorlar panelini aç`}
     >
       {token}
@@ -219,7 +223,7 @@ function renderChordLine(
       const slice = line.slice(lastIndex, index);
       if (slice.length > 0) {
         out.push(
-          <span key={`${keyPrefix}ly-${index}-${lastIndex}`} className="song-chord-lyric font-light">
+          <span key={`${keyPrefix}ly-${index}-${lastIndex}`} className="song-chord-lyric font-normal">
             {slice}
           </span>,
         );
@@ -232,7 +236,7 @@ function renderChordLine(
     const slice = line.slice(lastIndex);
     if (slice.length > 0) {
       out.push(
-        <span key={`${keyPrefix}ly-end-${lastIndex}`} className="song-chord-lyric font-light">
+        <span key={`${keyPrefix}ly-end-${lastIndex}`} className="song-chord-lyric font-normal">
           {slice}
         </span>,
       );
@@ -277,7 +281,7 @@ function renderAlignedBracketLine(
     caret = Math.max(caret, item.pos + item.token.length);
   });
 
-  const pairClass = isLastSourceLine ? "flex flex-col gap-0.5" : "flex flex-col gap-0.5 mb-1.5 sm:mb-1";
+  const pairClass = isLastSourceLine ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5";
   /* Köşeli [Am] hizasında üst satırı büyütmek monospace sütun hizasını bozar; yalnızca söz yokken (yalnız akor) güvenli. */
   const chordRowClass =
     "block leading-none sm:leading-[1.05] [&_button]:align-baseline" + (!lyrics ? " song-chord-row-stacked" : "");
@@ -294,19 +298,49 @@ function renderAlignedBracketLine(
   return (
     <span key={`pair-${lineIndex}`} className={pairClass}>
       {chordRow}
-      <span className="song-chord-lyric block font-light leading-none sm:leading-[1.05]">{lyrics}</span>
+      <span className="song-chord-lyric -mt-px block font-normal leading-tight sm:leading-snug">{lyrics}</span>
     </span>
   );
+}
+
+function codePointChar(code: number): string {
+  if (!Number.isFinite(code) || code < 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) {
+    return "";
+  }
+  try {
+    return String.fromCodePoint(code);
+  } catch {
+    return "";
+  }
+}
+
+/** Admin/import bazen <strong>, <b>, <h3> vb. gömer; yalnızca bilinen etiketleri kaldırır (&lt; ile şarkı sözü yazan edge-case’leri mümkün olduğunca korur). */
+function stripEmbeddedHtmlFromChordBody(text: string): string {
+  const withoutTags = text.replace(
+    /<\/?(?:strong|b|em|i|u|h[1-6]|p|div|span|br)(?:\s[^>]*)?>/gi,
+    "",
+  );
+  return withoutTags
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&#(\d+);/g, (_, n) => codePointChar(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => codePointChar(Number.parseInt(h, 16)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 function normalizeChordBodyText(text: string): string {
   // Some admin/import flows may send literal `\\n` instead of real newlines.
   // Normalize everything to real `\n` so both rendering and splitting work reliably.
-  return text
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\n");
+  return stripEmbeddedHtmlFromChordBody(
+    text
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\n"),
+  );
 }
 
 function renderChordBodyWithHighlights(text: string, semitones: number, onChordClick: () => void): ReactNode {
@@ -349,11 +383,11 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       const pairEndsSong = i + 1 >= lines.length - 1;
       rows.push(
         <Fragment key={`line-${i}`}>
-            <span className={pairEndsSong ? "flex flex-col gap-0.5" : "flex flex-col gap-0.5 mb-1.5 sm:mb-1"}>
-            <span className="song-chord-row-stacked block leading-none sm:leading-[1.05] [&_button]:align-baseline">
+            <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5"}>
+            <span className="song-chord-row-stacked block leading-none sm:leading-tight [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
-            <span className="block leading-none sm:leading-[1.05]">
+            <span className="-mt-px block leading-tight sm:leading-snug">
               {renderChordLine(next, semitones, onChordClick, `L${i + 1}-`)}
             </span>
           </span>
@@ -374,7 +408,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     ) {
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className="block leading-none sm:mb-1">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
+          <span className="block leading-none sm:mb-2 sm:leading-tight">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
         </Fragment>,
       );
       i += 1;
@@ -425,7 +459,7 @@ const TRANSPOSE_SEMITONE_MAX = 5;
 const LYRICS_FONT_SIZE_MIN = 14;
 const LYRICS_FONT_SIZE_MAX = 32;
 const LYRICS_FONT_SIZE_STEP = 1;
-const LYRICS_FONT_SIZE_DEFAULT = 16;
+const LYRICS_FONT_SIZE_DEFAULT = LYRICS_FONT_SIZE_MIN + LYRICS_FONT_SIZE_STEP;
 
 function clampTransposeSemitones(n: number): number {
   return Math.max(TRANSPOSE_SEMITONE_MIN, Math.min(TRANSPOSE_SEMITONE_MAX, n));
@@ -1500,7 +1534,7 @@ export function PreviewClient({
     };
 
     // Binary search: [mobileMin..base]
-    // (base genelde 14+; ama kullanıcı A-/A+ ile büyütebildiği için high'i base tutuyoruz)
+    // (base varsayılan olarak MIN+1; kullanıcı A-/A+ ile değiştirebilir, high = base)
     for (let i = 0; i < 9; i += 1) {
       const mid = Math.floor((low + high + 1) / 2);
 
@@ -1541,7 +1575,7 @@ export function PreviewClient({
             <div className="flex flex-col gap-2 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div className="flex items-center justify-between gap-2 sm:min-w-0 sm:flex-1">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-white">{songTitle}</p>
+                  <p className="truncate text-sm font-semibold text-stone-200">{songTitle}</p>
                   <p className="truncate text-xs text-white/60">
                     {originalKey}
                     {playlistPosition ? (
@@ -2199,12 +2233,36 @@ export function PreviewClient({
               {timeSignature ?? "-"}
             </span>
           </div>
-          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
-            Mod:{" "}
-            <span className="text-foreground">
-              {formatModLineLabel(keyMode, originalKey, gamlarWidgetScaleId)}
-            </span>
-          </div>
+          {showHarmonyDetails ? (
+            <button
+              type="button"
+              onClick={() => setHarmonyDetailOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={harmonyDetailOpen}
+              aria-label="Armoni özeti — ayrıntıları göster"
+              title="Armoni özeti"
+              className="inline-flex max-w-full items-center gap-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-left transition hover:border-accent/40 hover:bg-bg/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:py-1"
+            >
+              <Info
+                className="size-3.5 shrink-0 text-muted-foreground opacity-90"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <span className="min-w-0">
+                Mod:{" "}
+                <span className="text-foreground">
+                  {formatModLineLabel(keyMode, originalKey, gamlarWidgetScaleId)}
+                </span>
+              </span>
+            </button>
+          ) : (
+            <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
+              Mod:{" "}
+              <span className="text-foreground">
+                {formatModLineLabel(keyMode, originalKey, gamlarWidgetScaleId)}
+              </span>
+            </div>
+          )}
           <button
             type="button"
             onClick={resetOriginal}
@@ -2324,7 +2382,7 @@ export function PreviewClient({
                 );
               })}
             </div>
-            <div className="flex items-center justify-end gap-1 sm:ml-2 sm:justify-start">
+            <div className="flex items-center justify-end gap-1 sm:ml-18 sm:justify-start">
               <button
                 type="button"
                 disabled={!canDecreaseLyricsFont}
@@ -2448,7 +2506,10 @@ export function PreviewClient({
 
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
-      <article className="mt-4 rounded-2xl bg-bg p-4 sm:p-6 print:border-0 print:p-0" id="chord-body">
+      <article
+        className="mt-4 rounded-2xl bg-bg py-4 pl-0 pr-4 sm:py-6 sm:pr-6 print:border-0 print:p-0"
+        id="chord-body"
+      >
         <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
           <pre
             data-lyrics-pre="body"
@@ -2585,6 +2646,13 @@ export function PreviewClient({
               <p className="text-[11px] leading-snug text-muted-foreground">
                 Roma rakamları, seçilen ton ve moda göre diyatonik derecelerden türetilir; kromatik / geçiş rengi
                 akorlar &quot;diyatonik dışı&quot; olarak işaretlenir.
+              </p>
+
+              <p
+                className="border-t border-border pt-3 text-[10px] leading-snug text-muted-foreground/90"
+                role="note"
+              >
+                {HARMONY_DETAIL_DEFAULT_DISCLAIMER}
               </p>
             </div>
           </div>

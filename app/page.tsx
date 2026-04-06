@@ -58,7 +58,7 @@ async function FeaturedSection() {
 function DiscoverBlockSkeleton({ id, title }: { id: string; title: string }) {
   return (
     <section className="space-y-4" aria-labelledby={id}>
-      <h2 id={id} className="text-lg font-semibold text-foreground">
+      <h2 id={id} className="text-lg font-semibold text-display">
         {title}
       </h2>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">

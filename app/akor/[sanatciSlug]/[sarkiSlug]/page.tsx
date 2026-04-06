@@ -94,6 +94,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
     <>
       <JsonLd data={songJsonLd(song)} />
       <Breadcrumbs
+        currentCrumbTone="display"
         items={[
           { label: "Ana Sayfa", href: "/" },
           { label: "Tüm şarkılar", href: "/gitar-akorlari" },
@@ -195,8 +196,9 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
 
         {related.length > 0 && (
           <section className="mt-12">
-            <h2 className="text-lg font-semibold text-foreground">
-              {song.artistName} — diğer şarkılar
+            <h2 className="text-lg font-semibold">
+              <span className="text-foreground">{song.artistName}</span>
+              <span className="text-display"> — diğer şarkılar</span>
             </h2>
             <ul className="mt-4 grid gap-4 sm:grid-cols-2">
               {related.map((r) => (

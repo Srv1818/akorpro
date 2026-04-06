@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteNavbar } from "@/components/layout/site-navbar";
 import { ThemeProvider } from "@/components/theme/providers";
@@ -13,8 +13,8 @@ import { CookieBanner } from "@/components/consent/cookie-banner";
 import { SwRegister } from "@/components/pwa/sw-register";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
 });
@@ -96,7 +96,7 @@ export default async function RootLayout({
         ) : null}
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
+        className={`${inter.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
       >
         <GoogleAnalytics />
         <SiteJsonLd />

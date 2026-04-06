@@ -9,7 +9,7 @@ export function SiteFooter() {
           
           {/* Sol: Telif Hakkı ve Marka Adı */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-foreground/40 uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-display/40 uppercase tracking-wider">
               AkorPro
             </span>
             <span className="text-border/50">|</span>

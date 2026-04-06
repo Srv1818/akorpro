@@ -56,7 +56,7 @@ export default async function AramaPage({ searchParams }: Props) {
             </p>
             {popular.length > 0 ? (
               <div className="mt-6">
-                <h2 className="text-sm font-medium text-foreground">Popüler sanatçılar</h2>
+                <h2 className="text-sm font-medium text-display">Popüler sanatçılar</h2>
                 <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {popular.map((a) => (
                     <li key={a.id}>

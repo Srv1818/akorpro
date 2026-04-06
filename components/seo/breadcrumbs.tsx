@@ -9,9 +9,15 @@ export type BreadcrumbItem = {
 
 type BreadcrumbsProps = {
   items: BreadcrumbItem[];
+  /** Son öğe şarkı başlığıysa yumuşak `display`; sanatçı adıysa `foreground` (mevcut parlaklık korunur). */
+  currentCrumbTone?: "display" | "foreground";
 };
 
-export function Breadcrumbs({ items }: BreadcrumbsProps) {
+export function Breadcrumbs({ items, currentCrumbTone = "foreground" }: BreadcrumbsProps) {
+  const currentClass =
+    currentCrumbTone === "display"
+      ? "whitespace-nowrap font-semibold text-display [font-synthesis:none]"
+      : "whitespace-nowrap font-semibold text-foreground [font-synthesis:none]";
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -39,10 +45,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
                 </span>
               ) : null}
               {i === items.length - 1 ? (
-                <span
-                  className="whitespace-nowrap font-semibold text-foreground [font-synthesis:none]"
-                  aria-current="page"
-                >
+                <span className={currentClass} aria-current="page">
                   {item.label}
                 </span>
               ) : (
