@@ -143,7 +143,6 @@ export function AdminImportClient() {
       "difficulty": "kolay",
       "genre": "Rock",
 
-      "keyMode": "natural",
       "gamlarScaleId": "nm-aeolian",
 
       "tempo": 120,
@@ -160,8 +159,7 @@ export function AdminImportClient() {
 }
 
 // Zorunlu alanlar: title, slug, artistName, artistSlug, chordBody, originalKey, difficulty, genre
-// keyMode: major | natural | harmonic | melodic — yoksa originalKey’den çıkarılır
-// gamlarScaleId: keyMode ile uyumlu katalog id (data/gamlar-scale-catalog.ts); yoksa varsayılan gam
+// gamlarScaleId: gam kataloğu id (data/gamlar-scale-catalog.ts); varsa doğrudan kullanılır, yoksa originalKey’den varsayılan gam türetilir
 // showHarmonyDetails: boolean — false ise önizleme/akor sayfasında armoni özeti gizlenir; yoksa true kabul edilir
 // harmonyDetailsNotes: string — isteğe bağlı; armoni penceresinin üstünde serbest metin`}</pre>
       </details>

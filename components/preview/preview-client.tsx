@@ -170,16 +170,12 @@ function keyModeToLabel(mode: KeyMode | undefined, originalKey: string): string 
   return "Majör";
 }
 
-/** Sahne çubuğu: ton modu (TR) + adminin seçtiği alt gam adı (katalog). */
+/** Sahne çubuğu: yalnızca seçili gamlar katalog etiketi. */
 function formatModLineLabel(
-  mode: KeyMode | undefined,
-  originalKey: string,
   gamlarCatalogScaleId: string,
 ): string {
-  const main = keyModeToLabel(mode, originalKey);
   const sub = gamlarScaleById(gamlarCatalogScaleId)?.name?.trim();
-  if (!sub) return main;
-  return `${main} - ${sub}`;
+  return sub || gamlarCatalogScaleId;
 }
 
 function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): KeyMode {
@@ -2217,7 +2213,7 @@ export function PreviewClient({
               <span className="min-w-0">
                 Mod:{" "}
                 <span className="text-foreground">
-                  {formatModLineLabel(keyMode, originalKey, gamlarWidgetScaleId)}
+                  {formatModLineLabel(gamlarWidgetScaleId)}
                 </span>
               </span>
             </button>
@@ -2225,7 +2221,7 @@ export function PreviewClient({
             <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
               Mod:{" "}
               <span className="text-foreground">
-                {formatModLineLabel(keyMode, originalKey, gamlarWidgetScaleId)}
+                {formatModLineLabel(gamlarWidgetScaleId)}
               </span>
             </div>
           )}
