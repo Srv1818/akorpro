@@ -23,7 +23,9 @@ const MODES_BY_BRIGHTNESS = [
   { id: "maj-locrian", label: "Locrian" },
 ] as const;
 
-const MAJOR_MODE_IDS = new Set(MODES_BY_BRIGHTNESS.map((m) => m.id));
+const MAJOR_MODE_IDS: ReadonlySet<string> = new Set(
+  MODES_BY_BRIGHTNESS.map((m) => m.id),
+);
 
 const btnSelected =
   "bg-[#FFB800] text-zinc-950 shadow-sm ring-1 ring-amber-500/60";
