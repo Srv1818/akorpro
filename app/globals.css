@@ -148,14 +148,13 @@ body {
 /* Preview / sahne: Geist Mono çoklu font-weight destekler; Consolas/Cascadia çoğu kurulumda
    tek ağırlık olduğu için söz (ince) / akor (kalın) ayrımı görünmez kalıyordu. */
 .song-chord-text {
-  font-family: var(--font-inter), "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-geist-mono), "Geist Mono", ui-monospace, "Cascadia Code", "Fira Code", monospace;
   font-weight: 400;
-  /* Akor + söz aynı ızgarada: letter-spacing ve buton padding hizayı kaydırır */
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "liga" 0;
-  white-space: pre;
+  white-space: pre-wrap;
 }
 
 .song-chord-text .song-chord-lyric {

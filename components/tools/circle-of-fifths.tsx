@@ -235,7 +235,7 @@ function chordEntryRootPc(symbol: string): number | null {
 }
 
 /** Dış halka: majör anahtar adı; orta: minör etiket; iç: o majör gamın vii°’si — panel akoru hangi halkada yazılıysa o dilimde vurgu. */
-type RingHighlights = { outer: Set<number>; mid: Set<number>; inner: Set<number> };
+type RingHighlights = { outer: Map<number, ChordQuality>; mid: Map<number, ChordQuality>; inner: Map<number, ChordQuality> };
 
 function co5IndexForMinorPanelChord(symbol: string): number | null {
   const pc = chordEntryRootPc(symbol);
@@ -261,30 +261,77 @@ function co5IndexForDimPanelChord(symbol: string): number | null {
 }
 
 function ringHighlightsFromChordEntries(entries: Co5ChordEntry[]): RingHighlights {
-  const outer = new Set<number>();
-  const mid = new Set<number>();
-  const inner = new Set<number>();
+  const outer = new Map<number, ChordQuality>();
+  const mid = new Map<number, ChordQuality>();
+  const inner = new Map<number, ChordQuality>();
   for (const e of entries) {
     if (e.panel === "major") {
       const pc = chordEntryRootPc(e.symbol);
       if (pc == null) continue;
       const idx = co5IndexForRootPc(pc);
-      if (idx != null) outer.add(idx);
+      if (idx != null) outer.set(idx, e.quality);
     } else if (e.panel === "minor") {
       const idx = co5IndexForMinorPanelChord(e.symbol);
-      if (idx != null) mid.add(idx);
+      if (idx != null) mid.set(idx, e.quality);
     } else {
       const idx = co5IndexForDimPanelChord(e.symbol);
-      if (idx != null) inner.add(idx);
+      if (idx != null) inner.set(idx, e.quality);
     }
   }
   return { outer, mid, inner };
 }
 
 function ringHighlight(ring: "outer" | "mid" | "inner", idx: number, majorKeyIdx: number, hl: RingHighlights): number {
-  const set = ring === "outer" ? hl.outer : ring === "mid" ? hl.mid : hl.inner;
-  if (!set.has(idx)) return 0;
+  const map = ring === "outer" ? hl.outer : ring === "mid" ? hl.mid : hl.inner;
+  if (!map.has(idx)) return 0;
   return ring === "outer" && idx === majorKeyIdx ? 1 : 0.9;
+}
+
+function ringQuality(ring: "outer" | "mid" | "inner", idx: number, hl: RingHighlights): ChordQuality | null {
+  const map = ring === "outer" ? hl.outer : ring === "mid" ? hl.mid : hl.inner;
+  return map.get(idx) ?? null;
+}
+
+/* ---- Quality-based wedge colors (major=gold, minor=blue, dim=gray) ---- */
+
+function qualityFillColor(quality: ChordQuality | null, ring: "outer" | "mid" | "inner", hl: number, isDark: boolean): string {
+  if (hl <= 0 || !quality) return "";
+  const base = ring === "outer" ? 0.15 : ring === "mid" ? 0.10 : 0.08;
+  const mult = ring === "outer" ? 0.28 : ring === "mid" ? 0.22 : 0.16;
+  const a = base + hl * mult;
+  if (isDark) {
+    if (quality === "minor") return `rgba(59,130,246,${a})`;
+    if (quality === "diminished" || quality === "half-dim") return `rgba(161,161,170,${a})`;
+    return `rgba(234,179,8,${a})`;
+  }
+  const aL = (ring === "outer" ? 0.42 : ring === "mid" ? 0.38 : 0.35) + hl * 0.42;
+  if (quality === "minor") return `rgba(96,165,250,${aL})`;
+  if (quality === "diminished" || quality === "half-dim") return `rgba(161,161,170,${aL})`;
+  return `rgba(251,191,36,${aL})`;
+}
+
+function qualityTextColor(quality: ChordQuality | null, hl: number, isDark: boolean, muted: string): string {
+  if (hl <= 0 || !quality) return muted;
+  if (isDark) {
+    if (quality === "minor") return `rgba(147,197,253,${0.6 + hl * 0.4})`;
+    if (quality === "diminished" || quality === "half-dim") return `rgba(212,212,216,${0.5 + hl * 0.35})`;
+    return `rgba(255,245,200,${0.6 + hl * 0.4})`;
+  }
+  if (quality === "minor") return "rgb(30, 58, 138)";
+  if (quality === "diminished" || quality === "half-dim") return "rgb(63, 63, 70)";
+  return "rgb(69, 26, 3)";
+}
+
+function qualityStrokeHl(quality: ChordQuality | null, isDark: boolean, base: string): string {
+  if (!quality) return base;
+  if (isDark) {
+    if (quality === "minor") return "rgba(96,165,250,0.75)";
+    if (quality === "diminished" || quality === "half-dim") return "rgba(161,161,170,0.6)";
+    return "rgba(251,191,36,0.75)";
+  }
+  if (quality === "minor") return "rgb(37, 99, 235)";
+  if (quality === "diminished" || quality === "half-dim") return "rgb(113, 113, 122)";
+  return "rgb(146, 64, 14)";
 }
 
 /**
@@ -559,18 +606,21 @@ function CircleSVG({
         const hlO = ringHighlight("outer", i, majorKeyIdx, ringHighlights);
         const hlM = ringHighlight("mid", i, majorKeyIdx, ringHighlights);
         const hlI = ringHighlight("inner", i, majorKeyIdx, ringHighlights);
+        const qO = ringQuality("outer", i, ringHighlights);
+        const qM = ringQuality("mid", i, ringHighlights);
+        const qI = ringQuality("inner", i, ringHighlights);
         const majLabel = CO5_LABELS[i];
         const minLabel = CO5_MINOR_LABELS[i];
         const dimKey = Key.majorKey(majLabel);
         const dimTriad = dimKey.triads[6] ?? "";
         const dimLabel = formatSym(dimTriad);
 
-        const outerFill = hlO > 0 ? c.outerHl(hlO) : c.outerBase;
-        const midFill = hlM > 0 ? c.midHl(hlM) : c.midBase;
-        const innerFill = hlI > 0 ? c.innerHl(hlI) : c.innerBase;
-        const strokeO = hlO > 0.7 ? c.strokeHl : c.strokeBase;
-        const strokeM = hlM > 0.7 ? c.strokeHl : c.strokeBase;
-        const strokeI = hlI > 0.7 ? c.strokeHl : c.strokeBase;
+        const outerFill = hlO > 0 ? qualityFillColor(qO, "outer", hlO, isDark) : c.outerBase;
+        const midFill = hlM > 0 ? qualityFillColor(qM, "mid", hlM, isDark) : c.midBase;
+        const innerFill = hlI > 0 ? qualityFillColor(qI, "inner", hlI, isDark) : c.innerBase;
+        const strokeO = hlO > 0.7 ? qualityStrokeHl(qO, isDark, c.strokeBase) : c.strokeBase;
+        const strokeM = hlM > 0.7 ? qualityStrokeHl(qM, isDark, c.strokeBase) : c.strokeBase;
+        const strokeI = hlI > 0.7 ? qualityStrokeHl(qI, isDark, c.strokeBase) : c.strokeBase;
 
         const pOuter = wedgePath(cx, cy, rMid, rOuter, startDeg, endDeg);
         const pMid = wedgePath(cx, cy, rInner, rMid, startDeg, endDeg);
@@ -606,17 +656,17 @@ function CircleSVG({
 
             <text x={oPos.x} y={oPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-bold"
-              style={{ fontSize: outerFontSize, fill: hlO > 0 ? c.textOuterHl(hlO) : c.textOuterMuted }}>
+              style={{ fontSize: outerFontSize, fill: qualityTextColor(qO, hlO, isDark, c.textOuterMuted) }}>
               {majLabel}
             </text>
             <text x={mPos.x} y={mPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-semibold"
-              style={{ fontSize: midFontSize, fill: hlM > 0 ? c.textMidHl(hlM) : c.textMidMuted }}>
+              style={{ fontSize: midFontSize, fill: qualityTextColor(qM, hlM, isDark, c.textMidMuted) }}>
               {minLabel}
             </text>
             <text x={iPos.x} y={iPos.y} textAnchor="middle" dominantBaseline="central"
               className="pointer-events-none select-none font-semibold"
-              style={{ fontSize: innerFontSize, fill: hlI > 0 ? c.textInnerHl(hlI) : c.textInnerMuted }}>
+              style={{ fontSize: innerFontSize, fill: qualityTextColor(qI, hlI, isDark, c.textInnerMuted) }}>
               {dimLabel}
             </text>
           </g>

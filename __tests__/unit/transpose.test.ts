@@ -112,6 +112,16 @@ describe("transposeChordToken", () => {
     expect(transposeChordToken("Caug", 7)).toBe("Gaug");
     expect(transposeChordToken("Cmaj7", 4)).toBe("Emaj7");
   });
+
+  it("handles complex suffixes: mmaj7, dim7, m7b5, add9", () => {
+    expect(transposeChordToken("F#mmaj7", 1)).toBe("Gmmaj7");
+    expect(transposeChordToken("Cdim7", 2)).toBe("Ddim7");
+    expect(transposeChordToken("Cm7b5", 3)).toBe("D#m7b5");
+    expect(transposeChordToken("Cadd9", 5)).toBe("Fadd9");
+    expect(transposeChordToken("D#dim", 1)).toBe("Edim");
+    expect(transposeChordToken("Am7b5", 2)).toBe("Bm7b5");
+    expect(transposeChordToken("C7b9", 7)).toBe("G7b9");
+  });
 });
 
 describe("transposeChordBodyText", () => {
@@ -201,6 +211,14 @@ describe("formatChordSymbolDisplay", () => {
 });
 
 describe("extractUniqueChordTokensAsRendered", () => {
+  it("extracts complex chord tokens from bracket lines", () => {
+    expect(extractUniqueChordTokensAsRendered("[F#mmaj7] [Cdim7] [Am7b5]")).toEqual(["F#mmaj7", "Cdim7", "Am7b5"]);
+  });
+
+  it("extracts complex chord tokens from inline lines", () => {
+    expect(extractUniqueChordTokensAsRendered("F#mmaj7  D#dim  Cadd9  Am7b5")).toEqual(["F#mmaj7", "D#dim", "Cadd9", "Am7b5"]);
+  });
+
   it("on bracket lines only takes chords inside brackets", () => {
     expect(extractUniqueChordTokensAsRendered("[Am] sözde G ve F geçse de")).toEqual(["Am"]);
   });

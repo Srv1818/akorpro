@@ -27,7 +27,6 @@ import {
   limit,
 } from "firebase/firestore";
 import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
-import { CircleOfFifths } from "@/components/tools/circle-of-fifths";
 import { AutoScrollButton, MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
 import { PreviewGamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
@@ -79,10 +78,10 @@ type Props = {
 };
 
 type PlaylistRow = { id: string; name: string };
-type WidgetId = "circle" | "gamlar" | "metronome";
+type WidgetId = "gamlar" | "metronome";
 const INLINE_CHORD_REGEX =
-  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?(?![\p{L}\p{M}\p{N}_])/gu;
-const BRACKET_CHORD_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/g;
+  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)((?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*)(?![\p{L}\p{M}\p{N}_])/gu;
+const BRACKET_CHORD_REGEX = /\[([A-G](?:#|b)?(?:(?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*))\]/g;
 
 function lineHasBracketChords(line: string): boolean {
   return new RegExp(BRACKET_CHORD_REGEX.source).test(line);
@@ -521,17 +520,14 @@ export function PreviewClient({
   const setTonalCenterIndex = usePreviewToolsStore((s) => s.setTonalCenterIndex);
   const resetTonalAndTranspose = usePreviewToolsStore((s) => s.resetTonalAndTranspose);
   const [openWidgets, setOpenWidgets] = useState<Record<WidgetId, boolean>>({
-    circle: false,
     gamlar: false,
     metronome: false,
   });
   const [widgetOffsets, setWidgetOffsets] = useState<Record<WidgetId, { x: number; y: number }>>({
-    circle: { x: 0, y: 0 },
     gamlar: { x: 0, y: 0 },
     metronome: { x: 0, y: 0 },
   });
   const [widgetSizes, setWidgetSizes] = useState<Record<WidgetId, { width: number; height: number } | null>>({
-    circle: null,
     gamlar: null,
     metronome: null,
   });
@@ -632,7 +628,7 @@ export function PreviewClient({
   const gamlarWidgetScaleId = initialGamlarScaleId ?? keyModeToGamlarCatalogScaleId(keyMode);
   const transposedTonicPc = originalTonicPc === null ? null : (originalTonicPc + semitones + 120) % 12;
 
-  /** Transpoze (buton, URL, oklar) ile tonal merkez tek kaynakta kalsın — 5'li çember / Gamlar gamlar modu */
+  /** Transpoze (buton, URL, oklar) ile tonal merkez tek kaynakta kalsın — Gamlar gamlar modu */
   useEffect(() => {
     if (transposedTonicPc === null) return;
     setTonalCenterIndex(transposedTonicPc);
@@ -819,11 +815,11 @@ export function PreviewClient({
   }, [firebaseUid, searchParams, songId, hasTransposeParam, setTransposeSemitones]);
 
   useEffect(() => {
-    if (!openWidgets.circle && !openWidgets.gamlar && !openWidgets.metronome) return;
+    if (!openWidgets.gamlar && !openWidgets.metronome) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setOpenWidgets({ circle: false, gamlar: false, metronome: false });
+        setOpenWidgets({ gamlar: false, metronome: false });
       }
     };
 
@@ -852,10 +848,10 @@ export function PreviewClient({
   }, [openWidgets.gamlar]);
 
   useEffect(() => {
-    if (!openWidgets.circle && !openWidgets.gamlar && !openWidgets.metronome) return;
+    if (!openWidgets.gamlar && !openWidgets.metronome) return;
 
     const applyLayout = () => {
-      const opened = (["circle", "gamlar", "metronome"] as const).filter((id) => openWidgets[id]);
+      const opened = (["gamlar", "metronome"] as const).filter((id) => openWidgets[id]);
       if (opened.length === 0) return;
 
       const isNarrow = window.innerWidth < WIDGET_MOBILE_MAX;
@@ -1226,26 +1222,9 @@ export function PreviewClient({
     [pathname, router, searchParams, setTransposeSemitones],
   );
 
-  const handleCirclePitchClassSelect = useCallback(
-    (selectedPc: number, meta?: { ring: "outer" | "mid" }) => {
-      if (originalTonicPc === null) return;
-      // Gamlar modu: orta halka = minör kökü zaten verir; dış = majör kökü (legacy ile aynı mantık).
-      let targetTonicPc: number;
-      if (meta?.ring === "mid") {
-        targetTonicPc = selectedPc;
-      } else {
-        targetTonicPc =
-          originalMode === "major" ? selectedPc : (selectedPc - 3 + 12) % 12;
-      }
-      replaceTranspose(signedSemitoneDelta(originalTonicPc, targetTonicPc));
-    },
-    [originalMode, originalTonicPc, replaceTranspose],
-  );
-
   // Ok tuşlarıyla yarım ses (semitone) hareketi.
   useEffect(() => {
-    const hasAnyWidgetOpen = openWidgets.circle || openWidgets.gamlar;
-    if (hasAnyWidgetOpen || saveAndAddOpen || (showHarmonyDetails && harmonyDetailOpen)) return;
+    if (openWidgets.gamlar || saveAndAddOpen || (showHarmonyDetails && harmonyDetailOpen)) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -1477,7 +1456,6 @@ export function PreviewClient({
   const canCreatePlaylistInModal = canSave && Boolean(saveModalNewListName.trim());
 
   const widgetTitleById: Record<WidgetId, string> = {
-    circle: "5'li Çember",
     gamlar: "Gamlar",
     metronome: "Metronom",
   };
@@ -1901,7 +1879,7 @@ export function PreviewClient({
               <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
                 <pre
                 data-lyrics-pre="scene"
-                  className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
+                  className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-white sm:leading-snug md:leading-snug"
                   style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                 >
                   {renderChordBodyWithHighlights(
@@ -1913,7 +1891,7 @@ export function PreviewClient({
                 {splitLyricsEnabled ? (
                   <pre
                     data-lyrics-pre="scene"
-                    className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-white sm:leading-snug md:leading-snug"
+                    className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-white sm:leading-snug md:leading-snug"
                     style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                   >
                     {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
@@ -2133,18 +2111,6 @@ export function PreviewClient({
           <div className="flex flex-wrap items-center justify-start gap-x-1 gap-y-1.5">
             <button
               type="button"
-              onClick={() => setOpenWidgets((w) => ({ ...w, circle: !w.circle }))}
-              aria-pressed={openWidgets.circle}
-            className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
-                openWidgets.circle
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-bg text-foreground hover:border-accent/50"
-              }`}
-            >
-              5&apos;li Çember
-            </button>
-            <button
-              type="button"
               onClick={() =>
                 setOpenWidgets((w) => {
                   const opening = !w.gamlar;
@@ -2273,9 +2239,9 @@ export function PreviewClient({
         </div>
       </div>
 
-      {(openWidgets.circle || openWidgets.gamlar || openWidgets.metronome) ? (
+      {(openWidgets.gamlar || openWidgets.metronome) ? (
         <div className="pointer-events-none fixed inset-0 z-50 p-0 sm:p-4">
-          {(["circle", "gamlar", "metronome"] as const).map((widget) => {
+          {(["gamlar", "metronome"] as const).map((widget) => {
             if (!openWidgets[widget]) return null;
             const widgetTitle = widgetTitleById[widget];
             const offset = widgetOffsets[widget];
@@ -2307,18 +2273,7 @@ export function PreviewClient({
                 </div>
 
                 <div className="flex-1 overflow-auto p-4">
-                  {widget === "circle" ? (
-                    <div className="mx-auto max-w-5xl">
-                      <CircleOfFifths
-                        variant="full"
-                        chordSource="gamlar"
-                        lockedMode={originalMode}
-                        resolveGamlarScaleWithKeyMode={originalMode}
-                        selectedPitchClass={transposedTonicPc}
-                        onPitchClassSelect={handleCirclePitchClassSelect}
-                      />
-                    </div>
-                  ) : widget === "gamlar" ? (
+                  {widget === "gamlar" ? (
                     <div className="mx-auto max-w-6xl">
                       <PreviewGamlarScaleExplorer
                         lockedTonicPc={transposedTonicPc}
@@ -2339,7 +2294,7 @@ export function PreviewClient({
                     />
                   )}
                 </div>
-                {widget === "circle" || widget === "gamlar" ? (
+                {widget === "gamlar" ? (
                   <button
                     type="button"
                     aria-label="Widget boyutunu değiştir"
@@ -2513,7 +2468,7 @@ export function PreviewClient({
         <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
           <pre
             data-lyrics-pre="body"
-            className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
+            className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-foreground sm:leading-snug md:leading-snug"
             style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
           >
             {renderChordBodyWithHighlights(
@@ -2525,7 +2480,7 @@ export function PreviewClient({
           {splitLyricsEnabled ? (
             <pre
               data-lyrics-pre="body"
-              className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre leading-none text-foreground sm:leading-snug md:leading-snug"
+              className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-foreground sm:leading-snug md:leading-snug"
               style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
             >
               {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}

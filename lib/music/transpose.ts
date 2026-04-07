@@ -13,18 +13,17 @@ export function signedSemitoneDelta(fromPc: number, toPc: number): number {
 }
 
 export function transposeChordToken(token: string, semitones: number): string {
-  const m = token.match(/^([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?$/i);
+  const m = token.match(/^([A-G](?:#|b)?)((?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*)$/i);
   if (!m) return token;
   const root = m[1];
-  const quality = m[2] ?? "";
-  const digits = m[3] ?? "";
+  const suffix = m[2] ?? "";
 
   const rootPc = noteNameToPitchClass(root);
   if (rootPc === null) return token;
 
   const newPc = (rootPc + semitones + 120) % 12;
   const newRoot = PC_TO_NAME[newPc];
-  return `${newRoot}${quality}${digits}`;
+  return `${newRoot}${suffix}`;
 }
 
 /**
@@ -48,13 +47,13 @@ export function formatChordSymbolDisplay(token: string): string {
 
 /** Metindeki akor tokenlarıyla aynı desen (transpose ile uyumlu). */
 const CHORD_TOKEN_REGEX =
-  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?(?![\p{L}\p{M}\p{N}_])/giu;
-const BRACKETED_CHORD_TOKEN_REGEX = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/gi;
+  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)((?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*)(?![\p{L}\p{M}\p{N}_])/giu;
+const BRACKETED_CHORD_TOKEN_REGEX = /\[([A-G](?:#|b)?(?:(?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*))\]/gi;
 
 /** `preview-client` ile aynı: köşeli akor satırı tespiti + inline akorlar (ham metin; `i` ham küçük harf için). */
-const AS_RENDERED_BRACKET_CHORD = /\[([A-G](?:#|b)?(?:maj|min|m|dim|aug|sus2|sus4)?(?:\d+)?)\]/gi;
+const AS_RENDERED_BRACKET_CHORD = /\[([A-G](?:#|b)?(?:(?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*))\]/gi;
 const AS_RENDERED_INLINE_CHORD =
-  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)(maj|min|m|dim|aug|sus2|sus4)?(\d+)?(?![\p{L}\p{M}\p{N}_])/giu;
+  /(?<![\p{L}\p{M}\p{N}_])([A-G](?:#|b)?)((?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*)(?![\p{L}\p{M}\p{N}_])/giu;
 
 function normalizeBracketedChordTokens(text: string): string {
   return text.replace(BRACKETED_CHORD_TOKEN_REGEX, (full, chordToken: string, offset: number, source: string) => {
@@ -158,8 +157,7 @@ export function transposeChordBodyText(text: string, semitones: number): string 
   if (!Number.isFinite(semitones)) return normalized;
 
   const re = new RegExp(CHORD_TOKEN_REGEX.source, CHORD_TOKEN_REGEX.flags);
-  return normalized.replace(re, (full, root: string, quality: string | undefined, digits: string | undefined) => {
-    const suffix = `${quality ?? ""}${digits ?? ""}`;
+  return normalized.replace(re, (full, root: string, suffix: string) => {
     const token = `${root}${suffix}`;
     if (semitones === 0) return formatChordSymbolDisplay(token);
     return transposeChordToken(token, semitones);

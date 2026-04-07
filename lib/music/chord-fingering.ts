@@ -25,10 +25,16 @@ const DB_KEY_BY_PC: Record<number, GuitarRootDbKey> = {
 
 const SUPPORTED_SUFFIXES = new Set<string>(GUITAR_QUALITY_OPTIONS.map((q) => q.suffix));
 
+/**
+ * Tonal alias → chords-db suffix. Tonal aliasları büyük/küçük harf karışık
+ * gelebilir (ör. "mMaj7"); DB tamamen küçük harf kullanır ("mmaj7").
+ */
 function normalizeAliasToDbSuffix(alias: string): string {
   const a = alias.trim();
   if (a === "" || a === "M" || a === "^" || a.toLowerCase() === "maj") return "major";
   if (a === "m" || a.toLowerCase() === "min" || a === "-") return "minor";
+  const lower = a.toLowerCase();
+  if (SUPPORTED_SUFFIXES.has(lower)) return lower;
   return a;
 }
 
@@ -45,6 +51,43 @@ function tonicToDbKey(tonic: string): GuitarRootDbKey | null {
   return DB_KEY_BY_PC[pc] ?? null;
 }
 
+/* ------------------------------------------------------------------ */
+/* Doğrudan regex tabanlı lookup — tonal'ın tanımadığı tokenler için   */
+/* ------------------------------------------------------------------ */
+const TOKEN_RE = /^([A-G](?:#|b)?)((?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*)$/i;
+
+const DIRECT_SUFFIX_MAP: Record<string, string> = {
+  "": "major",
+  "M": "major",
+  "maj": "major",
+  "m": "minor",
+  "min": "minor",
+  "min6": "m6",
+  "min7": "m7",
+  "min9": "m9",
+  "min11": "m11",
+  "min13": "m13",
+};
+
+function tryDirectLookup(token: string): ResolvedChordFingering | null {
+  const clean = token.split("/")[0]?.trim() ?? token.trim();
+  const m = clean.match(TOKEN_RE);
+  if (!m) return null;
+
+  const root = m[1]!;
+  const rawSuffix = (m[2] ?? "").toLowerCase();
+  const dbKey = tonicToDbKey(root);
+  if (!dbKey) return null;
+
+  const suffix = DIRECT_SUFFIX_MAP[rawSuffix] ?? rawSuffix;
+  if (!SUPPORTED_SUFFIXES.has(suffix)) return null;
+
+  const result = getGuitarChord(dbKey, suffix);
+  if (!result) return null;
+
+  return { token, dbKey, suffix, chord: result.chord };
+}
+
 export type ResolvedChordFingering = {
   token: string;
   dbKey: GuitarRootDbKey | null;
@@ -53,6 +96,9 @@ export type ResolvedChordFingering = {
 };
 
 export function resolveChordTokenToFingering(token: string): ResolvedChordFingering {
+  const direct = tryDirectLookup(token);
+  if (direct) return direct;
+
   const symbol = token.split("/")[0]?.trim() ?? token.trim();
   const parsed = Chord.get(symbol);
   if (parsed.empty || !parsed.tonic) {
