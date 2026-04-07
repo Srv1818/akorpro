@@ -2125,7 +2125,7 @@ export function PreviewClient({
                   : "border-border bg-bg text-foreground hover:border-accent/50"
               }`}
             >
-              Gamlar
+              Solo/Gam
             </button>
             <button
               type="button"
