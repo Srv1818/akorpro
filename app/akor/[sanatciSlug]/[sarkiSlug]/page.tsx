@@ -10,7 +10,12 @@ import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
-import { getSongBySlugs, getSongsByArtist, getAllApprovedSongs } from "@/lib/firestore/songs";
+import {
+  getSongBySlugs,
+  getSongBySlugsUncached,
+  getSongsByArtist,
+  getAllApprovedSongs,
+} from "@/lib/firestore/songs";
 import { chordPath } from "@/lib/paths";
 import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
 import { songJsonLd } from "@/lib/seo/structured-data";
@@ -67,13 +72,30 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
   const parsedTranspose = rawTranspose !== undefined ? Number(rawTranspose) : 0;
   const initialTranspose = Number.isFinite(parsedTranspose) ? parsedTranspose : 0;
 
-  const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
+  let song = null as Awaited<ReturnType<typeof getSongBySlugs>>;
+  try {
+    song = await getSongBySlugs(sanatciSlug, sarkiSlug);
+    if (!song) {
+      // İlk okumada geçici negatif cache/data race oluşursa 404 vermeden önce bir kez
+      // cache-bypass doğrulaması yap.
+      song = await getSongBySlugsUncached(sanatciSlug, sarkiSlug);
+    }
+  } catch (e) {
+    console.error("[akor] song fetch failed", { sanatciSlug, sarkiSlug, e });
+    song = null;
+  }
   if (!song) notFound();
 
   const initialGamlarScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
 
   const sessionUser = await getServerSessionUser();
-  const artistSongs = await getSongsByArtist(sanatciSlug);
+  let artistSongs: Awaited<ReturnType<typeof getSongsByArtist>> = [];
+  try {
+    artistSongs = await getSongsByArtist(sanatciSlug);
+  } catch (e) {
+    console.error("[akor] artist songs fetch failed", { sanatciSlug, e });
+    artistSongs = [];
+  }
   const prevSong = (() => {
     const idx = artistSongs.findIndex((s) => s.slug === sarkiSlug);
     if (idx <= 0) return null;

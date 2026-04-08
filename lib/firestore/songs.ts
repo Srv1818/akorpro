@@ -299,6 +299,14 @@ export function getSongBySlugs(artistSlug: string, songSlug: string) {
   )().then((cached) => (cached.found ? cached.song : null));
 }
 
+/** Cache-bypass: geçici negatif cache / soğuk başlangıç durumlarında ikinci doğrulama için. */
+export async function getSongBySlugsUncached(
+  artistSlug: string,
+  songSlug: string,
+): Promise<(SongDoc & { id: string }) | null> {
+  return _getSongBySlugs(artistSlug, songSlug);
+}
+
 /** Tek şarkı — ID ile (uncached, discover resolver uses its own cache) */
 export async function getSongById(songId: string): Promise<(SongDoc & { id: string }) | null> {
   const doc = await db().collection(COLLECTION).doc(songId).get();
