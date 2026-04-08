@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { canPublishSongs } from "@/lib/auth/publisher";
 import { moderateSong, getSongByIdAdmin } from "@/lib/firestore/admin-songs";
 import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
 import { chordPath } from "@/lib/paths";
@@ -31,6 +32,13 @@ export async function POST(request: Request, ctx: Ctx) {
 
   if (!VALID_STATUSES.includes(status as ModerationStatus)) {
     return NextResponse.json({ error: "Geçersiz durum." }, { status: 400 });
+  }
+
+  if (status === "approved" && !canPublishSongs(auth.user.uid)) {
+    return NextResponse.json(
+      { error: "Şarkıyı yayına alma yetkisi yalnız yayın yetkilisindedir." },
+      { status: 403 },
+    );
   }
 
   await moderateSong(id, status as ModerationStatus, auth.user.uid, note);

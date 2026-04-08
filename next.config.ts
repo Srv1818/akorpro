@@ -74,7 +74,6 @@ const nextConfig: NextConfig = {
       { source: "/login", destination: "/giris", permanent: true },
       { source: "/search", destination: "/arama", permanent: true },
       { source: "/contribute", destination: "/iletisim", permanent: true },
-      { source: "/katki", destination: "/iletisim", permanent: true },
       // Trailing slash normalisation
       { source: "/gitar-akorlari/", destination: "/gitar-akorlari", permanent: true },
       { source: "/kesfet/", destination: "/", permanent: true },

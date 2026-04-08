@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import admin from "firebase-admin";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { canPublishSongs } from "@/lib/auth/publisher";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { TAGS } from "@/lib/cache/tags";
 import { validateImportPayload } from "@/lib/firestore/import-validator";
@@ -187,6 +188,7 @@ export async function POST(request: Request) {
   const now = admin.firestore.FieldValue.serverTimestamp();
   const BATCH_SIZE = 500;
   let imported = 0;
+  const importModerationStatus = canPublishSongs(auth.user.uid) ? "approved" : "pending";
 
   for (let i = 0; i < valid.length; i += BATCH_SIZE) {
     const batch = firestore.batch();
@@ -211,7 +213,7 @@ export async function POST(request: Request) {
         })(),
         difficulty: row.difficulty,
         genre: row.genre,
-        moderationStatus: "approved",
+        moderationStatus: importModerationStatus,
         tempo: row.tempo ?? null,
         timeSignature: row.timeSignature ?? null,
         tuning: row.tuning ?? null,

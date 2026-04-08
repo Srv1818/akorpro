@@ -23,6 +23,9 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Oturum gerekli." }, { status: 401 });
   }
+  if (!user.admin) {
+    return NextResponse.json({ error: "Katkı API’si yalnızca yöneticiler içindir." }, { status: 403 });
+  }
 
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (!contribRl.check(clientIp)) {
@@ -94,13 +97,12 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Oturum gerekli." }, { status: 401 });
   }
+  if (!user.admin) {
+    return NextResponse.json({ error: "Katkı listesi yalnızca yöneticiler içindir." }, { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const uid = searchParams.get("uid");
-
-  if (uid && uid !== user.uid && !user.admin) {
-    return NextResponse.json({ error: "Başka kullanıcının katkılarını görme yetkiniz yok." }, { status: 403 });
-  }
 
   const contributions = await getContributionsByUser(uid ?? user.uid);
   return NextResponse.json({ contributions });

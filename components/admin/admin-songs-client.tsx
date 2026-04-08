@@ -43,6 +43,8 @@ const KEY_MODES: readonly KeyMode[] = ["major", "natural", "harmonic", "melodic"
 
 export function AdminSongsClient() {
   const [songs, setSongs] = useState(EMPTY);
+  const [publisherGateActive, setPublisherGateActive] = useState(false);
+  const [canPublish, setCanPublish] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
@@ -127,6 +129,16 @@ export function AdminSongsClient() {
 
   useEffect(() => { fetchSongs(); }, [fetchSongs]);
 
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { publisherGateActive?: boolean; canPublishSongs?: boolean }) => {
+        if (typeof d.publisherGateActive === "boolean") setPublisherGateActive(d.publisherGateActive);
+        if (typeof d.canPublishSongs === "boolean") setCanPublish(d.canPublishSongs);
+      })
+      .catch(() => {});
+  }, []);
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (saving) return;
@@ -188,8 +200,16 @@ export function AdminSongsClient() {
         data && typeof data === "object" && "id" in data && typeof (data as { id?: unknown }).id === "string"
           ? (data as { id: string }).id
           : null;
+      const createdStatus =
+        data && typeof data === "object" && "moderationStatus" in data && typeof (data as { moderationStatus?: unknown }).moderationStatus === "string"
+          ? (data as { moderationStatus: string }).moderationStatus
+          : null;
 
-      setMsg(editId ? "Güncellendi." : `Oluşturuldu${createdId ? `: ${createdId}` : "."}`);
+      if (!editId && createdStatus === "pending") {
+        setMsg(`Oluşturuldu (beklemede)${createdId ? ` — ${createdId}` : ""}. Yayın yetkilisi moderasyonda onayladığında sitede görünür.`);
+      } else {
+        setMsg(editId ? "Güncellendi." : `Oluşturuldu${createdId ? `: ${createdId}` : "."}`);
+      }
       setShowForm(false);
       resetFormState();
       fetchSongs();
@@ -207,6 +227,10 @@ export function AdminSongsClient() {
   }
 
   async function startEdit(song: Song) {
+    if (publisherGateActive && !canPublish && song.moderationStatus === "approved") {
+      setMsg("Yayında şarkıları yalnızca yayın yetkilisi düzenleyebilir.");
+      return;
+    }
     setEditId(song.id);
     setShowForm(true);
     setLoadingEdit(true);
@@ -253,9 +277,19 @@ export function AdminSongsClient() {
 
   if (loading) return <p className="text-sm text-muted">Yükleniyor…</p>;
 
+  const lockedLive = publisherGateActive && !canPublish;
+
   return (
     <div>
       {msg ? <p className="mb-4 rounded-lg bg-surface p-3 text-sm text-foreground">{msg}</p> : null}
+
+      {publisherGateActive ? (
+        <p className="mb-4 rounded-lg border border-border bg-bg px-3 py-2 text-sm text-muted">
+          {canPublish
+            ? "Yayın yetkilisi olarak eklediğiniz şarkılar doğrudan yayına alınır; diğer adminlerinki önce beklemede kalır."
+            : "Yeni şarkı ve içe aktarma kayıtlarınız beklemede kalır; yayın yetkilisi moderasyonda onaylar veya şarkıyı kendisi düzenleyip yayına alır. Yayında şarkıları siz düzenleyemezsiniz."}
+        </p>
+      ) : null}
 
       <div className="mb-4 flex gap-2">
         <button
@@ -521,10 +555,22 @@ export function AdminSongsClient() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => startEdit(s)} className="text-xs text-accent hover:underline">
+                    <button
+                      type="button"
+                      disabled={lockedLive && s.moderationStatus === "approved"}
+                      title={lockedLive && s.moderationStatus === "approved" ? "Yayında — yalnız yayın yetkilisi" : undefined}
+                      onClick={() => startEdit(s)}
+                      className="text-xs text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline"
+                    >
                       Düzenle
                     </button>
-                    <button type="button" onClick={() => onDelete(s.id)} className="text-xs text-red-500 hover:underline">
+                    <button
+                      type="button"
+                      disabled={lockedLive && s.moderationStatus === "approved"}
+                      title={lockedLive && s.moderationStatus === "approved" ? "Yayında — yalnız yayın yetkilisi" : undefined}
+                      onClick={() => onDelete(s.id)}
+                      className="text-xs text-red-500 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline"
+                    >
                       Sil
                     </button>
                   </div>

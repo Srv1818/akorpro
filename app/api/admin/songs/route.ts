@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { canPublishSongs } from "@/lib/auth/publisher";
 import { createSong, getAllSongsAdmin } from "@/lib/firestore/admin-songs";
 import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
 import { chordPath } from "@/lib/paths";
@@ -68,6 +69,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
   }
 
+  const moderationStatus = canPublishSongs(auth.user.uid) ? "approved" : "pending";
+
   let id: string;
   try {
     id = await createSong(
@@ -92,6 +95,7 @@ export async function POST(request: Request) {
         popularity: typeof b.popularity === "number" ? b.popularity : undefined,
         showHarmonyDetails,
         harmonyDetailsNotes,
+        moderationStatus,
       },
       auth.user.uid,
     );
@@ -109,5 +113,5 @@ export async function POST(request: Request) {
   revalidateTag(TAGS.DISCOVER_FEATURED, "max");
   revalidatePath(chordPath(artistSlug, slug), "page");
 
-  return NextResponse.json({ ok: true, id });
+  return NextResponse.json({ ok: true, id, moderationStatus });
 }

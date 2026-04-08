@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { canPublishSongs } from "@/lib/auth/publisher";
 import { getPendingContributions, getContributionById, updateContributionStatus } from "@/lib/firestore/contributions";
 import { createSong } from "@/lib/firestore/admin-songs";
 import { writeAuditLog } from "@/lib/security/audit-log";
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
   }
 
   if (action === "approve") {
+    const songModerationStatus = canPublishSongs(auth.user.uid) ? "approved" : "pending";
+
     const slug = contrib.songTitle
       .toLowerCase()
       .replace(/[^a-z0-9ğüşıöçâîû\s-]/g, "")
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
         capo: contrib.capo,
         copyrightSource: contrib.copyrightSource,
         contributorIds: [contrib.contributorUid],
-        moderationStatus: "approved",
+        moderationStatus: songModerationStatus,
       },
       auth.user.uid,
     );

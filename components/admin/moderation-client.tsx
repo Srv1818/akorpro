@@ -29,14 +29,20 @@ export function ModerationClient() {
   const [contribs, setContribs] = useState<PendingContrib[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
+  const [canPublishSongs, setCanPublishSongs] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [songsRes, contribsRes] = await Promise.all([
+      const [songsRes, contribsRes, meRes] = await Promise.all([
         fetch("/api/admin/songs"),
         fetch("/api/admin/contributions"),
+        fetch("/api/auth/me", { credentials: "include" }),
       ]);
+      if (meRes.ok) {
+        const me = (await meRes.json()) as { canPublishSongs?: boolean };
+        if (typeof me.canPublishSongs === "boolean") setCanPublishSongs(me.canPublishSongs);
+      }
       if (songsRes.ok) {
         const data = await songsRes.json();
         setPendingSongs((data.songs as PendingSong[]).filter((s) => s.moderationStatus === "pending"));
@@ -58,7 +64,14 @@ export function ModerationClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    setMsg(res.ok ? `Şarkı ${status === "approved" ? "onaylandı" : "reddedildi"}.` : "Hata.");
+    let errText = "Hata.";
+    try {
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok && typeof data.error === "string") errText = data.error;
+    } catch {
+      /* ignore */
+    }
+    setMsg(res.ok ? `Şarkı ${status === "approved" ? "onaylandı" : "reddedildi"}.` : errText);
     fetchData();
   }
 
@@ -82,6 +95,11 @@ export function ModerationClient() {
       {/* Pending Songs */}
       <section>
         <h2 className="text-lg font-semibold text-foreground">Bekleyen şarkılar ({pendingSongs.length})</h2>
+        {!canPublishSongs ? (
+          <p className="mt-2 text-sm text-muted">
+            Şarkıyı yayına alma (onaylama) yalnızca yayın yetkilisindedir. Siz reddedebilir veya şarkıları Şarkılar sekmesinde düzenleyebilirsiniz.
+          </p>
+        ) : null}
         {pendingSongs.length === 0 ? (
           <p className="mt-2 text-sm text-muted">Bekleyen şarkı yok.</p>
         ) : (
@@ -93,7 +111,13 @@ export function ModerationClient() {
                   <p className="text-sm text-muted">{s.artistName} · {s.originalKey}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => moderateSong(s.id, "approved")} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700">
+                  <button
+                    type="button"
+                    disabled={!canPublishSongs}
+                    title={!canPublishSongs ? "Yayın yetkilisi onaylar" : undefined}
+                    onClick={() => moderateSong(s.id, "approved")}
+                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
                     Onayla
                   </button>
                   <button type="button" onClick={() => moderateSong(s.id, "rejected")} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">

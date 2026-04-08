@@ -7,7 +7,7 @@ import { startTransition, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { getClientAuth } from "@/lib/firebase/client";
 // Dropdown ikonları için Lucide-react (shadcn projelerinde standarttır)
-import { MessageCircle, User, LogOut } from "lucide-react";
+import { MessageCircle, PenLine, User, LogOut } from "lucide-react";
 
 type MeResponse = { user: SessionUser | null };
 
@@ -71,6 +71,16 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
               <MessageCircle className="h-4 w-4 text-muted" />
               İletişim
             </Link>
+            {user.admin ? (
+              <Link
+                href="/katki"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-surface transition-colors"
+              >
+                <PenLine className="h-4 w-4 text-muted" />
+                Katkı girişi
+              </Link>
+            ) : null}
           </div>
 
           <div className="border-t border-border/50 py-1">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { canPublishSongs } from "@/lib/auth/publisher";
 import { getSongByIdAdmin, updateSong, deleteSong } from "@/lib/firestore/admin-songs";
 import { songTag, songsArtistTag, TAGS } from "@/lib/cache/tags";
 import { chordPath } from "@/lib/paths";
@@ -48,6 +49,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
   const existing = await getSongByIdAdmin(id);
   if (!existing) return NextResponse.json({ error: "Şarkı bulunamadı." }, { status: 404 });
 
+  if (existing.moderationStatus === "approved" && !canPublishSongs(auth.user.uid)) {
+    return NextResponse.json(
+      { error: "Yayında şarkıları yalnızca yayın yetkilisi düzenleyebilir." },
+      { status: 403 },
+    );
+  }
+
   const b = body as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
 
@@ -69,7 +77,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (typeof b.tuning === "string") updates.tuning = b.tuning;
   if (typeof b.capo === "number") updates.capo = b.capo;
   if (typeof b.copyrightSource === "string") updates.copyrightSource = b.copyrightSource;
-  if (typeof b.moderationStatus === "string") updates.moderationStatus = b.moderationStatus;
+  if (typeof b.moderationStatus === "string" && canPublishSongs(auth.user.uid)) {
+    updates.moderationStatus = b.moderationStatus;
+  }
   if (typeof b.popularity === "number") updates.popularity = b.popularity;
   if (typeof b.showHarmonyDetails === "boolean") updates.showHarmonyDetails = b.showHarmonyDetails;
   if (typeof b.harmonyDetailsNotes === "string") updates.harmonyDetailsNotes = sanitizeTextContent(b.harmonyDetailsNotes);
@@ -121,6 +131,13 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 
   const { id } = await ctx.params;
   const song = await getSongByIdAdmin(id);
+  if (!song) return NextResponse.json({ error: "Şarkı bulunamadı." }, { status: 404 });
+  if (song.moderationStatus === "approved" && !canPublishSongs(auth.user.uid)) {
+    return NextResponse.json(
+      { error: "Yayında şarkıları yalnızca yayın yetkilisi silebilir." },
+      { status: 403 },
+    );
+  }
   await deleteSong(id, auth.user.uid);
 
   if (song) {
