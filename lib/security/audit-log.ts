@@ -22,6 +22,23 @@ export interface AuditEntry {
   createdAt: FirebaseFirestore.FieldValue;
 }
 
+function stripUndefinedDeep(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stripUndefinedDeep(item))
+      .filter((item) => item !== undefined);
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const cleaned = stripUndefinedDeep(v);
+      if (cleaned !== undefined) out[k] = cleaned;
+    }
+    return out;
+  }
+  return value === undefined ? undefined : value;
+}
+
 export async function writeAuditLog(
   actorUid: string,
   action: string,
@@ -37,9 +54,12 @@ export async function writeAuditLog(
     action,
     targetCollection,
     targetDocId,
-    details,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
+  const cleanedDetails = stripUndefinedDeep(details);
+  if (cleanedDetails && typeof cleanedDetails === "object") {
+    entry.details = cleanedDetails as Record<string, unknown>;
+  }
 
   try {
     await db.collection("admin_audit").add(entry);

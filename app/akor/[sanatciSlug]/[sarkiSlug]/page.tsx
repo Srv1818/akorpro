@@ -23,6 +23,7 @@ import { songJsonLd } from "@/lib/seo/structured-data";
 import { getServerSessionUser } from "@/lib/auth/server-session";
 import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
 import { firstParam } from "@/lib/search-params";
+import type { SongSummary } from "@/lib/types/content";
 
 /** ISR: 1 hour (see lib/cache/tags.ts TTL.SONG_DETAIL) */
 export const revalidate = 3600;
@@ -112,6 +113,16 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
   const related = artistSongs
     .filter((s) => s.slug !== sarkiSlug)
     .slice(0, 6);
+  const relatedSummaries: SongSummary[] = related.map((r) => ({
+    id: r.id,
+    title: r.title,
+    slug: r.slug,
+    artistSlug: r.artistSlug,
+    artistName: r.artistName,
+    originalKey: r.originalKey,
+    difficulty: r.difficulty,
+    coverImageUrl: r.coverImageUrl,
+  }));
 
   return (
     <>
@@ -232,7 +243,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
               <span className="text-display"> — diğer şarkılar</span>
             </h2>
             <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-              {related.map((r) => (
+              {relatedSummaries.map((r) => (
                 <li key={r.id}>
                   <SongCard song={r} showArtist={false} />
                 </li>
