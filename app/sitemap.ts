@@ -3,12 +3,15 @@ import { SITE_URL, chordPath, artistPath } from "@/lib/paths";
 import { getAllApprovedSongs } from "@/lib/firestore/songs";
 import { getAllArtists } from "@/lib/firestore/artists";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [songs, artists] = await Promise.all([
-    getAllApprovedSongs().catch(() => []),
-    getAllArtists().catch(() => []),
-  ]);
+function safeAbsoluteUrl(path: string): string | null {
+  try {
+    return new URL(path, SITE_URL).toString();
+  } catch {
+    return null;
+  }
+}
 
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: SITE_URL, changeFrequency: "daily", priority: 1.0 },
     { url: `${SITE_URL}/gitar-akorlari`, changeFrequency: "daily", priority: 0.8 },
@@ -18,17 +21,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/iletisim`, changeFrequency: "monthly", priority: 0.4 },
   ];
 
-  const artistEntries: MetadataRoute.Sitemap = artists.map((a) => ({
-    url: `${SITE_URL}${artistPath(a.slug)}`,
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+  try {
+    const [songs, artists] = await Promise.all([
+      getAllApprovedSongs().catch(() => []),
+      getAllArtists().catch(() => []),
+    ]);
 
-  const songEntries: MetadataRoute.Sitemap = songs.map((s) => ({
-    url: `${SITE_URL}${chordPath(s.artistSlug, s.slug)}`,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
+    const artistEntries: MetadataRoute.Sitemap = artists
+      .map((a) => {
+        const url = safeAbsoluteUrl(artistPath(a.slug));
+        if (!url) return null;
+        return {
+          url,
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        };
+      })
+      .filter((entry): entry is MetadataRoute.Sitemap[number] => entry !== null);
 
-  return [...staticPages, ...artistEntries, ...songEntries];
+    const songEntries: MetadataRoute.Sitemap = songs
+      .map((s) => {
+        const url = safeAbsoluteUrl(chordPath(s.artistSlug, s.slug));
+        if (!url) return null;
+        return {
+          url,
+          changeFrequency: "weekly" as const,
+          priority: 0.8,
+        };
+      })
+      .filter((entry): entry is MetadataRoute.Sitemap[number] => entry !== null);
+
+    return [...staticPages, ...artistEntries, ...songEntries];
+  } catch {
+    // Sitemap hiçbir koşulda 500 üretmesin; en azından statik URL'leri döndür.
+    return staticPages;
+  }
 }
