@@ -44,7 +44,7 @@ export default async function OGImage({
             color: "#a1a1aa",
           }}
         >
-          <span style={{ color: "#22c55e", fontWeight: 700 }}>AkorPro</span>
+          <span style={{ color: "#6D5DFC", fontWeight: 700 }}>AkorPro</span>
           <span>·</span>
           <span>Gitar Akorları</span>
         </div>

@@ -512,7 +512,7 @@ export function AdminSongsClient() {
                 <td className="px-4 py-3 capitalize text-muted">{s.difficulty}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                    s.moderationStatus === "approved" ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                    s.moderationStatus === "approved" ? "bg-teal-500/10 text-teal-700 dark:text-teal-400"
                     : s.moderationStatus === "pending" ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
                     : "bg-red-500/10 text-red-700 dark:text-red-400"
                   }`}>

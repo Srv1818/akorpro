@@ -31,7 +31,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#22c55e",
+  themeColor: "#6D5DFC",
 };
 
 /** Geçici: içerik hazır olana kadar (ör. 2–3 gün) `.env` → BLOCK_SEARCH_INDEXING=true */
@@ -96,7 +96,7 @@ export default async function RootLayout({
         ) : null}
       </head>
       <body
-        className={`${inter.variable} ${geistMono.variable} flex min-h-full flex-col font-sans antialiased`}
+        className={`${inter.variable} ${geistMono.variable} neu-theme flex min-h-full flex-col font-sans antialiased`}
       >
         <GoogleAnalytics />
         <SiteJsonLd />

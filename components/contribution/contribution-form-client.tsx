@@ -49,7 +49,7 @@ export function ContributionFormClient() {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       {msg ? (
-        <p className={`rounded-lg p-3 text-sm ${msg.includes("gönderildi") ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-red-500/10 text-red-700 dark:text-red-400"}`}>
+        <p className={`rounded-lg p-3 text-sm ${msg.includes("gönderildi") ? "bg-teal-500/10 text-teal-700 dark:text-teal-400" : "bg-red-500/10 text-red-700 dark:text-red-400"}`}>
           {msg}
         </p>
       ) : null}

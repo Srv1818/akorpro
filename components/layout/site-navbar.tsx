@@ -55,7 +55,7 @@ export function SiteNavbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-surface hover:text-foreground"
+                className="whitespace-nowrap rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-muted shadow-sm shadow-black/5 transition hover:border-accent/30 hover:bg-bg/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg active:translate-y-px active:shadow-inner"
               >
                 {item.label}
               </Link>

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { SongCardPlaylistAdd } from "@/components/content/song-card-playlist-add";
 import { chordPath } from "@/lib/paths";

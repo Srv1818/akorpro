@@ -9,7 +9,7 @@ export function ContributorBadge({ displayName, approvedCount, verified, classNa
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
       verified
-        ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400"
+        ? "border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-400"
         : "border-border bg-surface text-muted"
     } ${className}`}>
       {verified ? (

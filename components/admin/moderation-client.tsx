@@ -93,7 +93,7 @@ export function ModerationClient() {
                   <p className="text-sm text-muted">{s.artistName} · {s.originalKey}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => moderateSong(s.id, "approved")} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">
+                  <button type="button" onClick={() => moderateSong(s.id, "approved")} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700">
                     Onayla
                   </button>
                   <button type="button" onClick={() => moderateSong(s.id, "rejected")} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">
@@ -122,7 +122,7 @@ export function ModerationClient() {
                     <p className="mt-1 text-xs text-muted">Katkıcı: {c.contributorDisplayName}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => moderateContrib(c.id, "approve")} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">
+                    <button type="button" onClick={() => moderateContrib(c.id, "approve")} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700">
                       Onayla
                     </button>
                     <button type="button" onClick={() => moderateContrib(c.id, "reject")} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">

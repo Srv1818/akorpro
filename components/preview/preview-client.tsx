@@ -48,7 +48,7 @@ import {
   signedSemitoneDelta,
   transposeChordToken,
 } from "@/lib/music/transpose";
-import { ChevronRight, Info, MoreHorizontal, X } from "lucide-react";
+import { ChevronRight, Info, Mic, MoreHorizontal, X } from "lucide-react";
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
@@ -1526,7 +1526,7 @@ export function PreviewClient({
   }, [lyricsFontSizePx, lyricsAutoFitEnabled, chordBody, splitLyricsEnabled, semitones, sceneMode, lyricsFitResizeTick]);
 
   return (
-    <div>
+    <div className="-mx-4 rounded-2xl px-4 py-5 sm:-mx-6 sm:px-6 lg:px-8">
       {sceneMode ? (
         <div
           className="fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
@@ -1580,7 +1580,7 @@ export function PreviewClient({
                   onClick={() => setSplitLyricsEnabled((prev) => !prev)}
                   className={`inline-flex shrink-0 min-h-[36px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
                     splitLyricsEnabled
-                      ? "border-emerald-400/60 bg-emerald-500/25 text-white"
+                      ? "border-teal-400/60 bg-teal-500/25 text-white"
                       : "border-white/15 bg-white/5 text-white hover:bg-white/10"
                   }`}
                   aria-label="Sözleri iki sütuna böl"
@@ -1703,7 +1703,7 @@ export function PreviewClient({
                   onClick={() => setSplitLyricsEnabled((prev) => !prev)}
                   className={`inline-flex shrink-0 min-h-[36px] items-center justify-center rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${
                     splitLyricsEnabled
-                      ? "border-emerald-400/60 bg-emerald-500/25 text-white"
+                      ? "border-teal-400/60 bg-teal-500/25 text-white"
                       : "border-white/15 bg-white/5 text-white hover:bg-white/10"
                   }`}
                   aria-label="Sözleri iki sütuna böl"
@@ -2162,19 +2162,21 @@ export function PreviewClient({
               replaceSceneParam(next);
             }}
             aria-pressed={sceneMode}
-            aria-label="Sahne Modu"
-            title="Sahne Modu"
-            className={`group relative inline-flex min-h-[36px] w-11 flex-col items-center justify-center gap-px rounded-md border px-0.5 py-0.5 text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+            aria-label="Tam ekran"
+            title="Tam ekran"
+            className={`group relative inline-flex min-h-[36px] w-11 flex-col items-center justify-center gap-px rounded-md border px-0.5 py-0.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
               sceneMode
-                ? "border-amber-200/70 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 shadow-lg shadow-amber-500/45 ring-2 ring-amber-300/50"
-                : "border-white/15 bg-gradient-to-b from-amber-500 via-amber-600 to-orange-700 shadow-md shadow-amber-500/35 hover:from-amber-400 hover:via-amber-500 hover:to-orange-600"
+                ? "border-accent bg-accent text-accent-foreground shadow-md shadow-black/10 ring-1 ring-accent/30"
+                : "border-border bg-surface text-foreground shadow-sm shadow-black/5 hover:border-accent/40 hover:bg-bg/70"
             }`}
           >
-            <span aria-hidden className="text-base leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
-              ★
-            </span>
-            <span className="rounded bg-black/35 px-1 py-0.5 text-[9px] font-semibold leading-none tracking-wide text-white/95">
-              SAHNE
+            <Mic
+              aria-hidden
+              className="size-4 drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]"
+              strokeWidth={2.25}
+            />
+            <span className="rounded bg-black/25 px-1 py-0.5 text-[9px] font-semibold leading-none tracking-wide text-current/95">
+              Tam ekran
             </span>
           </button>
           </div>
@@ -2399,18 +2401,16 @@ export function PreviewClient({
                 replaceSceneParam(next);
               }}
               aria-pressed={sceneMode}
-              aria-label="Sahne Modu"
-              title="Sahne Modu"
-              className={`group relative inline-flex min-h-[36px] w-full items-center justify-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
+              aria-label="Tam ekran"
+              title="Tam ekran"
+              className={`group relative inline-flex min-h-[36px] w-full items-center justify-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
                 sceneMode
-                  ? "border-amber-200/70 bg-gradient-to-b from-yellow-300 via-amber-500 to-amber-700 shadow-lg shadow-amber-500/45 ring-2 ring-amber-300/50"
-                  : "border-white/15 bg-gradient-to-b from-amber-500 via-amber-600 to-orange-700 shadow-md shadow-amber-500/35 hover:from-amber-400 hover:via-amber-500 hover:to-orange-600"
+                  ? "border-accent bg-accent text-accent-foreground shadow-md shadow-black/10 ring-1 ring-accent/30"
+                  : "border-border bg-surface text-foreground shadow-sm shadow-black/5 hover:border-accent/40 hover:bg-bg/70"
               }`}
             >
-              <span aria-hidden className="text-base leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]">
-                ★
-              </span>
-              <span className="leading-none tracking-wide">SAHNE</span>
+              <Mic aria-hidden className="size-4 drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
+              <span className="leading-none tracking-wide">Tam ekran</span>
             </button>
           </div>
           {firebaseUid === undefined ? (
@@ -2458,7 +2458,7 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article
-        className="mt-4 rounded-2xl bg-bg py-4 pl-0 pr-4 sm:py-6 sm:pr-6 print:border-0 print:p-0"
+        className="mt-4 rounded-2xl bg-bg px-4 py-4 sm:px-6 sm:py-6 print:border-0 print:p-0"
         id="chord-body"
       >
         <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
