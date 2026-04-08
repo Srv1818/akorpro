@@ -16,7 +16,8 @@
   --color-accent-muted: 91 76 220;
   --color-display: 47 49 58;
   --chord-root: 63 63 70;
-  --chord-major: 41 121 255;
+  /* Akor vurgusu — referans mor (#8B80F9) */
+  --chord-major: 139 128 249;
   --chord-minor: 2 112 175;
   --chord-diminished: 225 29 72;
   --chord-augmented: 217 119 6;
@@ -44,8 +45,8 @@
   --color-accent-muted: 109 93 252;
   --color-display: 244 244 245;
   --chord-root: 212 212 216;
-  /* Akor satırı / token */
-  --chord-major: 41 121 255;
+  /* Akor satırı / token — referans mor (#8B80F9) */
+  --chord-major: 139 128 249;
   --chord-minor: 56 189 248;
   --chord-diminished: 251 113 133;
   --chord-augmented: 251 191 36;
@@ -152,7 +153,8 @@ body {
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "liga" 0;
-  white-space: pre-wrap;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .song-chord-text .song-chord-lyric {
@@ -168,8 +170,8 @@ body {
  * Akor turkuaz tonu ayrı blokta — !important Tailwind ile çakışmayı keser.
  */
 .song-chord-text .song-chord-lyric,
-pre.song-chord-text[data-lyrics-pre] span.song-chord-lyric,
-#chord-body pre.song-chord-text span.song-chord-lyric {
+.song-chord-text[data-lyrics-pre] span.song-chord-lyric,
+#chord-body .song-chord-text span.song-chord-lyric {
   font-weight: 300 !important;
   font-style: normal !important;
   font-synthesis: none !important;
@@ -179,17 +181,17 @@ pre.song-chord-text[data-lyrics-pre] span.song-chord-lyric,
   text-shadow: none !important;
 }
 
-.dark pre.song-chord-text[data-lyrics-pre] span.song-chord-lyric,
+.dark .song-chord-text[data-lyrics-pre] span.song-chord-lyric,
 .dark .song-chord-text .song-chord-lyric,
-.dark #chord-body pre.song-chord-text span.song-chord-lyric {
+.dark #chord-body .song-chord-text span.song-chord-lyric {
   color: #d1d5db !important;
 }
 
-pre.song-chord-text[data-lyrics-pre="scene"] span.song-chord-lyric {
+.song-chord-text[data-lyrics-pre="scene"] span.song-chord-lyric {
   color: #d1d5db !important;
 }
 
-pre.song-chord-text[data-lyrics-pre] {
+.song-chord-text[data-lyrics-pre] {
   font-weight: 300 !important;
   font-variation-settings: "wght" 300 !important;
   -webkit-font-smoothing: antialiased !important;
@@ -215,16 +217,16 @@ pre.song-chord-text[data-lyrics-pre] {
 }
 
 .song-chord-text button.song-chord-token,
-pre.song-chord-text[data-lyrics-pre] button.song-chord-token,
-#chord-body pre.song-chord-text button.song-chord-token {
+.song-chord-text[data-lyrics-pre] button.song-chord-token,
+#chord-body .song-chord-text button.song-chord-token {
   font-weight: 600 !important;
   color: rgb(var(--chord-major)) !important;
   font-variation-settings: "wght" 600;
 }
 
 .song-chord-text button.song-chord-token:hover,
-pre.song-chord-text[data-lyrics-pre] button.song-chord-token:hover,
-#chord-body pre.song-chord-text button.song-chord-token:hover {
+.song-chord-text[data-lyrics-pre] button.song-chord-token:hover,
+#chord-body .song-chord-text button.song-chord-token:hover {
   color: rgb(var(--chord-major)) !important;
 }
 
@@ -455,7 +457,7 @@ html.dark body.neu-theme article#chord-body {
 
 /* Açık modda söz rengi — neu açık yüzey */
 html:not(.dark) body.neu-theme .song-chord-text .song-chord-lyric,
-html:not(.dark) body.neu-theme pre.song-chord-text[data-lyrics-pre] span.song-chord-lyric {
+html:not(.dark) body.neu-theme .song-chord-text[data-lyrics-pre] span.song-chord-lyric {
   color: #44475a !important;
 }
 

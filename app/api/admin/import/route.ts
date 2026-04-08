@@ -14,7 +14,7 @@ import {
   normalizeGamlarScaleIdForKeyMode,
 } from "@/lib/music/key-mode-gamlar";
 import type { KeyMode } from "@/lib/types/content";
-import { normalizeGamlarScaleId } from "@/data/gamlar-scale-catalog";
+import { GAMLAR_SCALE_CATALOG, normalizeGamlarScaleId } from "@/data/gamlar-scale-catalog";
 
 export const runtime = "nodejs";
 
@@ -26,6 +26,63 @@ function normalizeKeyModeAlias(raw: unknown): KeyMode | undefined {
   if (v === "natural" || v === "natural-minor" || v === "minor" || v === "minör" || v === "aeolian") return "natural";
   if (v === "harmonic" || v === "harmonic-minor") return "harmonic";
   if (v === "melodic" || v === "melodic-minor") return "melodic";
+  return undefined;
+}
+
+function normalizeScaleAlias(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize("NFKC")
+    .replace(/[()]/g, " ")
+    .replace(/[#♯]/g, "sharp")
+    .replace(/[♭]/g, "flat")
+    .replace(/[^\w\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findGamlarScaleIdByLabel(rawScale: string, km: KeyMode): string | undefined {
+  const label = normalizeScaleAlias(rawScale);
+  if (!label) return undefined;
+
+  // Common external/export aliases seen in third-party tools.
+  const explicit: Record<string, string> = {
+    "harmonic minor": "hm-harmonic",
+    "hm harmonic minor": "hm-harmonic",
+    "hm-harmonic-minor": "hm-harmonic",
+    "phrygian dominant": "hm-phrygian-dom",
+    "hm phrygian dominant": "hm-phrygian-dom",
+    "hm-phrygian-dominant": "hm-phrygian-dom",
+    "melodic minor jazz minor": "mm-melodic",
+    "melodic minor": "mm-melodic",
+    "altered scale super locrian": "mm-altered",
+    "super locrian": "mm-altered",
+    "locrian nat2": "mm-locrian-nat2",
+    "locrian natural2": "mm-locrian-nat2",
+    "dorian b2": "mm-dorian-b2",
+    "lydian dominant lydian b7": "mm-lydian-dom",
+    "mixolydian b6 melodic major": "mm-mixolydian-b6",
+    "ionian major": "maj-ionian",
+    dorian: "maj-dorian",
+    phrygian: "maj-phrygian",
+    lydian: "maj-lydian",
+    mixolydian: "maj-mixolydian",
+    "aeolian natural minor": "nm-aeolian",
+    aeolian: "nm-aeolian",
+    locrian: "maj-locrian",
+  };
+  const explicitId = explicit[label];
+  if (explicitId && normalizeGamlarScaleIdForKeyMode(explicitId, km)) {
+    return explicitId;
+  }
+
+  // Catalog name match (e.g. "Ionian (Major)", "Phrygian Dominant", etc.)
+  const byName = GAMLAR_SCALE_CATALOG.find((entry) => normalizeScaleAlias(entry.name) === label)?.id;
+  if (byName && normalizeGamlarScaleIdForKeyMode(byName, km)) {
+    return byName;
+  }
+
   return undefined;
 }
 
@@ -55,6 +112,11 @@ function normalizeRowsForImport(rows: unknown[]): unknown[] {
       if (normalizedDirect) {
         next.gamlarScaleId = normalizedDirect;
       } else {
+        const byLabel = findGamlarScaleIdByLabel(rawScale, km);
+        if (byLabel) {
+          next.gamlarScaleId = byLabel;
+          return next;
+        }
         // Some external exports send "aeolian/dorian..." as alt mode names.
         // Try family-prefixed IDs to preserve intended family.
         const slug = rawScale.trim().toLowerCase();

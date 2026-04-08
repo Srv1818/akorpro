@@ -374,7 +374,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       const pairEndsSong = i + 1 >= lines.length - 1;
       rows.push(
         <Fragment key={`line-${i}`}>
-            <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5"}>
+          <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5"}>
             <span className="song-chord-row-stacked block leading-snug sm:leading-tight [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
@@ -1872,7 +1872,7 @@ export function PreviewClient({
                 <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4 max-sm:min-w-[42rem]" : ""}>
                   <pre
                   data-lyrics-pre="scene"
-                    className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-white"
+                    className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre font-mono leading-snug text-white"
                     style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                   >
                     {renderChordBodyWithHighlights(
@@ -1884,7 +1884,7 @@ export function PreviewClient({
                   {splitLyricsEnabled ? (
                     <pre
                       data-lyrics-pre="scene"
-                      className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-white"
+                      className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre font-mono leading-snug text-white"
                       style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                     >
                       {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
@@ -2468,7 +2468,7 @@ export function PreviewClient({
           <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4 max-sm:min-w-[42rem]" : ""}>
             <pre
               data-lyrics-pre="body"
-              className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-foreground"
+              className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre font-mono leading-snug text-foreground"
               style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
             >
               {renderChordBodyWithHighlights(
@@ -2480,7 +2480,7 @@ export function PreviewClient({
             {splitLyricsEnabled ? (
               <pre
                 data-lyrics-pre="body"
-                className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-foreground"
+                className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre font-mono leading-snug text-foreground"
                 style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
               >
                 {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
