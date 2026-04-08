@@ -42,5 +42,17 @@ export const IMPORT_SONG_SCHEMA = {
     "showHarmonyDetails",
     "harmonyDetailsNotes",
   ],
+  /** Canonical alanlar: import/export'ta birincil olarak bunları kullanın. */
+  canonicalFields: ["keyMode", "gamlarScaleId"],
+  /** keyMode enum */
+  keyModes: ["major", "natural", "harmonic", "melodic"],
+  /**
+   * Backward compatibility için kabul edilen alias alanları.
+   * Yeni export'larda canonical alanlar yazılmalı.
+   */
+  legacyAliases: {
+    keyMode: ["mode", "tonModu"],
+    gamlarScaleId: ["scaleId", "scale", "altMode"],
+  },
   difficulties: ["kolay", "orta", "zor"],
 } as const;

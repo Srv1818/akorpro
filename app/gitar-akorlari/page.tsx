@@ -4,6 +4,7 @@ import { SongCard } from "@/components/content/song-card";
 import { SongFilters } from "@/components/content/song-filters";
 import { getFilteredSongs, getFilterFacetOptions } from "@/lib/firestore/songs";
 import type { SongDoc } from "@/lib/types/firestore";
+import type { SongSummary } from "@/lib/types/content";
 import { firstParam } from "@/lib/search-params";
 
 type Props = {
@@ -70,6 +71,16 @@ export default async function GitarAkorlariPage({ searchParams }: Props) {
   const songsPromise = getFilteredSongs(current);
   const facetsPromise = filtered ? getFilterFacetOptions() : songsPromise.then(deriveFacetOptionsFromSongs);
   const [songs, facets] = await Promise.all([songsPromise, facetsPromise]);
+  const songSummaries: SongSummary[] = songs.map((song) => ({
+    id: song.id,
+    title: song.title,
+    slug: song.slug,
+    artistSlug: song.artistSlug,
+    artistName: song.artistName,
+    originalKey: song.originalKey,
+    difficulty: song.difficulty,
+    coverImageUrl: song.coverImageUrl,
+  }));
 
   return (
     <>
@@ -80,7 +91,7 @@ export default async function GitarAkorlariPage({ searchParams }: Props) {
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
         <SongFilters basePath="/gitar-akorlari" current={current} facets={facets} />
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {songs.map((song) => (
+          {songSummaries.map((song) => (
             <li key={song.id}>
               <SongCard song={song} />
             </li>

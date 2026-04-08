@@ -10,6 +10,7 @@ import { getArtistBySlug, getAllArtists } from "@/lib/firestore/artists";
 import { getSongsByArtist } from "@/lib/firestore/songs";
 import { artistPath } from "@/lib/paths";
 import { artistJsonLd } from "@/lib/seo/structured-data";
+import type { SongSummary } from "@/lib/types/content";
 
 /** ISR: 1 hour (see lib/cache/tags.ts TTL.ARTIST) */
 export const revalidate = 3600;
@@ -82,6 +83,16 @@ export default async function SanatciPage({ params }: Props) {
       updatedAt: null,
     } as unknown as Awaited<ReturnType<typeof getArtistBySlug>>;
   })();
+  const songSummaries: SongSummary[] = songs.map((song) => ({
+    id: song.id,
+    title: song.title,
+    slug: song.slug,
+    artistSlug: song.artistSlug,
+    artistName: song.artistName,
+    originalKey: song.originalKey,
+    difficulty: song.difficulty,
+    coverImageUrl: song.coverImageUrl,
+  }));
 
   if (!artistForPage) notFound();
 
@@ -114,7 +125,7 @@ export default async function SanatciPage({ params }: Props) {
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {songs.map((song) => (
+          {songSummaries.map((song) => (
             <li key={song.id}>
               <SongCard song={song} showArtist={false} />
             </li>

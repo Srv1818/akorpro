@@ -10,10 +10,66 @@ import { sanitizeTextContent } from "@/lib/security/sanitize";
 import {
   inferKeyModeFromOriginalKey,
   keyModeToGamlarCatalogScaleId,
+  keyModeToGamlarFamily,
   normalizeGamlarScaleIdForKeyMode,
 } from "@/lib/music/key-mode-gamlar";
+import type { KeyMode } from "@/lib/types/content";
+import { normalizeGamlarScaleId } from "@/data/gamlar-scale-catalog";
 
 export const runtime = "nodejs";
+
+function normalizeKeyModeAlias(raw: unknown): KeyMode | undefined {
+  if (typeof raw !== "string") return undefined;
+  const v = raw.trim().toLowerCase();
+  if (!v) return undefined;
+  if (v === "major" || v === "majör") return "major";
+  if (v === "natural" || v === "natural-minor" || v === "minor" || v === "minör" || v === "aeolian") return "natural";
+  if (v === "harmonic" || v === "harmonic-minor") return "harmonic";
+  if (v === "melodic" || v === "melodic-minor") return "melodic";
+  return undefined;
+}
+
+function normalizeRowsForImport(rows: unknown[]): unknown[] {
+  return rows.map((row) => {
+    if (!row || typeof row !== "object") return row;
+    const rec = row as Record<string, unknown>;
+    const next: Record<string, unknown> = { ...rec };
+
+    const keyMode =
+      normalizeKeyModeAlias(rec.keyMode) ??
+      normalizeKeyModeAlias(rec.mode) ??
+      normalizeKeyModeAlias(rec.tonModu);
+    if (keyMode) next.keyMode = keyMode;
+
+    const rawScale =
+      (typeof rec.gamlarScaleId === "string" ? rec.gamlarScaleId : undefined) ??
+      (typeof rec.scaleId === "string" ? rec.scaleId : undefined) ??
+      (typeof rec.scale === "string" ? rec.scale : undefined) ??
+      (typeof rec.altMode === "string" ? rec.altMode : undefined);
+
+    if (typeof rawScale === "string" && rawScale.trim()) {
+      const km =
+        keyMode ??
+        inferKeyModeFromOriginalKey(typeof rec.originalKey === "string" ? rec.originalKey : "");
+      const normalizedDirect = normalizeGamlarScaleIdForKeyMode(rawScale, km);
+      if (normalizedDirect) {
+        next.gamlarScaleId = normalizedDirect;
+      } else {
+        // Some external exports send "aeolian/dorian..." as alt mode names.
+        // Try family-prefixed IDs to preserve intended family.
+        const slug = rawScale.trim().toLowerCase();
+        const family = keyModeToGamlarFamily(km);
+        const prefix = family === "major" ? "maj" : family === "natural-minor" ? "nm" : family === "harmonic-minor" ? "hm" : "mm";
+        const byFamily = normalizeGamlarScaleId(`${prefix}-${slug}`);
+        if (byFamily && normalizeGamlarScaleIdForKeyMode(byFamily, km)) {
+          next.gamlarScaleId = byFamily;
+        }
+      }
+    }
+
+    return next;
+  });
+}
 
 function db() {
   const fs = getAdminFirestore();
@@ -41,12 +97,13 @@ export async function POST(request: Request) {
   if (!Array.isArray(b.songs)) {
     return NextResponse.json({ error: "`songs` dizisi zorunlu." }, { status: 400 });
   }
+  const normalizedRows = normalizeRowsForImport(b.songs);
 
   if (b.songs.length > 500) {
     return NextResponse.json({ error: "Tek seferde en fazla 500 şarkı." }, { status: 400 });
   }
 
-  const { valid, errors } = validateImportPayload(b.songs);
+  const { valid, errors } = validateImportPayload(normalizedRows);
 
   if (b.dryRun) {
     return NextResponse.json({

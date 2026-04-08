@@ -2539,7 +2539,7 @@ export function PreviewClient({
                   <dt className="text-muted-foreground">Ton</dt>
                   <dd>
                     {transposedTonicPc !== null ? PC_TO_NAME[transposedTonicPc] : "—"} ·{" "}
-                    {modeLabelFromGamlarScaleId(gamlarWidgetScaleId)}
+                    {gamlarWidgetScaleId}
                   </dd>
                 </div>
                 <div className="flex flex-wrap gap-x-2 gap-y-0.5">
