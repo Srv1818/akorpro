@@ -279,7 +279,7 @@ function renderAlignedBracketLine(
   const pairClass = isLastSourceLine ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5";
   /* Köşeli [Am] hizasında üst satırı büyütmek monospace sütun hizasını bozar; yalnızca söz yokken (yalnız akor) güvenli. */
   const chordRowClass =
-    "block leading-none sm:leading-[1.05] [&_button]:align-baseline" + (!lyrics ? " song-chord-row-stacked" : "");
+    "block leading-snug sm:leading-[1.05] [&_button]:align-baseline" + (!lyrics ? " song-chord-row-stacked" : "");
   const chordRow = <span className={chordRowClass}>{nodes}</span>;
 
   if (!lyrics) {
@@ -293,7 +293,7 @@ function renderAlignedBracketLine(
   return (
     <span key={`pair-${lineIndex}`} className={pairClass}>
       {chordRow}
-      <span className="song-chord-lyric -mt-px block font-normal leading-tight sm:leading-snug">{lyrics}</span>
+      <span className="song-chord-lyric mt-0.5 block font-normal leading-snug">{lyrics}</span>
     </span>
   );
 }
@@ -379,10 +379,10 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       rows.push(
         <Fragment key={`line-${i}`}>
             <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5"}>
-            <span className="song-chord-row-stacked block leading-none sm:leading-tight [&_button]:align-baseline">
+            <span className="song-chord-row-stacked block leading-snug sm:leading-tight [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
-            <span className="-mt-px block leading-tight sm:leading-snug">
+            <span className="mt-0.5 block leading-snug">
               {renderChordLine(next, semitones, onChordClick, `L${i + 1}-`)}
             </span>
           </span>
@@ -403,7 +403,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     ) {
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className="block leading-none sm:mb-2 sm:leading-tight">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
+          <span className="block leading-snug sm:mb-2 sm:leading-tight">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
         </Fragment>,
       );
       i += 1;
@@ -1526,7 +1526,7 @@ export function PreviewClient({
   }, [lyricsFontSizePx, lyricsAutoFitEnabled, chordBody, splitLyricsEnabled, semitones, sceneMode, lyricsFitResizeTick]);
 
   return (
-    <div className="-mx-4 rounded-2xl px-4 py-5 sm:-mx-6 sm:px-6 lg:px-8">
+    <div className="py-2 sm:py-3">
       {sceneMode ? (
         <div
           className="fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
@@ -1872,27 +1872,29 @@ export function PreviewClient({
               ) : null}
 
             <div ref={sceneLyricsScrollRef} className="flex-1 overflow-auto p-4 sm:p-6">
-              <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
-                <pre
-                data-lyrics-pre="scene"
-                  className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-white sm:leading-snug md:leading-snug"
-                  style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
-                >
-                  {renderChordBodyWithHighlights(
-                    splitLyricsEnabled ? leftChordBody : chordBody,
-                    semitones,
-                    () => setChordStripOpen(true),
-                  )}
-                </pre>
-                {splitLyricsEnabled ? (
+              <div className={splitLyricsEnabled ? "max-sm:overflow-x-auto" : ""}>
+                <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4 max-sm:min-w-[42rem]" : ""}>
                   <pre
-                    data-lyrics-pre="scene"
-                    className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-white sm:leading-snug md:leading-snug"
+                  data-lyrics-pre="scene"
+                    className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-white"
                     style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                   >
-                    {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+                    {renderChordBodyWithHighlights(
+                      splitLyricsEnabled ? leftChordBody : chordBody,
+                      semitones,
+                      () => setChordStripOpen(true),
+                    )}
                   </pre>
-                ) : null}
+                  {splitLyricsEnabled ? (
+                    <pre
+                      data-lyrics-pre="scene"
+                      className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-white"
+                      style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
+                    >
+                      {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+                    </pre>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -2458,30 +2460,37 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article
-        className="mt-4 rounded-2xl bg-bg px-4 py-4 sm:px-6 sm:py-6 print:border-0 print:p-0"
+        className={
+          splitLyricsEnabled
+            ? "mt-4 bg-transparent p-0 print:border-0 print:p-0"
+            : "mt-4 bg-transparent p-0 print:border-0 print:p-0"
+        }
         id="chord-body"
+        data-split={splitLyricsEnabled ? "true" : "false"}
       >
-        <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4" : ""}>
-          <pre
-            data-lyrics-pre="body"
-            className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-foreground sm:leading-snug md:leading-snug"
-            style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
-          >
-            {renderChordBodyWithHighlights(
-              splitLyricsEnabled ? leftChordBody : chordBody,
-              semitones,
-              () => setChordStripOpen(true),
-            )}
-          </pre>
-          {splitLyricsEnabled ? (
+        <div className={splitLyricsEnabled ? "max-sm:overflow-x-auto" : ""}>
+          <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4 max-sm:min-w-[42rem]" : ""}>
             <pre
               data-lyrics-pre="body"
-              className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-none text-foreground sm:leading-snug md:leading-snug"
+              className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-foreground"
               style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
             >
-              {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+              {renderChordBodyWithHighlights(
+                splitLyricsEnabled ? leftChordBody : chordBody,
+                semitones,
+                () => setChordStripOpen(true),
+              )}
             </pre>
-          ) : null}
+            {splitLyricsEnabled ? (
+              <pre
+                data-lyrics-pre="body"
+                className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre-wrap font-mono leading-snug text-foreground"
+                style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
+              >
+                {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+              </pre>
+            ) : null}
+          </div>
         </div>
       </article>
 

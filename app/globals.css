@@ -229,10 +229,10 @@ pre.song-chord-text[data-lyrics-pre] button.song-chord-token:hover,
 }
 
 #chord-body .song-chord-text {
-  width: min(100%, 42rem);
-  max-width: 42rem;
+  width: 100%;
+  max-width: none;
   margin-left: 0;
-  margin-right: auto;
+  margin-right: 0;
 }
 
 /* Mobil: klasik üst akor satırı söz satırından bir tık büyük. Köşeli [Am] ile söz hizası
@@ -446,19 +446,11 @@ html.dark body.neu-theme select.border-border[class*="bg-bg"] {
   color: #e4e4e7 !important;
 }
 
-/* Akor gövdesi — içe gömülü kuyu */
-html:not(.dark) body.neu-theme article#chord-body {
-  background-color: #dce0e8 !important;
-  box-shadow:
-    inset 8px 8px 16px rgb(163 177 198 / 0.45),
-    inset -8px -8px 16px rgb(255 255 255 / 0.55);
-}
-
+/* Akor gövdesi — nötr (zeminle aynı), “çökük/kuyu” efekti yok */
+html:not(.dark) body.neu-theme article#chord-body,
 html.dark body.neu-theme article#chord-body {
-  background-color: #252831 !important;
-  box-shadow:
-    inset 8px 8px 16px rgb(0 0 0 / 0.45),
-    inset -6px -6px 14px rgb(255 255 255 / 0.05);
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
 /* Açık modda söz rengi — neu açık yüzey */
