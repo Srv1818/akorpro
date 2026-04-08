@@ -8,6 +8,7 @@ import { ChordReturnLink } from "@/components/content/chord-return-link";
 import { SongCard } from "@/components/content/song-card";
 import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
+import { ClientErrorBoundary } from "@/components/common/client-error-boundary";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import {
@@ -181,37 +182,45 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
             </div>
           }
         >
-          <PreviewShell
-            instanceKey={song.id}
-            initialTranspose={initialTranspose}
-            initialScaleId={initialGamlarScaleId}
+          <ClientErrorBoundary
+            fallback={
+              <div className="mt-8 rounded-2xl border border-border bg-surface p-6 text-sm text-muted">
+                Önizleme yüklenirken geçici bir sorun oluştu. Sayfayı yenileyip tekrar deneyin.
+              </div>
+            }
           >
-            <PreviewClient
-              songId={song.id}
-              songTitle={song.title}
-              artistSlug={song.artistSlug}
-              songSlug={song.slug}
-              originalKey={song.originalKey}
-              keyMode={song.keyMode}
-              initialGamlarScaleId={initialGamlarScaleId}
-              chordBody={song.chordBody}
-              tempo={song.tempo}
-              timeSignature={song.timeSignature}
-              serverUid={sessionUser?.uid ?? null}
-              showHarmonyDetails={song.showHarmonyDetails !== false}
-              harmonyDetailsNotes={song.harmonyDetailsNotes}
-              prevSong={
-                prevSong
-                  ? { title: prevSong.title, href: chordPath(prevSong.artistSlug, prevSong.slug) }
-                  : null
-              }
-              nextSong={
-                nextSong
-                  ? { title: nextSong.title, href: chordPath(nextSong.artistSlug, nextSong.slug) }
-                  : null
-              }
-            />
-          </PreviewShell>
+            <PreviewShell
+              instanceKey={song.id}
+              initialTranspose={initialTranspose}
+              initialScaleId={initialGamlarScaleId}
+            >
+              <PreviewClient
+                songId={song.id}
+                songTitle={song.title}
+                artistSlug={song.artistSlug}
+                songSlug={song.slug}
+                originalKey={song.originalKey}
+                keyMode={song.keyMode}
+                initialGamlarScaleId={initialGamlarScaleId}
+                chordBody={song.chordBody}
+                tempo={song.tempo}
+                timeSignature={song.timeSignature}
+                serverUid={sessionUser?.uid ?? null}
+                showHarmonyDetails={song.showHarmonyDetails !== false}
+                harmonyDetailsNotes={song.harmonyDetailsNotes}
+                prevSong={
+                  prevSong
+                    ? { title: prevSong.title, href: chordPath(prevSong.artistSlug, prevSong.slug) }
+                    : null
+                }
+                nextSong={
+                  nextSong
+                    ? { title: nextSong.title, href: chordPath(nextSong.artistSlug, nextSong.slug) }
+                    : null
+                }
+              />
+            </PreviewShell>
+          </ClientErrorBoundary>
         </Suspense>
 
         {song.copyrightSource ? <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p> : null}
