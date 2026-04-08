@@ -215,7 +215,7 @@ function createGamlarScaleExplorer(useToolsStore: UseToolingHook) {
                         "pointer-events-none absolute flex h-[1.35rem] min-w-[1.35rem] max-w-[2.25rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center px-0.5 font-bold leading-none sm:h-6 sm:min-w-6 sm:max-w-[2.75rem] sm:px-1",
                         isRoot
                           ? "z-[6] rounded-lg bg-teal-400 text-[0.5rem] text-zinc-900 shadow-sm sm:rounded-xl sm:text-[0.65rem]"
-                          : "z-[5] rounded-full bg-amber-400 text-[0.5rem] text-zinc-950 shadow-md ring-1 ring-amber-600/50 sm:text-[0.65rem]",
+                          : "z-[5] rounded-full bg-accent text-[0.5rem] text-accent-foreground shadow-md ring-1 ring-accent/35 sm:text-[0.65rem]",
                       ].join(" ")}
                       style={{
                         left: `calc((${f} + 0.5) / ${FRET_COUNT} * 100%)`,

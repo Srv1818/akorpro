@@ -28,7 +28,7 @@ export const BESLI_CEMBER_SELECTION_STORAGE_KEY = "akorpro:besli-cember-selectio
 type UseToolingHook = <T>(selector: (s: PreviewToolsState) => T) => T;
 
 const btnSelected =
-  "bg-[#FFB800] text-zinc-950 shadow-sm ring-1 ring-amber-500/60";
+  "bg-accent text-accent-foreground shadow-sm ring-1 ring-accent/40";
 const btnRootIdle =
   "bg-bg text-foreground ring-1 ring-border hover:bg-surface hover:ring-zinc-500/35";
 

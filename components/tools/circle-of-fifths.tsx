@@ -437,20 +437,20 @@ function ModeTabBar({ mode, onChange }: { mode: ScaleMode; onChange: (m: ScaleMo
 
 function ChordBadge({ entry, side }: { entry: Co5ChordEntry; side: "left" | "right" | "bottom" }) {
   const badgeBg = {
-    major: "bg-amber-500 text-zinc-900",
+    major: "bg-accent text-accent-foreground",
     minor: "bg-teal-400 text-zinc-900",
     diminished: "bg-zinc-600 text-zinc-100",
-    augmented: "bg-amber-500 text-zinc-900",
-    dominant: "bg-amber-500 text-zinc-900",
+    augmented: "bg-accent text-accent-foreground",
+    dominant: "bg-accent text-accent-foreground",
     "half-dim": "bg-zinc-600 text-zinc-100",
   }[entry.quality];
 
   const romanColor = {
-    major: "text-amber-800 dark:text-amber-400",
+    major: "text-accent",
     minor: "text-teal-700 dark:text-teal-300",
     diminished: "text-zinc-600 dark:text-zinc-400",
-    augmented: "text-amber-800 dark:text-amber-400",
-    dominant: "text-amber-800 dark:text-amber-400",
+    augmented: "text-accent",
+    dominant: "text-accent",
     "half-dim": "text-zinc-600 dark:text-zinc-400",
   }[entry.quality];
 

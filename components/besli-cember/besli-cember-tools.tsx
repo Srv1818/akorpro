@@ -28,7 +28,7 @@ const MAJOR_MODE_IDS: ReadonlySet<string> = new Set(
 );
 
 const btnSelected =
-  "bg-[#FFB800] text-zinc-950 shadow-sm ring-1 ring-amber-500/60";
+  "bg-accent text-accent-foreground shadow-sm ring-1 ring-accent/40";
 const btnRootIdle =
   "bg-bg text-foreground ring-1 ring-border hover:bg-surface hover:ring-zinc-500/35";
 const btnModeIdle =
@@ -174,15 +174,15 @@ function BesliCemberInfoPanel() {
   return (
     <div className="rounded-2xl border border-border bg-bg/60 px-4 py-3 text-xs leading-relaxed sm:text-[0.8125rem]">
       <p>
-        <span className="font-semibold text-orange-400">Formula: </span>
+        <span className="font-semibold text-accent">Formula: </span>
         <span className="text-foreground">{info.formula}</span>
       </p>
       <p>
-        <span className="font-semibold text-orange-400">Notes: </span>
+        <span className="font-semibold text-accent">Notes: </span>
         <span className="text-foreground">{info.notes}</span>
       </p>
       <p>
-        <span className="font-semibold text-orange-400">Chords: </span>
+        <span className="font-semibold text-accent">Chords: </span>
         <span className="text-foreground">{info.chords}</span>
       </p>
     </div>

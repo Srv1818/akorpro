@@ -24,7 +24,7 @@ const INLAY_DOUBLE_FRET = 12;
 const FRET_COL_STYLE = { gridTemplateColumns: "repeat(16, minmax(1.6rem, 1fr))" } as const;
 
 const btnSelected =
-  "bg-[#FFB800] text-zinc-950 shadow-sm ring-1 ring-amber-500/60";
+  "bg-accent text-accent-foreground shadow-sm ring-1 ring-accent/40";
 const btnRootIdle =
   "bg-bg text-foreground ring-1 ring-border hover:bg-surface hover:ring-zinc-500/35";
 
@@ -167,7 +167,7 @@ function ChordDiagram({
             {/* Barre: parmak noktalarıyla aynı çap (w) ve stil; rounded-full → uçlar yuvarlak */}
             {barreStyle ? (
               <div
-                className="pointer-events-none absolute z-[4] w-[1.35rem] rounded-full bg-amber-400 shadow-md ring-1 ring-amber-600/50 sm:w-6"
+                className="pointer-events-none absolute z-[4] w-[1.35rem] rounded-full bg-accent shadow-md ring-1 ring-accent/35 sm:w-6"
                 style={barreStyle}
               />
             ) : null}
@@ -218,7 +218,7 @@ function ChordDiagram({
               return (
                 <div
                   key={`dot-${s}-fret-${v}`}
-                  className="pointer-events-none absolute z-[5] flex h-[1.35rem] w-[1.35rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-amber-400 text-[0.6rem] font-bold text-zinc-950 shadow-md ring-1 ring-amber-600/50 sm:h-6 sm:w-6 sm:text-xs"
+                  className="pointer-events-none absolute z-[5] flex h-[1.35rem] w-[1.35rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-accent text-[0.6rem] font-bold text-accent-foreground shadow-md ring-1 ring-accent/35 sm:h-6 sm:w-6 sm:text-xs"
                   style={{
                     left: `calc((${v} + 0.5) / ${FRET_COUNT} * 100%)`,
                     top: `calc(${(s + 0.5) / STRING_COUNT} * 100%)`,
