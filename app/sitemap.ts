@@ -27,29 +27,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       getAllArtists().catch(() => []),
     ]);
 
-    const artistEntries: MetadataRoute.Sitemap = artists
-      .map((a) => {
-        const url = safeAbsoluteUrl(artistPath(a.slug));
-        if (!url) return null;
-        return {
-          url,
-          changeFrequency: "weekly" as const,
-          priority: 0.7,
-        };
-      })
-      .filter((entry): entry is MetadataRoute.Sitemap[number] => entry !== null);
+    const artistEntries: MetadataRoute.Sitemap = [];
+    for (const artist of artists) {
+      const url = safeAbsoluteUrl(artistPath(artist.slug));
+      if (!url) continue;
+      artistEntries.push({
+        url,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    }
 
-    const songEntries: MetadataRoute.Sitemap = songs
-      .map((s) => {
-        const url = safeAbsoluteUrl(chordPath(s.artistSlug, s.slug));
-        if (!url) return null;
-        return {
-          url,
-          changeFrequency: "weekly" as const,
-          priority: 0.8,
-        };
-      })
-      .filter((entry): entry is MetadataRoute.Sitemap[number] => entry !== null);
+    const songEntries: MetadataRoute.Sitemap = [];
+    for (const song of songs) {
+      const url = safeAbsoluteUrl(chordPath(song.artistSlug, song.slug));
+      if (!url) continue;
+      songEntries.push({
+        url,
+        changeFrequency: "weekly",
+        priority: 0.8,
+      });
+    }
 
     return [...staticPages, ...artistEntries, ...songEntries];
   } catch {
