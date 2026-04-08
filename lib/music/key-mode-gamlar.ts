@@ -27,8 +27,8 @@ export function keyModeToGamlarCatalogScaleId(mode: KeyMode | undefined): string
 }
 
 /**
- * Kayıtlı `gamlarScaleId` geçerliyse ve seçili `keyMode` ailesine aitse onu döndürür;
- * aksi halde `keyMode` için varsayılan katalog kimliğini döndürür.
+ * Kayıtlı `gamlarScaleId` geçerliyse onu önceliklendirir;
+ * geçersizse `keyMode` için varsayılan katalog kimliğini döndürür.
  */
 export function resolveSongGamlarScaleId(
   keyMode: KeyMode | undefined,
@@ -38,11 +38,7 @@ export function resolveSongGamlarScaleId(
   const raw = typeof storedScaleId === "string" ? storedScaleId.trim() : "";
   if (!raw) return fallback;
   const normalized = normalizeGamlarScaleId(raw);
-  if (!normalized) return fallback;
-  const entry = gamlarScaleById(normalized);
-  const family = keyModeToGamlarFamily(keyMode);
-  if (entry && entry.category === family) return normalized;
-  return fallback;
+  return normalized ?? fallback;
 }
 
 /** API: gövdeden gelen metni doğrular; geçersiz veya aile uyumsuzsa `undefined` (varsayılan yazılır). */

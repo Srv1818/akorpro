@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: turbopackRoot,
   },
+  webpack: (config) => {
+    config.ignoreWarnings = config.ignoreWarnings ?? [];
+    config.ignoreWarnings.push({
+      module: /@opentelemetry\/instrumentation/,
+      message: /Critical dependency: the request of a dependency is an expression/,
+    });
+    return config;
+  },
   images: {
     remotePatterns: [
       {

@@ -10,12 +10,12 @@ describe("resolveSongGamlarScaleId", () => {
     expect(resolveSongGamlarScaleId("major", "maj-dorian")).toBe("maj-dorian");
   });
 
-  it("falls back when stored id belongs to another family", () => {
-    expect(resolveSongGamlarScaleId("major", "nm-aeolian")).toBe("maj-ionian");
+  it("keeps stored id even when it belongs to another family", () => {
+    expect(resolveSongGamlarScaleId("major", "nm-aeolian")).toBe("nm-aeolian");
   });
 
-  it("falls back when keyMode is undefined and stored id is not in default (major) family", () => {
-    expect(resolveSongGamlarScaleId(undefined, "nm-aeolian")).toBe("maj-ionian");
+  it("keeps stored id when keyMode is undefined", () => {
+    expect(resolveSongGamlarScaleId(undefined, "nm-aeolian")).toBe("nm-aeolian");
   });
 
   it("keeps stored major-family id when keyMode is undefined (defaults to major family)", () => {

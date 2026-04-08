@@ -157,25 +157,21 @@ function PanelCloseButton({
   );
 }
 
-function keyModeToLabel(mode: KeyMode | undefined, originalKey: string): string {
-  if (mode === "major") return "Majör";
-  if (mode === "natural") return "Doğal Minör";
-  if (mode === "harmonic") return "Harmonik Minör";
-  if (mode === "melodic") return "Melodik Minör";
-
-  // Backwards-compat: keyMode yoksa orijinal ton ismine göre tahmin.
-  const k = originalKey.trim().toLowerCase();
-  if (k.endsWith("maj")) return "Majör";
-  if (k.endsWith("m")) return "Doğal Minör";
-  return "Majör";
-}
-
 /** Sahne çubuğu: yalnızca seçili gamlar katalog etiketi. */
 function formatModLineLabel(
   gamlarCatalogScaleId: string,
 ): string {
   const sub = gamlarScaleById(gamlarCatalogScaleId)?.name?.trim();
   return sub || gamlarCatalogScaleId;
+}
+
+function modeLabelFromGamlarScaleId(gamlarCatalogScaleId: string): string {
+  const category = gamlarScaleById(gamlarCatalogScaleId)?.category;
+  if (category === "major") return "Majör";
+  if (category === "natural-minor") return "Doğal Minör";
+  if (category === "harmonic-minor") return "Harmonik Minör";
+  if (category === "melodic-minor") return "Melodik Minör";
+  return "Majör";
 }
 
 function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): KeyMode {
@@ -2543,7 +2539,7 @@ export function PreviewClient({
                   <dt className="text-muted-foreground">Ton</dt>
                   <dd>
                     {transposedTonicPc !== null ? PC_TO_NAME[transposedTonicPc] : "—"} ·{" "}
-                    {keyModeToLabel(keyMode, originalKey)}
+                    {modeLabelFromGamlarScaleId(gamlarWidgetScaleId)}
                   </dd>
                 </div>
                 <div className="flex flex-wrap gap-x-2 gap-y-0.5">
