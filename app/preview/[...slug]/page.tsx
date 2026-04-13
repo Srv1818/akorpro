@@ -123,6 +123,7 @@ export default async function PreviewPage({ params, searchParams }: Props) {
             <PreviewClient
               songId={song.id}
               songTitle={song.title}
+              artistName={song.artistName}
               artistSlug={song.artistSlug}
               songSlug={song.slug}
               originalKey={song.originalKey}

@@ -49,15 +49,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { sanatciSlug, sarkiSlug } = await params;
   const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) return { title: "Şarkı bulunamadı" };
-  const title = `${song.title} — ${song.artistName}`;
+  const titleAbsolute = `${song.title} Akor — ${song.artistName} | AkorPro`;
   const description = `${song.title} akor ve sözleri — ${song.artistName} · Orijinal ton: ${song.originalKey}`;
   const url = chordPath(sanatciSlug, sarkiSlug);
   return {
-    title,
+    title: { absolute: titleAbsolute },
     description,
     alternates: { canonical: url },
     openGraph: {
-      title,
+      title: titleAbsolute,
       description,
       url,
       type: "article",
@@ -208,6 +208,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
               <PreviewClient
                 songId={song.id}
                 songTitle={song.title}
+                artistName={song.artistName}
                 artistSlug={song.artistSlug}
                 songSlug={song.slug}
                 originalKey={song.originalKey}

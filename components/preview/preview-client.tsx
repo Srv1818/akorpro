@@ -60,6 +60,7 @@ const HARMONY_DETAIL_DEFAULT_DISCLAIMER =
 type Props = {
   songId: string;
   songTitle: string;
+  artistName: string;
   artistSlug: string;
   songSlug: string;
   originalKey: string;
@@ -500,6 +501,7 @@ function unlockScreenOrientationIfPossible() {
 export function PreviewClient({
   songId,
   songTitle,
+  artistName,
   artistSlug,
   songSlug,
   originalKey,
@@ -2173,6 +2175,13 @@ export function PreviewClient({
           </div>
         </>
       ) : null}
+
+      <h1 className="mb-2 text-balance text-xl font-semibold leading-snug tracking-tight sm:mb-2.5 sm:text-2xl [font-synthesis:none]">
+        <span className="text-display">{songTitle}</span>
+        <span className="font-medium text-muted"> Akorları </span>
+        <span className="text-muted">- </span>
+        <span className="text-foreground">{artistName}</span>
+      </h1>
 
       <div className="preview-toolbar-row mt-1 flex flex-col gap-2 sm:mt-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
         <div className="flex flex-col gap-2 sm:gap-3">
