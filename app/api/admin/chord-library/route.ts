@@ -34,25 +34,27 @@ export async function POST(request: Request) {
   const root = sanitizePlainField(b.root);
   const quality = sanitizePlainField(b.quality);
   const fingering = sanitizePlainField(b.fingering);
+  const fingersRaw = sanitizePlainField(b.fingers);
+  const fingers = fingersRaw && /^[0-4]{6}$/.test(fingersRaw) ? fingersRaw : "";
 
   if (!name || !root || !quality || !fingering) {
     return NextResponse.json({ error: "name, root, quality, fingering zorunlu." }, { status: 400 });
   }
 
-  const id = await createChordShape(
-    {
-      name,
-      root,
-      quality: quality as "maj",
-      fingering,
-      frets: Array.isArray(b.frets) ? (b.frets as number[]) : undefined,
-      barreStart: typeof b.barreStart === "number" ? b.barreStart : undefined,
-      barreEnd: typeof b.barreEnd === "number" ? b.barreEnd : undefined,
-      barreFret: typeof b.barreFret === "number" ? b.barreFret : undefined,
-      sortOrder: typeof b.sortOrder === "number" ? b.sortOrder : undefined,
-    },
-    auth.user.uid,
-  );
+  const payload: Record<string, unknown> = {
+    name,
+    root,
+    quality: quality as "maj",
+    fingering,
+  };
+  if (Array.isArray(b.frets)) payload.frets = b.frets as number[];
+  if (fingers) payload.fingers = fingers;
+  if (typeof b.barreStart === "number") payload.barreStart = b.barreStart;
+  if (typeof b.barreEnd === "number") payload.barreEnd = b.barreEnd;
+  if (typeof b.barreFret === "number") payload.barreFret = b.barreFret;
+  if (typeof b.sortOrder === "number") payload.sortOrder = b.sortOrder;
+
+  const id = await createChordShape(payload as Parameters<typeof createChordShape>[0], auth.user.uid);
 
   return NextResponse.json({ ok: true, id });
 }
@@ -77,6 +79,10 @@ export async function PATCH(request: Request) {
   if (typeof b.root === "string") updates.root = sanitizePlainField(b.root);
   if (typeof b.quality === "string") updates.quality = b.quality;
   if (typeof b.fingering === "string") updates.fingering = b.fingering;
+  if (typeof b.fingers === "string") {
+    const sanitized = sanitizePlainField(b.fingers);
+    if (!sanitized || /^[0-4]{6}$/.test(sanitized)) updates.fingers = sanitized || null;
+  }
   if (Array.isArray(b.frets)) updates.frets = b.frets;
   if (typeof b.sortOrder === "number") updates.sortOrder = b.sortOrder;
 

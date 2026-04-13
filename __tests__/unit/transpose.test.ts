@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  chordBodyUsesFlatRootNotation,
   extractChordTokensInOrderAsRendered,
   extractUniqueChordTokensAsRendered,
   extractUniqueChordTokensInOrder,
@@ -122,6 +123,22 @@ describe("transposeChordToken", () => {
     expect(transposeChordToken("Am7b5", 2)).toBe("Bm7b5");
     expect(transposeChordToken("C7b9", 7)).toBe("G7b9");
   });
+
+  it("keeps flat spelling for flat roots after transpose", () => {
+    expect(transposeChordToken("Eb", 2)).toBe("F");
+    expect(transposeChordToken("Ab", 2)).toBe("Bb");
+    expect(transposeChordToken("Db", 1)).toBe("D");
+  });
+
+  it("uses flat family for natural roots when preferFlatsForNaturalRoots", () => {
+    expect(transposeChordToken("C", 1, { preferFlatsForNaturalRoots: true })).toBe("Db");
+    expect(transposeChordToken("G", 1, { preferFlatsForNaturalRoots: true })).toBe("Ab");
+  });
+
+  it("keeps sharp spelling for sharp roots even when preferFlatsForNaturalRoots", () => {
+    expect(transposeChordToken("F#", 1, { preferFlatsForNaturalRoots: true })).toBe("G");
+    expect(transposeChordToken("C#", 1, { preferFlatsForNaturalRoots: true })).toBe("D");
+  });
 });
 
 describe("transposeChordBodyText", () => {
@@ -191,6 +208,21 @@ describe("transposeChordBodyText", () => {
     expect(result).toContain("Em7");
     expect(result).toContain("B7");
     expect(result).toContain("C");
+  });
+
+  it("uses flat spelling for naturals when body has a flat-root chord", () => {
+    expect(transposeChordBodyText("C Eb", 1)).toBe("Db E");
+  });
+});
+
+describe("chordBodyUsesFlatRootNotation", () => {
+  it("is false when no flat roots", () => {
+    expect(chordBodyUsesFlatRootNotation("Am F C G")).toBe(false);
+  });
+
+  it("is true when a flat-root chord appears", () => {
+    expect(chordBodyUsesFlatRootNotation("Em Eb")).toBe(true);
+    expect(chordBodyUsesFlatRootNotation("[Verse]\n[Am] [Eb]")).toBe(true);
   });
 });
 

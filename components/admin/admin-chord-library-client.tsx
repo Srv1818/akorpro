@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, type FormEvent } from "react";
+import { GUITAR_QUALITY_OPTIONS } from "@/lib/chords-db/guitar";
 
 type ChordShape = {
   id: string;
@@ -8,6 +9,7 @@ type ChordShape = {
   root: string;
   quality: string;
   fingering: string;
+  fingers?: string;
 };
 
 export function AdminChordLibraryClient() {
@@ -35,7 +37,13 @@ export function AdminChordLibraryClient() {
     fd.forEach((v, k) => { if (typeof v === "string" && v.trim()) body[k] = v.trim(); });
 
     const res = await fetch("/api/admin/chord-library", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const data = await res.json();
+    const raw = await res.text();
+    let data: { id?: string; error?: string } = {};
+    try {
+      data = raw ? (JSON.parse(raw) as { id?: string; error?: string }) : {};
+    } catch {
+      data = {};
+    }
     setMsg(res.ok ? `Oluşturuldu: ${data.id}` : (data.error ?? "Hata."));
     if (res.ok) { setShowForm(false); fetchShapes(); }
   }
@@ -64,11 +72,12 @@ export function AdminChordLibraryClient() {
           <input name="root" placeholder="Kök nota (C, G, Am…) *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm" />
           <select name="quality" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm">
             <option value="">Kalite *</option>
-            {["maj", "min", "7", "m7", "maj7", "dim", "aug", "sus2", "sus4", "add9", "9", "m9"].map((q) => (
-              <option key={q} value={q}>{q}</option>
+            {GUITAR_QUALITY_OPTIONS.map((q) => (
+              <option key={q.suffix} value={q.suffix}>{q.label}</option>
             ))}
           </select>
           <input name="fingering" placeholder="Parmak (x32010) *" required className="rounded-lg border border-border bg-bg px-3 py-2 text-sm font-mono" />
+          <input name="fingers" placeholder="Parmak no (032010)" className="rounded-lg border border-border bg-bg px-3 py-2 text-sm font-mono" />
           <div className="col-span-full">
             <button type="submit" className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground">
               Oluştur
@@ -85,6 +94,7 @@ export function AdminChordLibraryClient() {
               <th className="px-4 py-3 font-medium">Kök</th>
               <th className="px-4 py-3 font-medium">Kalite</th>
               <th className="px-4 py-3 font-medium">Parmak</th>
+              <th className="px-4 py-3 font-medium">Numara</th>
               <th className="px-4 py-3 font-medium">İşlem</th>
             </tr>
           </thead>
@@ -95,6 +105,7 @@ export function AdminChordLibraryClient() {
                 <td className="px-4 py-3 font-mono text-chord-major">{c.root}</td>
                 <td className="px-4 py-3 text-muted">{c.quality}</td>
                 <td className="px-4 py-3 font-mono text-sm">{c.fingering}</td>
+                <td className="px-4 py-3 font-mono text-sm">{c.fingers ?? "-"}</td>
                 <td className="px-4 py-3">
                   <button type="button" onClick={() => onDelete(c.id)} className="text-xs text-red-500 hover:underline">
                     Sil

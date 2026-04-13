@@ -41,6 +41,7 @@ import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
 import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
 import { romanNumeralForChordInKey } from "@/lib/music/harmony-details";
 import {
+  chordBodyUsesFlatRootNotation,
   extractChordTokensInOrderAsRendered,
   extractUniqueChordTokensAsRendered,
   formatChordSymbolDisplay,
@@ -182,6 +183,13 @@ function resolveOriginalMode(mode: KeyMode | undefined, originalKey: string): Ke
   return "major";
 }
 
+/** Transpoze 0 iken ham yazımı koru; transpoze sonrası bemol ailesi `preferFlatsForNaturalRoots` ile. */
+function displayChordForPreview(token: string, semitones: number, preferFlatsForNaturalRoots: boolean): string {
+  return semitones === 0
+    ? formatChordSymbolDisplay(token)
+    : transposeChordToken(token, semitones, { preferFlatsForNaturalRoots });
+}
+
 function renderChordTokenNode(token: string, key: string, onClick: () => void): ReactNode {
   return (
     <button
@@ -199,6 +207,7 @@ function renderChordTokenNode(token: string, key: string, onClick: () => void): 
 function renderChordLine(
   line: string,
   semitones: number,
+  preferFlatsForNaturalRoots: boolean,
   onChordClick: () => void,
   keyPrefix = "",
 ): ReactNode[] {
@@ -208,7 +217,7 @@ function renderChordLine(
   const regex = new RegExp(INLINE_CHORD_REGEX.source, INLINE_CHORD_REGEX.flags);
   while ((match = regex.exec(line)) !== null) {
     const full = match[0];
-    const displayed = transposeChordToken(full, semitones);
+    const displayed = displayChordForPreview(full, semitones, preferFlatsForNaturalRoots);
     const index = match.index;
     if (index > lastIndex) {
       const slice = line.slice(lastIndex, index);
@@ -239,12 +248,14 @@ function renderChordLine(
 function renderAlignedBracketLine(
   line: string,
   semitones: number,
+  preferFlatsForNaturalRoots: boolean,
   lineIndex: number,
   onChordClick: () => void,
   isLastSourceLine: boolean,
 ): ReactNode {
   const matches = Array.from(line.matchAll(BRACKET_CHORD_REGEX));
-  if (matches.length === 0) return renderChordLine(line, semitones, onChordClick, `L${lineIndex}-`);
+  if (matches.length === 0)
+    return renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${lineIndex}-`);
 
   const chordAtPos: Array<{ pos: number; token: string }> = [];
   let lyrics = "";
@@ -257,7 +268,7 @@ function renderAlignedBracketLine(
     if (idx > cursor) lyrics += line.slice(cursor, idx);
     chordAtPos.push({
       pos: lyrics.length,
-      token: transposeChordToken(rootToken, semitones),
+      token: displayChordForPreview(rootToken, semitones, preferFlatsForNaturalRoots),
     });
     cursor = idx + full.length;
   }
@@ -334,7 +345,12 @@ function normalizeChordBodyText(text: string): string {
   );
 }
 
-function renderChordBodyWithHighlights(text: string, semitones: number, onChordClick: () => void): ReactNode {
+function renderChordBodyWithHighlights(
+  text: string,
+  semitones: number,
+  preferFlatsForNaturalRoots: boolean,
+  onChordClick: () => void,
+): ReactNode {
   const lines = normalizeChordBodyText(text).split("\n");
   const rows: ReactNode[] = [];
   let i = 0;
@@ -357,7 +373,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     if (lineHasBracketChords(line)) {
       rows.push(
         <Fragment key={`line-${i}`}>
-          {renderAlignedBracketLine(line, semitones, i, onChordClick, isLast)}
+          {renderAlignedBracketLine(line, semitones, preferFlatsForNaturalRoots, i, onChordClick, isLast)}
         </Fragment>,
       );
       i += 1;
@@ -376,10 +392,10 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
         <Fragment key={`line-${i}`}>
           <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2.5"}>
             <span className="song-chord-row-stacked block leading-snug [&_button]:align-baseline">
-              {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
+              {renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i}-`)}
             </span>
             <span className="mt-0.5 block leading-snug">
-              {renderChordLine(next, semitones, onChordClick, `L${i + 1}-`)}
+              {renderChordLine(next, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i + 1}-`)}
             </span>
           </span>
         </Fragment>,
@@ -399,7 +415,9 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     ) {
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className="mb-2 block leading-snug">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
+          <span className="mb-2 block leading-snug">
+            {renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i}-`)}
+          </span>
         </Fragment>,
       );
       i += 1;
@@ -409,7 +427,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     const sep = isLast ? null : "\n";
     rows.push(
       <Fragment key={`line-${i}`}>
-        {renderAlignedBracketLine(line, semitones, i, onChordClick, isLast)}
+        {renderAlignedBracketLine(line, semitones, preferFlatsForNaturalRoots, i, onChordClick, isLast)}
         {sep}
       </Fragment>,
     );
@@ -656,12 +674,12 @@ export function PreviewClient({
   /** URL güncellenene kadar eski `?transpose` ile store'un ezilmesini engeller. `0` yarım ton da geçerli; parametre kalkışı `"cleared"`. */
   const pendingTransposeRef = useRef<number | "cleared" | null>(null);
 
+  const preferFlatsForNaturalRoots = useMemo(() => chordBodyUsesFlatRootNotation(chordBody), [chordBody]);
+
   const chordStripTokens = useMemo(() => {
     const raw = extractUniqueChordTokensAsRendered(chordBody);
-    return raw.map((t) =>
-      semitones === 0 ? formatChordSymbolDisplay(t) : transposeChordToken(t, semitones),
-    );
-  }, [chordBody, semitones]);
+    return raw.map((t) => displayChordForPreview(t, semitones, preferFlatsForNaturalRoots));
+  }, [chordBody, semitones, preferFlatsForNaturalRoots]);
   const chordStripFingerings = useMemo(
     () => chordStripTokens.map((token) => resolveChordTokenToFingering(token)),
     [chordStripTokens],
@@ -674,10 +692,8 @@ export function PreviewClient({
 
   const chordProgressionTokens = useMemo(() => {
     const raw = extractChordTokensInOrderAsRendered(chordBody);
-    return raw.map((t) =>
-      semitones === 0 ? formatChordSymbolDisplay(t) : transposeChordToken(t, semitones),
-    );
-  }, [chordBody, semitones]);
+    return raw.map((t) => displayChordForPreview(t, semitones, preferFlatsForNaturalRoots));
+  }, [chordBody, semitones, preferFlatsForNaturalRoots]);
 
   const harmonyRomanRows = useMemo(() => {
     if (transposedTonicPc === null) return [];
@@ -1889,6 +1905,7 @@ export function PreviewClient({
                     {renderChordBodyWithHighlights(
                       splitLyricsEnabled ? leftChordBody : chordBody,
                       semitones,
+                      preferFlatsForNaturalRoots,
                       () => setChordStripOpen(true),
                     )}
                   </pre>
@@ -1898,7 +1915,12 @@ export function PreviewClient({
                       className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre font-mono leading-snug text-white"
                       style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
                     >
-                      {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+                      {renderChordBodyWithHighlights(
+                        rightChordBody,
+                        semitones,
+                        preferFlatsForNaturalRoots,
+                        () => setChordStripOpen(true),
+                      )}
                     </pre>
                   ) : null}
                 </div>
@@ -2531,6 +2553,7 @@ export function PreviewClient({
               {renderChordBodyWithHighlights(
                 splitLyricsEnabled ? leftChordBody : chordBody,
                 semitones,
+                preferFlatsForNaturalRoots,
                 () => setChordStripOpen(true),
               )}
             </pre>
@@ -2540,7 +2563,12 @@ export function PreviewClient({
                 className="song-chord-text overflow-x-auto overflow-y-hidden whitespace-pre font-mono leading-snug text-foreground"
                 style={{ fontSize: `${effectiveLyricsFontSizePx}px` }}
               >
-                {renderChordBodyWithHighlights(rightChordBody, semitones, () => setChordStripOpen(true))}
+                {renderChordBodyWithHighlights(
+                  rightChordBody,
+                  semitones,
+                  preferFlatsForNaturalRoots,
+                  () => setChordStripOpen(true),
+                )}
               </pre>
             ) : null}
           </div>

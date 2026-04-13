@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   PC_TO_NAME,
+  PC_TO_NAME_FLAT,
+  pitchClassToChordRootName,
   noteNameToPitchClass,
   CO5_PITCH_CLASSES,
   CO5_LABELS,
@@ -20,6 +22,19 @@ describe("PC_TO_NAME", () => {
     for (let i = 0; i < 12; i++) {
       expect(PC_TO_NAME[i]).toBeDefined();
     }
+  });
+});
+
+describe("PC_TO_NAME_FLAT / pitchClassToChordRootName", () => {
+  it("maps enharmonics to flat spellings", () => {
+    expect(PC_TO_NAME_FLAT[1]).toBe("Db");
+    expect(PC_TO_NAME_FLAT[8]).toBe("Ab");
+    expect(pitchClassToChordRootName(1, true)).toBe("Db");
+    expect(pitchClassToChordRootName(1, false)).toBe("C#");
+  });
+
+  it("normalizes negative pitch classes", () => {
+    expect(pitchClassToChordRootName(-1, false)).toBe("B");
   });
 });
 

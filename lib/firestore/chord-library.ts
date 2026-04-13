@@ -12,12 +12,18 @@ function db() {
 }
 
 export async function getAllChordShapes(): Promise<(ChordShapeDoc & { id: string })[]> {
-  const snap = await db()
-    .collection(COLLECTION)
-    .orderBy("root")
-    .orderBy("quality")
-    .get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as ChordShapeDoc) }));
+  const snap = await db().collection(COLLECTION).get();
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as ChordShapeDoc) }))
+    .sort((a, b) => {
+      const rootCmp = a.root.localeCompare(b.root, "tr");
+      if (rootCmp !== 0) return rootCmp;
+      const qualityCmp = a.quality.localeCompare(b.quality, "tr");
+      if (qualityCmp !== 0) return qualityCmp;
+      const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      return aOrder - bOrder;
+    });
 }
 
 export async function createChordShape(

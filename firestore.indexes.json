@@ -114,6 +114,14 @@
         { "fieldPath": "quality", "order": "ASCENDING" },
         { "fieldPath": "sortOrder", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "chord_library",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "root", "order": "ASCENDING" },
+        { "fieldPath": "quality", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

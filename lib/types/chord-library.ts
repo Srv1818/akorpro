@@ -3,6 +3,8 @@ export interface ChordShapeDoc {
   root: string;
   quality: "maj" | "min" | "7" | "m7" | "maj7" | "dim" | "aug" | "sus2" | "sus4" | "add9" | "9" | "m9";
   fingering: string;
+  /** Finger numbers per string (6->1), 0 = not shown */
+  fingers?: string;
   /** Fret positions for diagram: -1 = muted, 0 = open, 1+ = fret */
   frets?: number[];
   /** Barre info */

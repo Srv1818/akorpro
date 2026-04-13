@@ -136,6 +136,7 @@ Playlist öğesi: **snapshot → songOverrides → sunucu varsayılanı**.
 | `root` | string | Kök nota |
 | `quality` | string | Kalite (maj, min, 7, m7, sus4…) |
 | `fingering` | string | Parmak dizilimi (x32010) |
+| `fingers` | string | Parmak numaraları (032010) — opsiyonel |
 | `frets` | number[] | Perde pozisyonları — opsiyonel |
 | `sortOrder` | number | Sıralama — opsiyonel |
 | `schemaVersion` | number | Şema versiyonu |

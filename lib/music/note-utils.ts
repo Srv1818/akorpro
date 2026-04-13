@@ -5,6 +5,18 @@ export const PC_TO_NAME: Record<number, string> = {
   6: "F#", 7: "G", 8: "G#", 9: "A", 10: "A#", 11: "B",
 };
 
+/** Aynı pitch class için bemol tercihi (transpoze çıktısı; `PC_TO_NAME` diyez ailesi). */
+export const PC_TO_NAME_FLAT: Record<number, string> = {
+  0: "C", 1: "Db", 2: "D", 3: "Eb", 4: "E", 5: "F",
+  6: "Gb", 7: "G", 8: "Ab", 9: "A", 10: "Bb", 11: "B",
+};
+
+export function pitchClassToChordRootName(pc: number, preferFlat: boolean): string {
+  const n = ((pc % 12) + 12) % 12;
+  const table = preferFlat ? PC_TO_NAME_FLAT : PC_TO_NAME;
+  return table[n] ?? "C";
+}
+
 const NAME_TO_PC: Record<string, number> = {
   C: 0,
   "C#": 1,

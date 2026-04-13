@@ -28,6 +28,111 @@ const btnSelected =
 const btnRootIdle =
   "bg-bg text-foreground ring-1 ring-border hover:bg-surface hover:ring-zinc-500/35";
 
+type CustomChordShape = {
+  id: string;
+  name: string;
+  root: string;
+  quality: string;
+  fingering: string;
+  fingers?: string;
+  sortOrder?: number;
+  barreFret?: number;
+};
+
+type CustomChordIndex = Record<string, GuitarChordPosition[]>;
+
+const ROOT_ALIAS_TO_DBKEY: Record<string, GuitarRootDbKey> = {
+  c: "C",
+  "c#": "Csharp",
+  db: "Csharp",
+  d: "D",
+  "d#": "Eb",
+  eb: "Eb",
+  e: "E",
+  f: "F",
+  "f#": "Fsharp",
+  gb: "Fsharp",
+  g: "G",
+  "g#": "Ab",
+  ab: "Ab",
+  a: "A",
+  "a#": "Bb",
+  bb: "Bb",
+  b: "B",
+};
+
+function normalizeRootToDbKey(root: string): GuitarRootDbKey | null {
+  const token = root.trim().match(/[A-Ga-g](?:#|b)?/)?.[0]?.toLowerCase();
+  if (!token) return null;
+  return ROOT_ALIAS_TO_DBKEY[token] ?? null;
+}
+
+function normalizeFingeringLine(line: string): string | null {
+  const normalized = line.trim().replace(/\s+/g, "").toLowerCase();
+  if (!/^[x0-9a-f]{6}$/i.test(normalized)) return null;
+  return normalized;
+}
+
+function normalizeFingerLine(line?: string): string {
+  const normalized = (line ?? "").trim().replace(/\s+/g, "");
+  if (/^[0-4]{6}$/.test(normalized)) return normalized;
+  return "000000";
+}
+
+function makeCustomKey(dbKey: GuitarRootDbKey, suffix: string): string {
+  return `${dbKey}::${suffix}`;
+}
+
+function buildCustomChordIndex(shapes: CustomChordShape[]): CustomChordIndex {
+  const grouped = new Map<string, Array<{ shape: CustomChordShape; position: GuitarChordPosition }>>();
+  for (const shape of shapes) {
+    const dbKey = normalizeRootToDbKey(shape.root);
+    const frets = normalizeFingeringLine(shape.fingering);
+    const suffix = shape.quality?.trim();
+    if (!dbKey || !frets || !suffix) continue;
+    const key = makeCustomKey(dbKey, suffix);
+    const position: GuitarChordPosition = {
+      frets,
+      fingers: normalizeFingerLine(shape.fingers),
+      ...(typeof shape.barreFret === "number" ? { barres: shape.barreFret } : {}),
+    };
+    const bucket = grouped.get(key) ?? [];
+    bucket.push({ shape, position });
+    grouped.set(key, bucket);
+  }
+
+  const result: CustomChordIndex = {};
+  for (const [key, entries] of grouped.entries()) {
+    entries.sort((a, b) => {
+      const aOrder = a.shape.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.shape.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.shape.name.localeCompare(b.shape.name, "tr");
+    });
+    result[key] = entries.map((entry) => entry.position);
+  }
+  return result;
+}
+
+function getChordWithCustomFallback(
+  dbKey: GuitarRootDbKey,
+  suffix: string,
+  customIndex: CustomChordIndex,
+): GuitarChordResult | null {
+  const customPositions = customIndex[makeCustomKey(dbKey, suffix)];
+  if (customPositions?.length) {
+    return {
+      chord: {
+        key: dbKey,
+        suffix,
+        positions: customPositions,
+      },
+      fallbackSuffix: null,
+    };
+  }
+  return getGuitarChord(dbKey, suffix);
+}
+
 /** Görsel satır s (0=ince E) → frets/fingers dizin i (0=kalın E) */
 function stringRowToDataIndex(s: number): number {
   return STRING_COUNT - 1 - s;
@@ -261,12 +366,16 @@ function ChordDiagram({
   );
 }
 
-export function ChordLibraryExplorer() {
+export function ChordLibraryExplorer({ customShapes = [] }: { customShapes?: CustomChordShape[] }) {
   const [root, setRoot] = useState<GuitarRootDbKey>("C");
   const [suffix, setSuffix] = useState<string>("major");
   const [variation, setVariation] = useState(1);
+  const customIndex = useMemo(() => buildCustomChordIndex(customShapes), [customShapes]);
 
-  const result = useMemo(() => getGuitarChord(root, suffix), [root, suffix]);
+  const result = useMemo(
+    () => getChordWithCustomFallback(root, suffix, customIndex),
+    [root, suffix, customIndex],
+  );
 
   const maxVar = result?.chord.positions.length ?? 1;
   const safeVariation = Math.min(Math.max(1, variation), maxVar);
@@ -332,7 +441,7 @@ export function ChordLibraryExplorer() {
                 onClick={() => {
                   setRoot(dbKey);
                   setVariation(1);
-                  setSuffix((prev) => (getGuitarChord(dbKey, prev) ? prev : "major"));
+                  setSuffix((prev) => (getChordWithCustomFallback(dbKey, prev, customIndex) ? prev : "major"));
                 }}
                 className={[
                   "min-h-8 min-w-8 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors sm:min-h-9 sm:min-w-9 sm:text-[0.8125rem]",
@@ -350,7 +459,7 @@ export function ChordLibraryExplorer() {
         <div className="grid grid-cols-5 gap-1 rounded-2xl border border-border bg-surface/90 p-2 sm:gap-1.5 sm:p-2.5 md:grid-cols-10">
           {GUITAR_QUALITY_OPTIONS.map(({ label, suffix: suf }) => {
             const selected = suf === suffix;
-            const available = getGuitarChord(root, suf) != null;
+            const available = getChordWithCustomFallback(root, suf, customIndex) != null;
             return (
               <button
                 key={suf}

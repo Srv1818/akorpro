@@ -1,4 +1,4 @@
-import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
+import { noteNameToPitchClass, pitchClassToChordRootName } from "@/lib/music/note-utils";
 
 export function parseTonicFromOriginalKey(key: string): string {
   const k = key.trim();
@@ -12,7 +12,19 @@ export function signedSemitoneDelta(fromPc: number, toPc: number): number {
   return raw > 6 ? raw - 12 : raw;
 }
 
-export function transposeChordToken(token: string, semitones: number): string {
+export type TransposeChordOptions = {
+  /** Metinde bemol kök (…b) varsa doğal kökler için de bemol yazımı (C#→Db). */
+  preferFlatsForNaturalRoots?: boolean;
+};
+
+function useFlatSpellingForTransposedRoot(root: string, preferFlatsForNaturalRoots: boolean): boolean {
+  const r = root.trim();
+  if (r.includes("#")) return false;
+  if (r.length >= 2 && r.charAt(1) === "b") return true;
+  return preferFlatsForNaturalRoots;
+}
+
+export function transposeChordToken(token: string, semitones: number, options?: TransposeChordOptions): string {
   const m = token.match(/^([A-G](?:#|b)?)((?:mmaj|madd|msus|maj|min|dim|aug|add|sus|m)?(?:\d+)?(?:[b#]\d+)*)$/i);
   if (!m) return token;
   const root = m[1];
@@ -22,13 +34,14 @@ export function transposeChordToken(token: string, semitones: number): string {
   if (rootPc === null) return token;
 
   const newPc = (rootPc + semitones + 120) % 12;
-  const newRoot = PC_TO_NAME[newPc];
+  const preferFlat = useFlatSpellingForTransposedRoot(root, options?.preferFlatsForNaturalRoots ?? false);
+  const newRoot = pitchClassToChordRootName(newPc, preferFlat);
   return `${newRoot}${suffix}`;
 }
 
 /**
  * Transpoze yokken gösterim: kök harfini müzik notasyonuna uygun büyütür (d→D, bb→Bb).
- * Transpoze ile gelen `PC_TO_NAME` (ör. Bb→A#) davranışını değiştirmez; sadece 0 yarımda kullanılır.
+ * Transpoze dışında kök büyük/küçük harf düzeni; 0 yarımda kullanılır.
  */
 export function formatChordSymbolDisplay(token: string): string {
   const slash = token.indexOf("/");
@@ -151,15 +164,28 @@ export function extractChordTokensInOrderAsRendered(text: string): string[] {
   return out;
 }
 
+/** Metinde en az bir bemol kök (Eb, Bb, …) varsa transpoze çıktısında doğal kökler için bemol ailesi kullanılır. */
+export function chordBodyUsesFlatRootNotation(text: string): boolean {
+  if (!text) return false;
+  const re = new RegExp(CHORD_TOKEN_REGEX.source, CHORD_TOKEN_REGEX.flags);
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const root = m[1] ?? "";
+    if (root.length >= 2 && root.charAt(1) === "b") return true;
+  }
+  return false;
+}
+
 export function transposeChordBodyText(text: string, semitones: number): string {
   if (!text) return text;
   const normalized = normalizeBracketedChordTokens(text);
   if (!Number.isFinite(semitones)) return normalized;
 
+  const preferFlatsForNaturalRoots = chordBodyUsesFlatRootNotation(text);
   const re = new RegExp(CHORD_TOKEN_REGEX.source, CHORD_TOKEN_REGEX.flags);
   return normalized.replace(re, (full, root: string, suffix: string) => {
     const token = `${root}${suffix}`;
     if (semitones === 0) return formatChordSymbolDisplay(token);
-    return transposeChordToken(token, semitones);
+    return transposeChordToken(token, semitones, { preferFlatsForNaturalRoots });
   });
 }
