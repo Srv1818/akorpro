@@ -27,7 +27,7 @@ export function ThemeProvider({
   nonce,
 }: {
   children: React.ReactNode;
-  defaultTheme: "dark" | "light" | "system";
+  defaultTheme: "dark" | "light";
   nonce?: string;
 }) {
   return (

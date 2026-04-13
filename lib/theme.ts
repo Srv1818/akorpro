@@ -7,8 +7,8 @@ export function themeCookieHeader(value: ThemePreference): string {
   return `${THEME_COOKIE}=${value}; Path=/; Max-Age=${maxAge}; SameSite=Lax`;
 }
 
-/** SSR + next-themes: çerezde kayıtlı tercih; yoksa sistem. */
-export function defaultThemeFromCookie(value: string | undefined): "dark" | "light" | "system" {
-  if (value === "dark" || value === "light") return value;
-  return "system";
+/** SSR + next-themes: çerezde kayıtlı tercih; yoksa koyu mod. */
+export function defaultThemeFromCookie(value: string | undefined): "dark" | "light" {
+  if (value === "light") return "light";
+  return "dark";
 }

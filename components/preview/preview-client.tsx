@@ -48,7 +48,7 @@ import {
   signedSemitoneDelta,
   transposeChordToken,
 } from "@/lib/music/transpose";
-import { ChevronRight, Info, Mic, MoreHorizontal, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Mic, MoreHorizontal, X } from "lucide-react";
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
@@ -272,10 +272,10 @@ function renderAlignedBracketLine(
     caret = Math.max(caret, item.pos + item.token.length);
   });
 
-  const pairClass = isLastSourceLine ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5";
+  const pairClass = isLastSourceLine ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2.5";
   /* Köşeli [Am] hizasında üst satırı büyütmek monospace sütun hizasını bozar; yalnızca söz yokken (yalnız akor) güvenli. */
   const chordRowClass =
-    "block leading-snug sm:leading-[1.05] [&_button]:align-baseline" + (!lyrics ? " song-chord-row-stacked" : "");
+    "block leading-snug [&_button]:align-baseline" + (!lyrics ? " song-chord-row-stacked" : "");
   const chordRow = <span className={chordRowClass}>{nodes}</span>;
 
   if (!lyrics) {
@@ -347,7 +347,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     if (line.trim() === "") {
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className="block h-[2px] sm:h-[0.8em]" aria-hidden />
+          <span className="block h-4" aria-hidden />
         </Fragment>,
       );
       i += 1;
@@ -374,8 +374,8 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
       const pairEndsSong = i + 1 >= lines.length - 1;
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2 sm:mb-2.5"}>
-            <span className="song-chord-row-stacked block leading-snug sm:leading-tight [&_button]:align-baseline">
+          <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2.5"}>
+            <span className="song-chord-row-stacked block leading-snug [&_button]:align-baseline">
               {renderChordLine(line, semitones, onChordClick, `L${i}-`)}
             </span>
             <span className="mt-0.5 block leading-snug">
@@ -399,7 +399,7 @@ function renderChordBodyWithHighlights(text: string, semitones: number, onChordC
     ) {
       rows.push(
         <Fragment key={`line-${i}`}>
-          <span className="block leading-snug sm:mb-2 sm:leading-tight">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
+          <span className="mb-2 block leading-snug">{renderChordLine(line, semitones, onChordClick, `L${i}-`)}</span>
         </Fragment>,
       );
       i += 1;
@@ -442,8 +442,8 @@ function splitChordBodyInTwo(text: string): [left: string, right: string] {
 
 /** Mobil Gamlar paneli: klavye yatay kullanıma uygun olsun diye ekranı yatay kilitle (destekleyen tarayıcılar). */
 const WIDGET_MOBILE_MAX = 640;
-const LYRICS_MOBILE_FIT_MAX_WIDTH = 640;
-const LYRICS_MOBILE_FIT_MIN = 10;
+const LYRICS_AUTO_FIT_MAX_WIDTH = 768;
+const LYRICS_AUTO_FIT_MIN = 10;
 
 const TRANSPOSE_SEMITONE_MIN = -6;
 const TRANSPOSE_SEMITONE_MAX = 5;
@@ -559,15 +559,21 @@ export function PreviewClient({
   });
   const sceneLyricsScrollRef = useRef<HTMLDivElement>(null);
 
-  // Mobilde ekran genişliği değişince (resize/orient.) sözleri "zoom out" mantığıyla tekrar fit et.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const onResize = () => setLyricsFitResizeTick((t) => t + 1);
+    let rafId = 0;
+    const onResize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => setLyricsFitResizeTick((t) => t + 1));
+    };
     window.addEventListener("resize", onResize, { passive: true });
     window.addEventListener("orientationchange", onResize);
+    window.visualViewport?.addEventListener("resize", onResize, { passive: true });
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
     };
   }, []);
 
@@ -631,6 +637,7 @@ export function PreviewClient({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveAndAddOpen, setSaveAndAddOpen] = useState(false);
   const [chordStripOpen, setChordStripOpen] = useState(false);
+  const [chordPosIndices, setChordPosIndices] = useState<Record<string, number>>({});
   const [harmonyDetailOpen, setHarmonyDetailOpen] = useState(false);
 
   const [playlistNextSong, setPlaylistNextSong] = useState<{ title: string; href: string } | null>(null);
@@ -659,6 +666,11 @@ export function PreviewClient({
     () => chordStripTokens.map((token) => resolveChordTokenToFingering(token)),
     [chordStripTokens],
   );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset positions when chords change
+  useEffect(() => {
+    setChordPosIndices({});
+  }, [chordStripTokens]);
 
   const chordProgressionTokens = useMemo(() => {
     const raw = extractChordTokensInOrderAsRendered(chordBody);
@@ -846,21 +858,26 @@ export function PreviewClient({
       const opened = (["gamlar", "metronome"] as const).filter((id) => openWidgets[id]);
       if (opened.length === 0) return;
 
-      const isNarrow = window.innerWidth < WIDGET_MOBILE_MAX;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const isNarrow = vw < WIDGET_MOBILE_MAX;
+      const isLandscapePhone = vw > vh && vh < 500;
 
       const computedSizes: Partial<Record<WidgetId, { width: number; height: number }>> = {};
       for (const id of opened) {
         if (isNarrow) {
-          computedSizes[id] = { width: window.innerWidth, height: window.innerHeight };
+          computedSizes[id] = { width: vw, height: vh };
         } else if (id === "metronome") {
-          computedSizes[id] = { width: 320, height: 240 };
+          const mw = isLandscapePhone ? Math.min(280, vw * 0.4) : 320;
+          const mh = isLandscapePhone ? Math.min(200, vh - 40) : 240;
+          computedSizes[id] = { width: mw, height: mh };
         } else {
           const pad = 32;
-          const maxWidth = Math.max(460, Math.min(window.innerWidth - pad, Math.floor(window.innerWidth * 0.66)));
-          const maxHeight = Math.max(340, Math.min(window.innerHeight - pad, Math.floor(window.innerHeight * 0.72)));
+          const maxWidth = Math.max(460, Math.min(vw - pad, Math.floor(vw * 0.66)));
+          const maxHeight = Math.max(260, Math.min(vh - pad, Math.floor(vh * (isLandscapePhone ? 0.85 : 0.72))));
           const minWidth = 340;
-          const minHeight = 260;
-          const base = { width: 700, height: 500 };
+          const minHeight = isLandscapePhone ? 220 : 260;
+          const base = { width: 700, height: isLandscapePhone ? 380 : 500 };
           const width = Math.min(maxWidth, Math.max(minWidth, base.width));
           const height = Math.min(maxHeight, Math.max(minHeight, base.height));
           computedSizes[id] = { width, height };
@@ -1463,7 +1480,7 @@ export function PreviewClient({
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
 
-    const shouldFitLyrics = lyricsAutoFitEnabled && window.innerWidth < LYRICS_MOBILE_FIT_MAX_WIDTH;
+    const shouldFitLyrics = lyricsAutoFitEnabled && window.innerWidth < LYRICS_AUTO_FIT_MAX_WIDTH;
     if (!shouldFitLyrics) {
       setEffectiveLyricsFontSizePx(lyricsFontSizePx);
       return;
@@ -1471,45 +1488,41 @@ export function PreviewClient({
 
     const modeAttr = sceneMode ? "scene" : "body";
     const pres = Array.from(document.querySelectorAll(`[data-lyrics-pre="${modeAttr}"]`)) as HTMLElement[];
-    if (pres.length === 0) return; // Sahne moduna girip çıkarken geçici olarak mount/unmount olabiliyor.
+    if (pres.length === 0) return;
 
     const base = lyricsFontSizePx;
-    const mobileMin = sceneMode ? 10 : LYRICS_MOBILE_FIT_MIN;
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const fitMin = sceneMode
+      ? (isLandscape ? 8 : LYRICS_AUTO_FIT_MIN)
+      : LYRICS_AUTO_FIT_MIN;
 
-    // Amaç: pre satırları taşmadan sığacak "en büyük" fontu bulmak.
-    // Böylece 2. resimdeki gibi zoom-out hissi stabil olur.
-    let low = mobileMin;
+    let low = fitMin;
     let high = base;
-    let best = mobileMin;
+    let best = fitMin;
 
-    const availableHeight = sceneMode ? sceneLyricsScrollRef.current?.clientHeight ?? window.innerHeight : null;
+    const scrollContainer = sceneLyricsScrollRef.current;
+    const availableHeight = sceneMode
+      ? (scrollContainer?.clientHeight ?? window.innerHeight)
+      : null;
 
     const fitsNow = () => {
-      // Yatay taşma kontrolü
       for (const pre of pres) {
         const sw = pre.scrollWidth;
         const cw = pre.clientWidth;
         if (cw > 0 && sw > cw + 1) return false;
       }
-
       if (!sceneMode) return true;
-
       if (!availableHeight) return true;
-      // Dikey taşma kontrolü (scene overlay'da)
       for (const pre of pres) {
-        const sh = pre.scrollHeight;
-        if (sh > availableHeight + 2) return false;
+        if (pre.scrollHeight > availableHeight + 2) return false;
       }
       return true;
     };
 
-    // Binary search: [mobileMin..base]
-    // (base varsayılan olarak MIN+1; kullanıcı A-/A+ ile değiştirebilir, high = base)
-    for (let i = 0; i < 9; i += 1) {
+    for (let i = 0; i < 12; i += 1) {
+      if (low > high) break;
       const mid = Math.floor((low + high + 1) / 2);
-
       for (const pre of pres) pre.style.fontSize = `${mid}px`;
-
       if (fitsNow()) {
         best = mid;
         low = mid + 1;
@@ -1525,13 +1538,11 @@ export function PreviewClient({
     <div className="py-2 sm:py-3">
       {sceneMode ? (
         <div
-          className="fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+          className="scene-overlay-root fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black"
           role="dialog"
           aria-modal="true"
           aria-label="Sahne modu"
           onMouseDown={(e) => {
-            // Mobilde bazen içerideki dokunuşlar backdrop handler'ına da düşebiliyor.
-            // Yalnızca gerçek "arka plan" alanına tıklanırsa kapat.
             if (e.target !== e.currentTarget) return;
             setSceneMode(false);
             replaceSceneParam(false);
@@ -1542,7 +1553,7 @@ export function PreviewClient({
             className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col gap-2 border-b border-white/10 bg-black/40 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            <div className="scene-header flex flex-col gap-1.5 border-b border-white/10 bg-black/40 px-3 py-2 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4 sm:py-3">
               <div className="flex items-center justify-between gap-2 sm:min-w-0 sm:flex-1">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-stone-200">{songTitle}</p>
@@ -1568,7 +1579,7 @@ export function PreviewClient({
                 />
               </div>
               {/* Mobile: compact toolbar */}
-              <div className="flex items-center gap-2 sm:hidden">
+              <div className="flex items-center gap-1.5 sm:hidden">
                 <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} variant="scene" />
                 <button
                   type="button"
@@ -1791,10 +1802,10 @@ export function PreviewClient({
                     role="dialog"
                     aria-modal="true"
                     aria-label="Sahne ayarları"
-                    className="fixed inset-x-0 bottom-0 z-[76] max-h-[min(72vh,32rem)] overflow-hidden sm:hidden"
+                    className="fixed inset-x-0 bottom-0 z-[76] max-h-[min(72dvh,32rem)] overflow-hidden sm:hidden"
                     onMouseDown={(e) => e.stopPropagation()}
                   >
-                    <div className="mx-auto flex max-h-[min(72vh,32rem)] w-full flex-col border-t border-white/10 bg-black/80 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] backdrop-blur">
+                    <div className="mx-auto flex max-h-[min(72dvh,32rem)] w-full flex-col border-t border-white/10 bg-black/80 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] backdrop-blur">
                       <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2">
                         <p className="text-xs font-semibold tracking-tight text-white/90">Sahne ayarları</p>
                         <PanelCloseButton variant="scene" onClick={() => setSceneMoreOpen(false)} />
@@ -1867,8 +1878,8 @@ export function PreviewClient({
                 </>
               ) : null}
 
-            <div ref={sceneLyricsScrollRef} className="flex-1 overflow-auto p-4 sm:p-6">
-              <div className={splitLyricsEnabled ? "max-sm:overflow-x-auto" : ""}>
+            <div ref={sceneLyricsScrollRef} className="scene-lyrics-area flex-1 overflow-auto p-3 sm:p-6">
+              <div className={splitLyricsEnabled ? "overflow-x-auto" : ""}>
                 <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4 max-sm:min-w-[42rem]" : ""}>
                   <pre
                   data-lyrics-pre="scene"
@@ -2057,9 +2068,9 @@ export function PreviewClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="chord-strip-title"
-            className="fixed inset-x-0 bottom-0 z-[81] max-h-[min(70vh,32rem)] overflow-hidden print:hidden"
+            className="fixed inset-x-0 bottom-0 z-[81] max-h-[min(70dvh,32rem)] overflow-hidden print:hidden"
           >
-            <div className="mx-auto flex max-h-[min(70vh,32rem)] max-w-6xl flex-col border-t border-border bg-surface shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:rounded-t-2xl dark:shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">
+            <div className="mx-auto flex max-h-[min(70dvh,32rem)] max-w-6xl flex-col border-t border-border bg-surface shadow-[0_-8px_30px_rgba(0,0,0,0.12)] sm:rounded-t-2xl dark:shadow-[0_-8px_30px_rgba(0,0,0,0.35)]">
               <div className="flex shrink-0 items-center justify-between gap-1 border-b border-border px-2 py-0.5">
                 <p
                   id="chord-strip-title"
@@ -2078,11 +2089,52 @@ export function PreviewClient({
                 ) : (
                   <div className="flex flex-wrap items-stretch justify-start gap-4 sm:flex-nowrap sm:overflow-x-auto sm:pb-1">
                     {chordStripFingerings.map((entry, i) => {
-                      const pos = entry.chord?.positions[0] ?? null;
+                      const positions = entry.chord?.positions ?? [];
+                      const posKey = `${entry.token}-${i}`;
+                      const posIdx = chordPosIndices[posKey] ?? 0;
+                      const pos = positions[posIdx] ?? positions[0] ?? null;
+                      const hasMultiple = positions.length > 1;
                       return (
-                        <div key={`${entry.token}-${i}`} className="shrink-0">
+                        <div key={posKey} className="shrink-0">
                           {entry.chord && pos ? (
-                            <GuitarChordDiagramClassic position={pos} title={entry.token} />
+                            <GuitarChordDiagramClassic
+                              position={pos}
+                              title={entry.token}
+                              headerStart={
+                                hasMultiple ? (
+                                  <button
+                                    type="button"
+                                    className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm bg-transparent p-0 text-foreground opacity-90 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    aria-label={`Önceki pozisyon (${posIdx + 1} / ${positions.length})`}
+                                    onClick={() =>
+                                      setChordPosIndices((prev) => ({
+                                        ...prev,
+                                        [posKey]: (posIdx - 1 + positions.length) % positions.length,
+                                      }))
+                                    }
+                                  >
+                                    <ChevronLeft className="size-3.5 stroke-[2.5]" aria-hidden />
+                                  </button>
+                                ) : undefined
+                              }
+                              headerEnd={
+                                hasMultiple ? (
+                                  <button
+                                    type="button"
+                                    className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm bg-transparent p-0 text-foreground opacity-90 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    aria-label={`Sonraki pozisyon (${posIdx + 1} / ${positions.length})`}
+                                    onClick={() =>
+                                      setChordPosIndices((prev) => ({
+                                        ...prev,
+                                        [posKey]: (posIdx + 1) % positions.length,
+                                      }))
+                                    }
+                                  >
+                                    <ChevronRight className="size-3.5 stroke-[2.5]" aria-hidden />
+                                  </button>
+                                ) : undefined
+                              }
+                            />
                           ) : (
                             <div className="flex min-h-[12.5rem] min-w-[10rem] flex-col items-center justify-center rounded-xl border border-border bg-bg px-2 py-3 text-center">
                               <p className="font-mono text-sm font-semibold text-foreground">{entry.token}</p>
@@ -2100,9 +2152,9 @@ export function PreviewClient({
         </>
       ) : null}
 
-      <div className="mt-1 flex flex-col gap-3 sm:mt-2 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-start gap-x-1 gap-y-1.5">
+      <div className="preview-toolbar-row mt-1 flex flex-col gap-2 sm:mt-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+        <div className="flex flex-col gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center justify-start gap-1 sm:gap-x-1 sm:gap-y-1.5">
             <button
               type="button"
               onClick={() =>
@@ -2150,7 +2202,7 @@ export function PreviewClient({
             </button>
           </div>
         </div>
-        <div className="hidden sm:flex w-full items-end justify-center sm:w-auto sm:flex-1">
+        <div className="hidden w-full items-end justify-center sm:flex sm:w-auto sm:flex-1">
           <div className="relative inline-flex items-end justify-center">
           <button
             type="button"
@@ -2179,7 +2231,7 @@ export function PreviewClient({
           </button>
           </div>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 text-[11px] text-muted sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end sm:gap-1.5">
+        <div className="preview-info-badges w-full text-[11px] text-muted sm:w-auto">
           <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             Ton: <span className="font-mono text-foreground">{originalKey}</span>
           </div>
@@ -2242,21 +2294,30 @@ export function PreviewClient({
             const widgetTitle = widgetTitleById[widget];
             const offset = widgetOffsets[widget];
             const size = widgetSizes[widget];
+            const isMobileFullscreen = typeof window !== "undefined" && window.innerWidth < WIDGET_MOBILE_MAX;
             return (
               <div
                 key={widget}
                 role="dialog"
                 aria-modal="false"
                 aria-label={widgetTitle}
-                className="pointer-events-auto absolute left-1/2 top-1/2 flex max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden rounded-none border border-border bg-surface shadow-2xl sm:rounded-2xl"
-                style={{
-                  width: size?.width,
-                  height: size?.height,
-                  transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
-                }}
+                className={
+                  isMobileFullscreen
+                    ? "pointer-events-auto fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface"
+                    : "pointer-events-auto absolute left-1/2 top-1/2 flex max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
+                }
+                style={
+                  isMobileFullscreen
+                    ? undefined
+                    : {
+                        width: size?.width,
+                        height: size?.height,
+                        transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
+                      }
+                }
               >
                 <div
-                  className="flex cursor-default items-center justify-between gap-1.5 border-b border-border bg-surface/90 px-2.5 py-1.5 backdrop-blur sm:cursor-move"
+                  className={`flex items-center justify-between gap-1.5 border-b border-border bg-surface/90 px-3 py-2 backdrop-blur ${isMobileFullscreen ? "" : "cursor-move"}`}
                   onPointerDown={(e) => handleWidgetHeaderPointerDown(widget, e)}
                   onPointerMove={handleWidgetHeaderPointerMove}
                   onPointerUp={handleWidgetHeaderPointerUp}
@@ -2290,11 +2351,11 @@ export function PreviewClient({
                     />
                   )}
                 </div>
-                {widget === "gamlar" ? (
+                {!isMobileFullscreen && widget === "gamlar" ? (
                   <button
                     type="button"
                     aria-label="Widget boyutunu değiştir"
-                    className="absolute bottom-1 right-1 hidden h-5 w-5 cursor-se-resize rounded bg-border/40 hover:bg-border/70 sm:block"
+                    className="absolute bottom-1 right-1 h-5 w-5 cursor-se-resize rounded bg-border/40 hover:bg-border/70"
                     onPointerDown={(e) => handleWidgetResizePointerDown(widget, e)}
                     onPointerMove={handleWidgetResizePointerMove}
                     onPointerUp={handleWidgetResizePointerUp}
@@ -2307,10 +2368,10 @@ export function PreviewClient({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="preview-toolbar-row mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1">
-            <div className="grid w-full min-w-0 grid-cols-4 gap-1 sm:inline-flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-1">
+            <div className="transpose-grid w-full min-w-0 sm:w-auto">
               {Array.from({ length: 12 }, (_, pc) => {
                 const label = PC_TO_NAME[pc];
                 const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
@@ -2333,7 +2394,7 @@ export function PreviewClient({
                 );
               })}
             </div>
-            <div className="flex items-center justify-end gap-1 sm:ml-18 sm:justify-start">
+            <div className="flex items-center justify-end gap-1 sm:ml-4 sm:justify-start">
               <button
                 type="button"
                 disabled={!canDecreaseLyricsFont}
@@ -2378,7 +2439,7 @@ export function PreviewClient({
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[12rem] sm:items-end">
+        <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:min-w-[12rem] sm:items-end sm:gap-2">
           <div className="flex w-full items-center justify-end sm:w-auto">
             <button
               type="button"
@@ -2456,15 +2517,11 @@ export function PreviewClient({
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
       <article
-        className={
-          splitLyricsEnabled
-            ? "mt-4 bg-transparent p-0 print:border-0 print:p-0"
-            : "mt-4 bg-transparent p-0 print:border-0 print:p-0"
-        }
+        className="mt-6 bg-transparent pb-4 sm:mt-8 sm:pb-6 print:border-0 print:p-0"
         id="chord-body"
         data-split={splitLyricsEnabled ? "true" : "false"}
       >
-        <div className={splitLyricsEnabled ? "max-sm:overflow-x-auto" : ""}>
+        <div className={splitLyricsEnabled ? "overflow-x-auto" : ""}>
           <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4 max-sm:min-w-[42rem]" : ""}>
             <pre
               data-lyrics-pre="body"
@@ -2496,7 +2553,7 @@ export function PreviewClient({
         <button
           type="button"
           onClick={() => setHarmonyDetailOpen(true)}
-          className="mt-2 inline-flex items-center gap-0.5 text-left text-[11px] leading-snug text-muted-foreground/65 transition hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+          className="mt-4 inline-flex items-center gap-0.5 text-left text-[11px] leading-snug text-muted-foreground/65 transition hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
         >
           Meraklısına daha fazla detay
           <ChevronRight
@@ -2516,7 +2573,7 @@ export function PreviewClient({
           onMouseDown={() => setHarmonyDetailOpen(false)}
         >
           <div
-            className="mx-auto mt-2 max-h-[min(85vh,36rem)] w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface shadow-xl sm:mt-8"
+            className="mx-auto mt-2 max-h-[min(85dvh,36rem)] w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface shadow-xl sm:mt-8"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-1.5 border-b border-border bg-surface/90 px-2.5 py-1.5">
@@ -2525,7 +2582,7 @@ export function PreviewClient({
               </p>
               <PanelCloseButton onClick={() => setHarmonyDetailOpen(false)} />
             </div>
-            <div className="max-h-[min(75vh,32rem)] space-y-3 overflow-y-auto p-4 text-sm text-foreground">
+            <div className="max-h-[min(75dvh,32rem)] space-y-3 overflow-y-auto p-4 text-sm text-foreground">
               {harmonyDetailsNotes.trim() ? (
                 <div className="rounded-lg border border-border bg-bg/80 p-3">
                   <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

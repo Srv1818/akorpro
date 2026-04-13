@@ -23,9 +23,6 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Oturum gerekli." }, { status: 401 });
   }
-  if (!user.admin) {
-    return NextResponse.json({ error: "Katkı API’si yalnızca yöneticiler içindir." }, { status: 403 });
-  }
 
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (!contribRl.check(clientIp)) {
@@ -62,6 +59,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Geçersiz zorluk." }, { status: 400 });
   }
 
+  const tempo =
+    typeof b.tempo === "number"
+      ? b.tempo
+      : typeof b.tempo === "string" && b.tempo.trim()
+        ? b.tempo.trim()
+        : undefined;
+  const timeSignature = typeof b.timeSignature === "string" ? b.timeSignature.trim() : undefined;
+  const capo =
+    typeof b.capo === "number" && !Number.isNaN(b.capo)
+      ? b.capo
+      : typeof b.capo === "string" && b.capo.trim() !== ""
+        ? Number(b.capo)
+        : undefined;
+  const capoSafe = capo !== undefined && !Number.isNaN(capo) ? capo : undefined;
+  const copyrightSource =
+    typeof b.copyrightSource === "string" && b.copyrightSource.trim()
+      ? b.copyrightSource.trim()
+      : undefined;
+
   try {
     const id = await createContribution({
       songTitle,
@@ -71,11 +87,11 @@ export async function POST(request: Request) {
       keyMode: finalKeyMode,
       genre,
       difficulty: difficulty as "kolay" | "orta" | "zor",
-      tempo: typeof b.tempo === "number" || typeof b.tempo === "string" ? b.tempo : undefined,
-      timeSignature: typeof b.timeSignature === "string" ? b.timeSignature : undefined,
+      tempo,
+      timeSignature,
       tuning: typeof b.tuning === "string" ? b.tuning : undefined,
-      capo: typeof b.capo === "number" ? b.capo : undefined,
-      copyrightSource: typeof b.copyrightSource === "string" ? b.copyrightSource : undefined,
+      capo: capoSafe,
+      copyrightSource,
       contributorUid: user.uid,
       contributorDisplayName: user.email ?? "Anonim",
     });
@@ -85,7 +101,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Katkı şu an kaydedilemiyor. Yerelde Firebase Admin (FIREBASE_SERVICE_ACCOUNT_KEY) yapılandırılmış mı kontrol edin.",
+          "Katkı kaydedilemiyor. Sunucuda Firebase Admin için FIREBASE_SERVICE_ACCOUNT_KEY tanımlı ve geçerli olmalı.",
       },
       { status: 503 },
     );
@@ -97,13 +113,22 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Oturum gerekli." }, { status: 401 });
   }
-  if (!user.admin) {
-    return NextResponse.json({ error: "Katkı listesi yalnızca yöneticiler içindir." }, { status: 403 });
-  }
 
   const { searchParams } = new URL(request.url);
-  const uid = searchParams.get("uid");
+  const uidParam = searchParams.get("uid");
+  const targetUid = user.admin && uidParam ? uidParam : user.uid;
 
-  const contributions = await getContributionsByUser(uid ?? user.uid);
-  return NextResponse.json({ contributions });
+  try {
+    const contributions = await getContributionsByUser(targetUid);
+    return NextResponse.json({ contributions });
+  } catch (e) {
+    console.error("contributions GET", e);
+    return NextResponse.json(
+      {
+        error:
+          "Katkı listesi okunamıyor. FIREBASE_SERVICE_ACCOUNT_KEY tanımlı ve geçerli olmalı.",
+      },
+      { status: 503 },
+    );
+  }
 }

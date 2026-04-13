@@ -256,12 +256,6 @@ function ChordDiagram({
             </div>
           </div>
         </div>
-
-        <p className="pl-7 text-center text-[0.65rem] leading-tight text-muted sm:pl-8">
-          chords-db · Perdeler 0–15 (a–f = 10–15) · Pozisyon {positionIndex + 1}/{chord.positions.length}
-          {position.capo ? " · kapo" : ""}
-          {result?.fallbackSuffix ? ` · yaklaşık (${result.fallbackSuffix})` : ""}
-        </p>
       </div>
     </div>
   );
@@ -291,7 +285,7 @@ export function ChordLibraryExplorer() {
         aria-label="Seçili akor ve gitar klavyesi"
         className="overflow-hidden rounded-2xl border border-border bg-surface"
       >
-        <div className="relative border-b border-border px-3 py-2 pr-[5.25rem] sm:pr-[5.75rem]">
+        <div className="relative border-b border-border px-3 py-2 pr-[8rem] sm:pr-[5.75rem]">
           <div
             className="absolute right-2 top-2 z-10 flex flex-wrap justify-end gap-0.5 sm:gap-1"
             role="group"
@@ -306,7 +300,7 @@ export function ChordLibraryExplorer() {
                   type="button"
                   onClick={() => setVariation(v)}
                   className={[
-                    "min-h-8 min-w-8 rounded-lg text-xs font-bold tabular-nums transition-colors sm:min-h-9 sm:min-w-9 sm:text-sm",
+                    "min-h-7 min-w-7 rounded-md text-[0.7rem] font-bold tabular-nums transition-colors sm:min-h-9 sm:min-w-9 sm:rounded-lg sm:text-sm",
                     selected ? btnSelected : btnRootIdle,
                   ].join(" ")}
                 >

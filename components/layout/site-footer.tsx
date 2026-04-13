@@ -9,6 +9,14 @@ export function SiteFooter() {
           
           {/* Sol: Telif Hakkı ve Marka Adı */}
           <div className="flex items-center gap-2">
+            <img
+              src="/icons/icon.svg"
+              alt=""
+              width={18}
+              height={18}
+              className="size-[18px] shrink-0 opacity-80"
+              decoding="async"
+            />
             <span className="text-[10px] font-semibold text-display/40 uppercase tracking-wider">
               AkorPro
             </span>

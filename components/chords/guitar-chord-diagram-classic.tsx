@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { GuitarChordPosition } from "@/lib/chords-db/guitar";
 import { parseFretChar } from "@/lib/chords-db/guitar";
 
@@ -34,13 +35,23 @@ type Props = {
   position: GuitarChordPosition;
   title: string;
   className?: string;
+  /** Başlık satırı solu (ör. varyasyon geri); yükseklik başlıkla hizalanır. */
+  headerStart?: ReactNode;
+  /** Başlık satırı sağı (ör. varyasyon ileri). */
+  headerEnd?: ReactNode;
 };
 
 /**
  * Klasik akor kutusu: teller dikey (sol = kalın E), perdeler aşağı.
  * Renkler tema / fretboard ile uyumlu (bg, surface, border, accent).
  */
-export function GuitarChordDiagramClassic({ position, title, className = "" }: Props) {
+export function GuitarChordDiagramClassic({
+  position,
+  title,
+  className = "",
+  headerStart,
+  headerEnd,
+}: Props) {
   const fretsParsed = parseFretLine(position.frets);
   const { startFret, numRows } = getFretWindow(fretsParsed);
   const fingers = position.fingers.padEnd(STRING_COUNT, "0").slice(0, STRING_COUNT);
@@ -93,9 +104,17 @@ export function GuitarChordDiagramClassic({ position, title, className = "" }: P
       role="img"
       aria-label={`${title} gitar akoru`}
     >
-      <p className="border-b border-border bg-surface/80 px-2 py-1 text-center text-sm font-semibold leading-none tabular-nums tracking-tight text-foreground">
-        {title}
-      </p>
+      <div className="relative border-b border-border bg-surface/80">
+        <p className="px-2 py-1 text-center text-sm font-semibold leading-none tabular-nums tracking-tight text-foreground">
+          {title}
+        </p>
+        {headerStart ? (
+          <div className="absolute inset-y-0 left-0 z-[1] flex items-center pl-0.5">{headerStart}</div>
+        ) : null}
+        {headerEnd ? (
+          <div className="absolute inset-y-0 right-0 z-[1] flex items-center pr-0.5">{headerEnd}</div>
+        ) : null}
+      </div>
       <div className="flex justify-center px-1 pb-1.5 pt-0.5">
         <svg
           width={w}

@@ -55,6 +55,10 @@ export async function generateMetadata(): Promise<Metadata> {
           },
         }
       : {}),
+    icons: {
+      icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+      apple: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+    },
     openGraph: {
       type: "website",
       locale: "tr_TR",
@@ -86,8 +90,6 @@ export default async function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="apple-touch-icon" href="/icons/icon.svg" />
-        <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
         {firebaseAuthHost ? (
           <>
             <link rel="preconnect" href={`https://${firebaseAuthHost}`} crossOrigin="" />

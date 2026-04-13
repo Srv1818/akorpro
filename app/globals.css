@@ -464,3 +464,107 @@ html:not(.dark) body.neu-theme .song-chord-text[data-lyrics-pre] span.song-chord
 html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4, h5, h6) {
   color: #44475a !important;
 }
+
+/* ------------------------------------------------------------------ */
+/* Preview — Cross-platform auto-layout                                */
+/* ------------------------------------------------------------------ */
+
+/* Preview container query scope */
+.preview-container {
+  container-type: inline-size;
+  container-name: preview;
+}
+
+/* Landscape phones: more horizontal space, pack tighter vertically */
+@media (orientation: landscape) and (max-height: 500px) {
+  .preview-toolbar-row {
+    gap: 0.25rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  .preview-toolbar-row button,
+  .preview-toolbar-row select {
+    min-height: 32px;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 0.6875rem;
+  }
+}
+
+/* Tablet portrait: medium density */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+  .preview-container .preview-controls-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* dvh fallback for older browsers: scene overlay uses 100dvh,
+   provide svh → vh cascade */
+@supports not (height: 100dvh) {
+  .scene-overlay-root {
+    height: 100vh;
+    height: 100svh;
+    max-height: 100vh;
+    max-height: 100svh;
+  }
+}
+
+/* Scene mode: safe-area aware padding (iOS notch, Android cutout) */
+.scene-overlay-root {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* PWA standalone: extra bottom padding for home indicator */
+@media (display-mode: standalone) {
+  .scene-overlay-root {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+  .preview-toolbar-row {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Orientation-aware scene layout */
+@media (orientation: landscape) and (max-height: 500px) {
+  .scene-lyrics-area {
+    padding: 0.5rem 1rem;
+  }
+  .scene-header {
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+  }
+}
+
+
+/* Transpose grid: auto-fill for cross-platform */
+.transpose-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 0.25rem;
+}
+
+@container preview (min-width: 640px) {
+  .transpose-grid {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+}
+
+/* Info badges responsive grid */
+.preview-info-badges {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+@container preview (min-width: 640px) {
+  .preview-info-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+}

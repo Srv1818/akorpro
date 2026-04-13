@@ -228,10 +228,6 @@ function createGamlarScaleExplorer(useToolsStore: UseToolingHook) {
                 })}
               </div>
             </div>
-
-            <p className="pl-7 text-center text-[0.65rem] leading-tight text-muted sm:pl-8">
-              Tonal.js · Perdeler 0–15 · {scaleLabel}
-            </p>
           </div>
         </div>
       </section>

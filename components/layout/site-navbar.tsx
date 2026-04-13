@@ -21,12 +21,20 @@ export function SiteNavbar() {
         <div className="flex h-14 sm:h-16 items-center gap-2 sm:gap-3 md:gap-4">
           <Link
             href="/"
+            aria-label="AkorPro ana sayfa"
             className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-display"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm text-accent-foreground">
-              AP
+            <img
+              src="/icons/icon.svg"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 select-none"
+              decoding="async"
+            />
+            <span className="hidden sm:inline" aria-hidden>
+              AkorPro
             </span>
-            <span className="hidden sm:inline">AkorPro</span>
           </Link>
 
           {/* Masaüstü arama — orta sütun yalnızca bu blokta flex-1 (taşma yok) */}

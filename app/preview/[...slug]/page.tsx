@@ -108,8 +108,8 @@ export default async function PreviewPage({ params, searchParams }: Props) {
         {song.tempo && <p>Tempo: {song.tempo} BPM</p>}
       </section>
 
-      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <p className="mb-4 text-sm text-muted">
+      <div className="preview-container mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
+        <p className="mb-3 text-sm text-muted sm:mb-4">
           <Link href={canonical} className="text-accent hover:underline">
             ← Şarkı sayfasına dön
           </Link>
