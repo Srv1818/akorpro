@@ -17,7 +17,7 @@ export type TransposeChordOptions = {
   preferFlatsForNaturalRoots?: boolean;
 };
 
-function useFlatSpellingForTransposedRoot(root: string, preferFlatsForNaturalRoots: boolean): boolean {
+function flatSpellingForTransposedRoot(root: string, preferFlatsForNaturalRoots: boolean): boolean {
   const r = root.trim();
   if (r.includes("#")) return false;
   if (r.length >= 2 && r.charAt(1) === "b") return true;
@@ -34,7 +34,7 @@ export function transposeChordToken(token: string, semitones: number, options?: 
   if (rootPc === null) return token;
 
   const newPc = (rootPc + semitones + 120) % 12;
-  const preferFlat = useFlatSpellingForTransposedRoot(root, options?.preferFlatsForNaturalRoots ?? false);
+  const preferFlat = flatSpellingForTransposedRoot(root, options?.preferFlatsForNaturalRoots ?? false);
   const newRoot = pitchClassToChordRootName(newPc, preferFlat);
   return `${newRoot}${suffix}`;
 }
