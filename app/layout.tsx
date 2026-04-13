@@ -56,7 +56,10 @@ export async function generateMetadata(): Promise<Metadata> {
         }
       : {}),
     icons: {
-      icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
+      icon: [
+        { url: "/favicon.ico", sizes: "48x48" },
+        { url: "/icons/icon.svg", type: "image/svg+xml" },
+      ],
       apple: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
     },
     openGraph: {
