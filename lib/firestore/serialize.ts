@@ -24,6 +24,6 @@ function serializeValue(val: unknown): unknown {
   return out;
 }
 
-export function serializeDoc<T extends Record<string, unknown>>(raw: T): T {
+export function serializeDoc<T extends object>(raw: T): T {
   return serializeValue(raw) as T;
 }
