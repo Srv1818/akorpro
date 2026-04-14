@@ -1,4 +1,5 @@
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { serializeDoc } from "@/lib/firestore/serialize";
 import type { ContributorProfileDoc } from "@/lib/types/contribution";
 
 const COLLECTION = "contributor_profiles";
@@ -14,7 +15,7 @@ export async function getContributorProfile(
 ): Promise<(ContributorProfileDoc & { id: string }) | null> {
   const doc = await db().collection(COLLECTION).doc(uid).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...(doc.data() as ContributorProfileDoc) };
+  return serializeDoc({ id: doc.id, ...(doc.data() as ContributorProfileDoc) });
 }
 
 export async function getContributorSongCount(uid: string): Promise<number> {

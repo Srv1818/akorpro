@@ -15,8 +15,9 @@ export interface ChordShapeDoc {
   sortOrder?: number;
 
   schemaVersion: number;
-  createdAt: FirebaseFirestore.Timestamp | unknown;
-  updatedAt: FirebaseFirestore.Timestamp | unknown;
+  /** Epoch milisaniye — serializeDoc() dönüşümü. */
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface ScaleDoc {

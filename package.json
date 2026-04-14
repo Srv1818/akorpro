@@ -23,6 +23,7 @@
   "dependencies": {
     "@sentry/nextjs": "^10.46.0",
     "@tombatossals/chords-db": "^0.5.1",
+    "@vercel/analytics": "^2.0.1",
     "firebase": "^12.11.0",
     "firebase-admin": "^13.7.0",
     "jose": "^6.2.2",

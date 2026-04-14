@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { serializeDoc } from "@/lib/firestore/serialize";
 import { writeAuditLog } from "@/lib/security/audit-log";
 import type { ChordShapeDoc } from "@/lib/types/chord-library";
 
@@ -14,7 +15,7 @@ function db() {
 export async function getAllChordShapes(): Promise<(ChordShapeDoc & { id: string })[]> {
   const snap = await db().collection(COLLECTION).get();
   return snap.docs
-    .map((d) => ({ id: d.id, ...(d.data() as ChordShapeDoc) }))
+    .map((d) => serializeDoc({ id: d.id, ...(d.data() as ChordShapeDoc) }))
     .sort((a, b) => {
       const rootCmp = a.root.localeCompare(b.root, "tr");
       if (rootCmp !== 0) return rootCmp;

@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { serializeDoc } from "@/lib/firestore/serialize";
 import { artistTag, TAGS, TTL } from "@/lib/cache/tags";
 import type { ArtistDoc } from "@/lib/types/firestore";
 
@@ -29,7 +30,7 @@ async function _getArtistBySlug(slug: string): Promise<(ArtistDoc & { id: string
 
   if (!snap.empty) {
     const doc = snap.docs[0];
-    return { id: doc.id, ...(doc.data() as ArtistDoc) };
+    return serializeDoc({ id: doc.id, ...(doc.data() as ArtistDoc) });
   }
 
   // Eski verilerde slug biçimi (boşluk/büyük-küçük harf/birleşik karakter) farklı olabilir.
@@ -41,7 +42,7 @@ async function _getArtistBySlug(slug: string): Promise<(ArtistDoc & { id: string
     return normalizeSlugMatch(data.slug) === normalizedSlug;
   });
   if (!matched) return null;
-  return { id: matched.id, ...(matched.data() as ArtistDoc) };
+  return serializeDoc({ id: matched.id, ...(matched.data() as ArtistDoc) });
 }
 
 async function _getAllArtists(): Promise<(ArtistDoc & { id: string })[]> {
@@ -50,7 +51,7 @@ async function _getAllArtists(): Promise<(ArtistDoc & { id: string })[]> {
     .orderBy("name")
     .get();
 
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as ArtistDoc) }));
+  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as ArtistDoc) }));
 }
 
 /* ------------------------------------------------------------------ */

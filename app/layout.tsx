@@ -11,6 +11,7 @@ import { WebVitalsReporter } from "@/components/analytics/web-vitals";
 import { GoogleAnalytics } from "@/components/analytics/ga4";
 import { CookieBanner } from "@/components/consent/cookie-banner";
 import { SwRegister } from "@/components/pwa/sw-register";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const inter = Inter({
@@ -103,6 +104,7 @@ export default async function RootLayout({
       <body
         className={`${inter.variable} ${geistMono.variable} neu-theme flex min-h-full flex-col font-sans antialiased`}
       >
+        <Analytics />
         <GoogleAnalytics />
         <SiteJsonLd />
         <WebVitalsReporter />

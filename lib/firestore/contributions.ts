@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { serializeDoc } from "@/lib/firestore/serialize";
 import type { ContributionDoc } from "@/lib/types/contribution";
 
 const COLLECTION = "contributions";
@@ -48,7 +49,7 @@ export async function getPendingContributions(): Promise<(ContributionDoc & { id
     .where("status", "==", "pending")
     .orderBy("createdAt", "desc")
     .get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as ContributionDoc) }));
+  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as ContributionDoc) }));
 }
 
 export async function getPendingContributionsCount(): Promise<number> {
@@ -61,7 +62,7 @@ export async function getContributionById(
 ): Promise<(ContributionDoc & { id: string }) | null> {
   const doc = await db().collection(COLLECTION).doc(id).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...(doc.data() as ContributionDoc) };
+  return serializeDoc({ id: doc.id, ...(doc.data() as ContributionDoc) });
 }
 
 export async function getContributionsByUser(
@@ -72,7 +73,7 @@ export async function getContributionsByUser(
     .where("contributorUid", "==", uid)
     .orderBy("createdAt", "desc")
     .get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as ContributionDoc) }));
+  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as ContributionDoc) }));
 }
 
 export async function updateContributionStatus(

@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { sanitizeTextContent, sanitizePlainField } from "@/lib/security/sanitize";
+import { serializeDoc } from "@/lib/firestore/serialize";
 import {
   songTag,
   songsArtistTag,
@@ -40,6 +41,10 @@ function db() {
   const fs = getAdminFirestore();
   if (!fs) throw new Error("Firestore Admin başlatılamadı — FIREBASE_SERVICE_ACCOUNT_KEY eksik.");
   return fs;
+}
+
+function readSongDoc(d: FirebaseFirestore.DocumentSnapshot): SongDoc & { id: string } {
+  return serializeDoc({ id: d.id, ...(d.data() as SongDoc) });
 }
 
 function sanitizeSong(raw: SongDoc & { id: string }): SongDoc & { id: string } {
@@ -97,7 +102,7 @@ async function _findSongByArtistSlugFallback(
     .get();
   const doc = snap.docs.find((d) => docSlugMatchesUrl(d.data() as SongDoc, songSlug));
   if (!doc) return null;
-  return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+  return sanitizeSong(readSongDoc(doc));
 }
 
 /**
@@ -117,7 +122,7 @@ async function _findSongByStoredSlugFallback(
     (d) => normalizeSlugMatch((d.data() as SongDoc).artistSlug) === normArtist,
   );
   if (byArtist.length === 1) {
-    return sanitizeSong({ id: byArtist[0].id, ...(byArtist[0].data() as SongDoc) });
+    return sanitizeSong(readSongDoc(byArtist[0]));
   }
   if (approved.length === 1 && byArtist.length === 0) {
     console.warn("[songs] Bu slug için tek onaylı şarkı var; URL sanatçı slug’ı belgeden farklı", {
@@ -125,7 +130,7 @@ async function _findSongByStoredSlugFallback(
       docArtistSlug: (approved[0].data() as SongDoc).artistSlug,
       songSlug,
     });
-    return sanitizeSong({ id: approved[0].id, ...(approved[0].data() as SongDoc) });
+    return sanitizeSong(readSongDoc(approved[0]));
   }
   return null;
 }
@@ -145,8 +150,7 @@ async function _querySongBySlugs(artistSlug: string, songSlug: string): Promise<
       .get();
 
     if (!snap.empty) {
-      const doc = snap.docs[0];
-      return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+      return sanitizeSong(readSongDoc(snap.docs[0]));
     }
     const byArtist = await _findSongByArtistSlugFallback(artistSlug, songSlug);
     if (byArtist) return byArtist;
@@ -174,7 +178,7 @@ async function _getSongsByArtist(artistSlug: string): Promise<(SongDoc & { id: s
       .where("moderationStatus", "==", "approved")
       .orderBy("title")
       .get();
-    return snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
+    return snap.docs.map((d) => sanitizeSong(readSongDoc(d)));
   } catch (err: unknown) {
     if ((err as { code?: number }).code === 9) {
       console.warn("[songs] Composite index missing for artist query, falling back to in-memory sort");
@@ -184,7 +188,7 @@ async function _getSongsByArtist(artistSlug: string): Promise<(SongDoc & { id: s
         .where("moderationStatus", "==", "approved")
         .get();
       return snap.docs
-        .map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }))
+        .map((d) => sanitizeSong(readSongDoc(d)))
         .sort((a, b) => a.title.localeCompare(b.title, "tr"));
     }
     throw err;
@@ -216,7 +220,7 @@ async function _getFilteredSongs(params: {
 
     q = q.orderBy("title");
     const snap = await q.get();
-    results = snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
+    results = snap.docs.map((d) => sanitizeSong(readSongDoc(d)));
   } catch (err: unknown) {
     const code = (err as { code?: number }).code;
     if (code === 9) {
@@ -226,7 +230,7 @@ async function _getFilteredSongs(params: {
         .where("moderationStatus", "==", "approved")
         .get();
       results = allSnap.docs
-        .map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }))
+        .map((d) => sanitizeSong(readSongDoc(d)))
         .filter((s) => {
           if (params.sanatci && s.artistSlug !== params.sanatci) return false;
           if (params.ton && s.originalKey !== params.ton) return false;
@@ -253,7 +257,7 @@ async function _getAllApprovedSongs(): Promise<(SongDoc & { id: string })[]> {
     .where("moderationStatus", "==", "approved")
     .get();
 
-  return snap.docs.map((d) => sanitizeSong({ id: d.id, ...(d.data() as SongDoc) }));
+  return snap.docs.map((d) => sanitizeSong(readSongDoc(d)));
 }
 
 async function _getFilterFacetOptions() {
@@ -311,7 +315,7 @@ export async function getSongBySlugsUncached(
 export async function getSongById(songId: string): Promise<(SongDoc & { id: string }) | null> {
   const doc = await db().collection(COLLECTION).doc(songId).get();
   if (!doc.exists) return null;
-  return sanitizeSong({ id: doc.id, ...(doc.data() as SongDoc) });
+  return sanitizeSong(readSongDoc(doc));
 }
 
 /** Birden çok şarkıyı ID ile getir (keşfet blokları için — uncached, caller caches) */
@@ -325,10 +329,9 @@ export async function getSongsByIds(songIds: string[]): Promise<(SongDoc & { id:
   for (const id of songIds) {
     const snap = snaps.find((s) => s.id === id);
     if (snap?.exists) {
-      const data = snap.data() as SongDoc;
-      // Keşfet ve public listelerde silinmiş/onaysız kayıtları dışarıda tut.
+      const data = readSongDoc(snap);
       if (data.moderationStatus !== "approved") continue;
-      result.push(sanitizeSong({ id: snap.id, ...data }));
+      result.push(sanitizeSong(data));
     }
   }
   return result;

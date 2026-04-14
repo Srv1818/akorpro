@@ -30,8 +30,9 @@ export interface ContributionDoc {
   approvedSongId?: string;
 
   schemaVersion: number;
-  createdAt: FirebaseFirestore.Timestamp | unknown;
-  updatedAt: FirebaseFirestore.Timestamp | unknown;
+  /** Epoch milisaniye — serializeDoc() dönüşümü. */
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface ContributorProfileDoc {
@@ -42,6 +43,7 @@ export interface ContributorProfileDoc {
   approvedCount: number;
   /** Moderator-verified badge */
   verified: boolean;
-  joinedAt: FirebaseFirestore.Timestamp | unknown;
-  updatedAt: FirebaseFirestore.Timestamp | unknown;
+  /** Epoch milisaniye */
+  joinedAt: number;
+  updatedAt: number;
 }

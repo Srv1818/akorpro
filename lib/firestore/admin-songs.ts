@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { serializeDoc } from "@/lib/firestore/serialize";
 import { writeAuditLog } from "@/lib/security/audit-log";
 import type { SongDoc, ModerationStatus } from "@/lib/types/firestore";
 
@@ -70,12 +71,12 @@ export async function getPendingSongs(): Promise<(SongDoc & { id: string })[]> {
     .where("moderationStatus", "==", "pending")
     .orderBy("createdAt", "desc")
     .get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
+  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as SongDoc) }));
 }
 
 export async function getAllSongsAdmin(): Promise<(SongDoc & { id: string })[]> {
   const snap = await db().collection(COLLECTION).orderBy("title").get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as SongDoc) }));
+  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as SongDoc) }));
 }
 
 export async function getAllSongsCount(): Promise<number> {
@@ -95,5 +96,5 @@ export async function getPendingSongsCount(): Promise<number> {
 export async function getSongByIdAdmin(songId: string): Promise<(SongDoc & { id: string }) | null> {
   const doc = await db().collection(COLLECTION).doc(songId).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...(doc.data() as SongDoc) };
+  return serializeDoc({ id: doc.id, ...(doc.data() as SongDoc) });
 }

@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { serializeDoc } from "@/lib/firestore/serialize";
 import { writeAuditLog } from "@/lib/security/audit-log";
 import type { ArtistDoc } from "@/lib/types/firestore";
 
@@ -49,7 +50,7 @@ export async function deleteArtist(artistId: string, actorUid: string): Promise<
 
 export async function getAllArtistsAdmin(): Promise<(ArtistDoc & { id: string })[]> {
   const snap = await db().collection(COLLECTION).orderBy("name").get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as ArtistDoc) }));
+  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as ArtistDoc) }));
 }
 
 export async function getAllArtistsCount(): Promise<number> {

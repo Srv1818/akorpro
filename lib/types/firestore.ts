@@ -2,6 +2,7 @@ import type { Difficulty, KeyMode } from "./content";
 
 /* ------------------------------------------------------------------ */
 /*  Firestore: songs/{songId}                                         */
+/*  serializeDoc() ile okunduktan sonraki düz nesne biçimi.           */
 /* ------------------------------------------------------------------ */
 
 export type ModerationStatus = "draft" | "pending" | "approved" | "rejected";
@@ -53,8 +54,9 @@ export interface SongDoc {
 
   /* Meta -------------------------------------------------------------- */
   schemaVersion: number;
-  createdAt: FirebaseFirestore.Timestamp | unknown;
-  updatedAt: FirebaseFirestore.Timestamp | unknown;
+  /** Epoch milisaniye — serializeDoc() Firestore Timestamp → number dönüşümü yapar. */
+  createdAt: number;
+  updatedAt: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -73,8 +75,9 @@ export interface ArtistDoc {
   popularity?: number;
 
   schemaVersion: number;
-  createdAt: FirebaseFirestore.Timestamp | unknown;
-  updatedAt: FirebaseFirestore.Timestamp | unknown;
+  /** Epoch milisaniye */
+  createdAt: number;
+  updatedAt: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -85,5 +88,6 @@ export interface ArtistDoc {
 export interface DiscoverSectionDoc {
   /** songId dizisi — sıralı */
   songIds: string[];
-  updatedAt: FirebaseFirestore.Timestamp | unknown;
+  /** Epoch milisaniye */
+  updatedAt: number;
 }
