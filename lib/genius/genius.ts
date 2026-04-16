@@ -63,6 +63,41 @@ async function tryLyricsOvhFallback(artist: string, title: string): Promise<stri
   return lyrics || null;
 }
 
+async function tryLrclibFallback(artist: string, title: string): Promise<string | null> {
+  const a = artist.trim();
+  const t = title.trim();
+  if (!a || !t) return null;
+
+  const params = new URLSearchParams({
+    artist_name: a,
+    track_name: t,
+  });
+
+  const byQueryUrl = `https://lrclib.net/api/get?${params.toString()}`;
+  const byQueryRes = await fetch(byQueryUrl);
+  if (byQueryRes.ok) {
+    const byQuery = (await byQueryRes.json().catch(() => null)) as
+      | { plainLyrics?: string; syncedLyrics?: string }
+      | null;
+    const text = (byQuery?.plainLyrics || byQuery?.syncedLyrics || "").trim();
+    if (text) return text;
+  }
+
+  const searchUrl = `https://lrclib.net/api/search?${params.toString()}`;
+  const searchRes = await fetch(searchUrl);
+  if (!searchRes.ok) return null;
+  const list = (await searchRes.json().catch(() => null)) as
+    | Array<{ plainLyrics?: string; syncedLyrics?: string }>
+    | null;
+  if (!Array.isArray(list) || list.length === 0) return null;
+
+  for (const item of list) {
+    const text = (item.plainLyrics || item.syncedLyrics || "").trim();
+    if (text) return text;
+  }
+  return null;
+}
+
 function compactErrorBody(raw: string): string {
   const text = raw
     .replace(/<[^>]+>/g, " ")
@@ -124,9 +159,13 @@ export async function getGeniusLyricsBySongId(songId: number): Promise<string> {
   });
   if (!htmlRes.ok) {
     // Genius page fetch is occasionally blocked by Cloudflare in server environments.
-    // Try a secondary lyrics source before failing hard.
-    const fallback = await tryLyricsOvhFallback(song?.primary_artist?.name ?? "", song?.title ?? "");
-    if (fallback) return fallback;
+    // Try secondary lyrics sources before failing hard.
+    const artist = song?.primary_artist?.name ?? "";
+    const title = song?.title ?? "";
+    const lrcFallback = await tryLrclibFallback(artist, title);
+    if (lrcFallback) return lrcFallback;
+    const ovhFallback = await tryLyricsOvhFallback(artist, title);
+    if (ovhFallback) return ovhFallback;
     const text = await htmlRes.text().catch(() => "");
     const compact = compactErrorBody(text);
     if (htmlRes.status === 403) {
@@ -158,8 +197,12 @@ export async function getGeniusLyricsBySongId(songId: number): Promise<string> {
     // Fallback: older markup sometimes stores lyrics in `.lyrics` container.
     const legacy = root.querySelector(".lyrics")?.innerText?.trim();
     if (legacy) return legacy;
-    const fallback = await tryLyricsOvhFallback(song?.primary_artist?.name ?? "", song?.title ?? "");
-    if (fallback) return fallback;
+    const artist = song?.primary_artist?.name ?? "";
+    const title = song?.title ?? "";
+    const lrcFallback = await tryLrclibFallback(artist, title);
+    if (lrcFallback) return lrcFallback;
+    const ovhFallback = await tryLyricsOvhFallback(artist, title);
+    if (ovhFallback) return ovhFallback;
     throw new Error("Lyrics bulunamadı (sayfa markup değişmiş olabilir).");
   }
 
