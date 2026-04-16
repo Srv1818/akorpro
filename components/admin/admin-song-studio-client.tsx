@@ -10,6 +10,7 @@ import {
 } from "@/lib/music/key-mode-gamlar";
 import { gamlarModesForFamily } from "@/data/gamlar-scale-catalog";
 import { slugify } from "@/lib/seo/slug";
+import { cleanLyricsText } from "@/lib/lyrics/clean";
 import type { KeyMode } from "@/lib/types/content";
 
 type GeniusHit = {
@@ -94,51 +95,6 @@ function buildChordProPair(
   // Üst satır: akor tag'lerini kelime başlarına hizalı (boşluklar + tag) bir satıra yaz.
   // Kullanıcının hizalama satırını görmesi için, chordInput'u olduğu gibi üst satır olarak kullan.
   return [raw.trimEnd(), l];
-}
-
-function cleanLyricsText(raw: string): string {
-  // 1) Normalize newlines
-  let s = (raw ?? "").replace(/\r\n/g, "\n");
-
-  // 1.5) Normalize section tags to ChordPro-friendly English tags
-  // [Nakarat] -> [Chorus]
-  // [Bölüm 1], [Bolum 2], [Kıta], [Kita 3] -> [Verse]
-  s = s
-    .replace(/^\s*\[(?:nakarat|chorus)\]\s*$/gim, "[Chorus]")
-    .replace(/^\s*\[(?:bölüm|bolum|kıta|kita|verse)(?:\s*\d+)?\]\s*$/gim, "[Verse]");
-
-  // 2) Remove common quotation marks (keep apostrophes, remove double quotes & variants)
-  //    “ ” „ « » ‹ › ＂
-  s = s.replace(/["“”„«»‹›＂]/g, "");
-
-  // 3) Line-based cleanup (preserve stanza spacing as much as possible)
-  const lines = s.split("\n").map((line) => line.trimEnd());
-  const out: string[] = [];
-
-  const isTag = (line: string) => line === "[Verse]" || line === "[Chorus]";
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? "";
-
-    // Remove common Genius junk lines that may appear in scraped text
-    // Example: "Ben... Read More [..]"
-    if (/Read More/i.test(line)) continue;
-
-    if (isTag(line)) {
-      // Ensure a blank line before section tags (avoids "sticking" visually)
-      const prev = out.length > 0 ? out[out.length - 1] ?? "" : "";
-      if (prev.trim() !== "") out.push("");
-      out.push(line);
-      continue;
-    }
-
-    out.push(line);
-  }
-
-  s = out.join("\n");
-
-  // Boş satır sayısını ve baştaki/sondaki boşlukları (kıtalar arası) koru.
-  return s;
 }
 
 export function AdminSongStudioClient({ initialSongId }: { initialSongId?: string }) {
@@ -474,10 +430,12 @@ export function AdminSongStudioClient({ initialSongId }: { initialSongId?: strin
           return;
         }
         const lyrics = typeof data.lyrics === "string" ? data.lyrics : "";
-        if (lyrics.trim()) {
-          setLyricsRaw(lyrics.trim());
+        const cleanedLyrics = cleanLyricsText(lyrics).trim();
+        if (cleanedLyrics) {
+          setLyricsRaw(cleanedLyrics);
           setChordsByLine([]); // reset
-          lastAlignedLinesRef.current = lyrics.trim().replace(/\r\n/g, "\n").split("\n");
+          lastAlignedLinesRef.current = cleanedLyrics.replace(/\r\n/g, "\n").split("\n");
+          setMsg("Sözler getirildi ve otomatik temizlendi.");
         }
       } catch (err) {
         setGeniusError(err instanceof Error ? err.message : "Lyrics alınamadı.");

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { sanitizePlainField, sanitizeTextContent } from "@/lib/security/sanitize";
 import { getGeniusLyricsBySongId } from "@/lib/genius/genius";
+import { cleanLyricsText } from "@/lib/lyrics/clean";
 
 export const runtime = "nodejs";
 
@@ -35,8 +36,9 @@ export async function POST(request: Request) {
 
   try {
     const lyrics = await getGeniusLyricsBySongId(songId);
+    const cleanedLyrics = cleanLyricsText(sanitizeTextContent(lyrics));
     return NextResponse.json(
-      { lyrics: sanitizeTextContent(lyrics) },
+      { lyrics: cleanedLyrics },
       { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } },
     );
   } catch (error) {
