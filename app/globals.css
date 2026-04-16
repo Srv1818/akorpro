@@ -150,7 +150,7 @@ body {
   font-family: var(--font-geist-mono), "Geist Mono", ui-monospace, "Cascadia Code", "Fira Code", monospace;
   font-weight: 400;
   letter-spacing: 0;
-  line-height: 1.4;
+  line-height: 1.32;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "liga" 0;
   white-space: pre;
@@ -241,7 +241,15 @@ body {
    aynı monospace genişliğine bağlı olduğundan o düzende üst satır büyütülmez. */
 @media (max-width: 639px) {
   .song-chord-text .song-chord-row-stacked {
-    font-size: 1.075em;
+    font-size: 1em;
+  }
+}
+
+/* Mobilde daha kompakt ve dengeli görünüm */
+@media (max-width: 639px) {
+  .song-chord-text {
+    line-height: 1.26;
+    letter-spacing: -0.01em;
   }
 }
 

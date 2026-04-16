@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
 import {
   GAMLAR_FAMILY_LABELS,
   GAMLAR_FAMILY_ORDER,
@@ -13,8 +15,10 @@ import {
 import { GUITAR_ROOT_ENTRIES } from "@/lib/chords-db/guitar";
 import { keyModeToGamlarCatalogScaleId } from "@/lib/music/key-mode-gamlar";
 import { gamlarChordExampleStrings } from "@/lib/music/gamlar-scale-triads";
+import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
 import { noteNameToPitchClass, PC_TO_NAME } from "@/lib/music/note-utils";
 import type { PreviewToolsState } from "@/lib/stores/preview-tools-store";
+import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import {
   useBesliCemberPageToolsStore,
   useGamlarPageToolsStore,
@@ -56,6 +60,63 @@ function createGamlarScaleFormulaPanel(useToolsStore: UseToolingHook) {
     const label = guitarRootLabel(pc);
     return gamlarChordExampleStrings(pc, resolvedScaleId, label);
   }, [tonal, resolvedScaleId]);
+  const [chordStripOpen, setChordStripOpen] = useState(false);
+  const [chordStripGroup, setChordStripGroup] = useState<"triads" | "sevenths">("triads");
+  const [chordPosIndices, setChordPosIndices] = useState<Record<string, number>>({});
+
+  const triadTokens = useMemo(
+    () =>
+      (chordExamples?.triads ?? "")
+        .split("—")
+        .map((t) => t.trim())
+        .filter(Boolean),
+    [chordExamples?.triads],
+  );
+  const seventhTokens = useMemo(() => {
+    if (!chordExamples?.sevenths || !chordExamples.seventhsIsChordList) return [] as string[];
+    return chordExamples.sevenths
+      .split("—")
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }, [chordExamples?.sevenths, chordExamples?.seventhsIsChordList]);
+
+  const chordStripTokens = useMemo(() => {
+    const source = chordStripGroup === "triads" ? triadTokens : seventhTokens;
+    return Array.from(new Set(source));
+  }, [chordStripGroup, triadTokens, seventhTokens]);
+
+  const chordStripFingerings = useMemo(
+    () => chordStripTokens.map((token) => resolveChordTokenToFingering(token)),
+    [chordStripTokens],
+  );
+
+  useEffect(() => {
+    setChordPosIndices({});
+  }, [chordStripTokens]);
+
+  function renderChordLineAsButtons(tokens: string[], group: "triads" | "sevenths") {
+    if (tokens.length === 0) return null;
+    return (
+      <span>
+        {tokens.map((token, idx) => (
+          <span key={`${token}-${idx}`}>
+            <button
+              type="button"
+              onClick={() => {
+                setChordStripGroup(group);
+                setChordStripOpen(true);
+              }}
+              className="font-medium text-foreground underline decoration-dotted underline-offset-2 hover:text-accent"
+              aria-label={`${token} akoru, akor cetvelini aç`}
+            >
+              {token}
+            </button>
+            {idx < tokens.length - 1 ? <span className="text-muted"> — </span> : null}
+          </span>
+        ))}
+      </span>
+    );
+  }
 
   if (!scaleEntry?.formula) return null;
 
@@ -70,7 +131,7 @@ function createGamlarScaleFormulaPanel(useToolsStore: UseToolingHook) {
               <span className="font-medium text-foreground">
                 Hedef akorlar ({chordExamples.tonicLabel}):
               </span>{" "}
-              {chordExamples.triads}
+              {renderChordLineAsButtons(triadTokens, "triads") ?? chordExamples.triads}
             </p>
             {chordExamples.sevenths ? (
               chordExamples.seventhsIsChordList ? (
@@ -78,7 +139,7 @@ function createGamlarScaleFormulaPanel(useToolsStore: UseToolingHook) {
                   <span className="font-medium text-foreground">
                     7&apos;li ({chordExamples.tonicLabel} örneği):
                   </span>{" "}
-                  {chordExamples.sevenths}
+                  {renderChordLineAsButtons(seventhTokens, "sevenths") ?? chordExamples.sevenths}
                 </p>
               ) : (
                 <p className="mt-1.5 text-muted">{chordExamples.sevenths}</p>
@@ -92,7 +153,7 @@ function createGamlarScaleFormulaPanel(useToolsStore: UseToolingHook) {
               <span className="font-medium text-foreground">
                 3&apos;lü ({chordExamples.tonicLabel} örneği):
               </span>{" "}
-              {chordExamples.triads}
+              {renderChordLineAsButtons(triadTokens, "triads") ?? chordExamples.triads}
             </p>
             {chordExamples.sevenths ? (
               chordExamples.seventhsIsChordList ? (
@@ -100,7 +161,7 @@ function createGamlarScaleFormulaPanel(useToolsStore: UseToolingHook) {
                   <span className="font-medium text-foreground">
                     7&apos;li ({chordExamples.tonicLabel} örneği):
                   </span>{" "}
-                  {chordExamples.sevenths}
+                  {renderChordLineAsButtons(seventhTokens, "sevenths") ?? chordExamples.sevenths}
                 </p>
               ) : (
                 <p className="mt-1.5 text-muted">{chordExamples.sevenths}</p>
@@ -139,6 +200,87 @@ function createGamlarScaleFormulaPanel(useToolsStore: UseToolingHook) {
           )}
         </>
       )}
+      {chordStripOpen ? (
+        <div className="mt-3 rounded-2xl border border-border bg-surface px-3 py-2 sm:px-4">
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-border pb-1.5">
+            <p className="text-xs font-semibold tracking-tight text-foreground">
+              Akor cetveli ({chordStripGroup === "triads" ? "3'lü" : "7'li"})
+            </p>
+            <button
+              type="button"
+              onClick={() => setChordStripOpen(false)}
+              className="rounded-md border border-border bg-bg px-2 py-1 text-[11px] font-medium text-foreground hover:bg-surface"
+            >
+              Kapat
+            </button>
+          </div>
+          {chordStripFingerings.length === 0 ? (
+            <p className="text-xs text-muted">Bu gamda gösterilecek akor bulunamadı.</p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {chordStripFingerings.map((entry, i) => {
+                const positions = entry.chord?.positions ?? [];
+                const posKey = `${entry.token}-${i}`;
+                const posIdx = chordPosIndices[posKey] ?? 0;
+                const pos = positions[posIdx] ?? positions[0] ?? null;
+                const hasMultiple = positions.length > 1;
+                if (!entry.chord || !pos) {
+                  return (
+                    <div
+                      key={posKey}
+                      className="flex min-h-[12.5rem] min-w-[10rem] items-center justify-center rounded-xl border border-border bg-bg px-2 py-3 text-center"
+                    >
+                      <p className="font-mono text-sm font-semibold text-foreground">{entry.token}</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={posKey} className="shrink-0">
+                    <GuitarChordDiagramClassic
+                      position={pos}
+                      title={entry.token}
+                      headerStart={
+                        hasMultiple ? (
+                          <button
+                            type="button"
+                            className="inline-flex size-4 items-center justify-center rounded-sm bg-transparent p-0 text-foreground opacity-90 hover:opacity-100"
+                            aria-label={`Önceki pozisyon (${posIdx + 1} / ${positions.length})`}
+                            onClick={() =>
+                              setChordPosIndices((prev) => ({
+                                ...prev,
+                                [posKey]: (posIdx - 1 + positions.length) % positions.length,
+                              }))
+                            }
+                          >
+                            <ChevronLeft className="size-3.5 stroke-[2.5]" aria-hidden />
+                          </button>
+                        ) : undefined
+                      }
+                      headerEnd={
+                        hasMultiple ? (
+                          <button
+                            type="button"
+                            className="inline-flex size-4 items-center justify-center rounded-sm bg-transparent p-0 text-foreground opacity-90 hover:opacity-100"
+                            aria-label={`Sonraki pozisyon (${posIdx + 1} / ${positions.length})`}
+                            onClick={() =>
+                              setChordPosIndices((prev) => ({
+                                ...prev,
+                                [posKey]: (posIdx + 1) % positions.length,
+                              }))
+                            }
+                          >
+                            <ChevronRight className="size-3.5 stroke-[2.5]" aria-hidden />
+                          </button>
+                        ) : undefined
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
   }
@@ -148,6 +290,8 @@ function createGamlarScaleFormulaPanel(useToolsStore: UseToolingHook) {
 export const GamlarScaleFormulaPanel = createGamlarScaleFormulaPanel(useGamlarPageToolsStore);
 /** 5'li çember sayfası — `BesliCemberPageToolsProvider` gerekir */
 export const BesliCemberScaleFormulaPanel = createGamlarScaleFormulaPanel(useBesliCemberPageToolsStore);
+/** Önizleme — `PreviewToolsProvider` gerekir */
+export const PreviewGamlarScaleFormulaPanel = createGamlarScaleFormulaPanel(usePreviewToolsStore);
 
 type Props = {
   lockedTonicPc?: number | null;

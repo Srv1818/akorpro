@@ -29,6 +29,7 @@ import {
 import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
 import { AutoScrollButton, MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
 import { PreviewGamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
+import { PreviewGamlarScaleFormulaPanel } from "@/components/gamlar/gamlar-scale-controls";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
 import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { KeyMode } from "@/lib/types/content";
@@ -466,7 +467,7 @@ const LYRICS_AUTO_FIT_MIN = 10;
 
 const TRANSPOSE_SEMITONE_MIN = -6;
 const TRANSPOSE_SEMITONE_MAX = 5;
-const LYRICS_FONT_SIZE_MIN = 14;
+const LYRICS_FONT_SIZE_MIN = 13;
 const LYRICS_FONT_SIZE_MAX = 32;
 const LYRICS_FONT_SIZE_STEP = 1;
 const LYRICS_FONT_SIZE_DEFAULT = LYRICS_FONT_SIZE_MIN + LYRICS_FONT_SIZE_STEP;
@@ -2262,17 +2263,17 @@ export function PreviewClient({
           </button>
           </div>
         </div>
-        <div className="preview-info-badges w-full text-[11px] text-muted sm:w-auto">
-          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
+        <div className="preview-info-badges w-full text-[11px] leading-none text-muted sm:w-auto">
+          <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             Ton: <span className="font-mono text-foreground">{originalKey}</span>
           </div>
-          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
+          <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             BPM:{" "}
             <span className="font-mono text-foreground">
               {tempo ?? "-"}
             </span>
           </div>
-          <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
+          <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
             Ölçü:{" "}
             <span className="font-mono text-foreground">
               {timeSignature ?? "-"}
@@ -2286,14 +2287,14 @@ export function PreviewClient({
               aria-expanded={harmonyDetailOpen}
               aria-label="Armoni özeti — ayrıntıları göster"
               title="Armoni özeti"
-              className="inline-flex max-w-full items-center gap-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-left transition hover:border-accent/40 hover:bg-bg/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:py-1"
+              className="inline-flex min-h-[32px] max-w-full items-center gap-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-left leading-none transition hover:border-accent/40 hover:bg-bg/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:py-1"
             >
               <Info
                 className="size-3.5 shrink-0 text-muted-foreground opacity-90"
                 strokeWidth={2}
                 aria-hidden
               />
-              <span className="min-w-0">
+              <span className="min-w-0 leading-none">
                 Mod:{" "}
                 <span className="text-foreground">
                   {formatModLineLabel(gamlarWidgetScaleId)}
@@ -2301,7 +2302,7 @@ export function PreviewClient({
               </span>
             </button>
           ) : (
-            <div className="rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
+            <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 leading-none sm:py-1">
               Mod:{" "}
               <span className="text-foreground">
                 {formatModLineLabel(gamlarWidgetScaleId)}
@@ -2367,6 +2368,9 @@ export function PreviewClient({
                         lockedTonicPc={transposedTonicPc}
                         lockedMode={originalMode}
                       />
+                      <div className="mt-3">
+                        <PreviewGamlarScaleFormulaPanel />
+                      </div>
                     </div>
                   ) : (
                     <MetronomeControls
