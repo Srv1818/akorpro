@@ -44,8 +44,32 @@ type GeniusSongResponse = {
     song?: {
       id: number;
       url?: string;
+      title?: string;
+      primary_artist?: { name?: string };
     };
   };
+}
+
+async function tryLyricsOvhFallback(artist: string, title: string): Promise<string | null> {
+  const a = artist.trim();
+  const t = title.trim();
+  if (!a || !t) return null;
+
+  const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(a)}/${encodeURIComponent(t)}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = (await res.json().catch(() => null)) as { lyrics?: string } | null;
+  const lyrics = typeof data?.lyrics === "string" ? data.lyrics.trim() : "";
+  return lyrics || null;
+}
+
+function compactErrorBody(raw: string): string {
+  const text = raw
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+  return text.length > 220 ? `${text.slice(0, 220)}…` : text;
 }
 
 export async function searchGeniusSongs(query: string, limit = 8): Promise<GeniusSearchHit[]> {
@@ -86,7 +110,8 @@ export async function getGeniusLyricsBySongId(songId: number): Promise<string> {
     throw new Error(`Genius song meta failed (${metaRes.status}): ${text || metaRes.statusText}`);
   }
   const meta = (await metaRes.json()) as GeniusSongResponse;
-  const songUrl = meta.response?.song?.url?.trim();
+  const song = meta.response?.song;
+  const songUrl = song?.url?.trim();
   if (!songUrl) throw new Error("Genius song URL bulunamadı.");
 
   // Genius lyrics API ile gelmiyor; sayfadan scrape ediyoruz.
@@ -98,8 +123,20 @@ export async function getGeniusLyricsBySongId(songId: number): Promise<string> {
     },
   });
   if (!htmlRes.ok) {
+    // Genius page fetch is occasionally blocked by Cloudflare in server environments.
+    // Try a secondary lyrics source before failing hard.
+    const fallback = await tryLyricsOvhFallback(song?.primary_artist?.name ?? "", song?.title ?? "");
+    if (fallback) return fallback;
     const text = await htmlRes.text().catch(() => "");
-    throw new Error(`Genius song page failed (${htmlRes.status}): ${text || htmlRes.statusText}`);
+    const compact = compactErrorBody(text);
+    if (htmlRes.status === 403) {
+      throw new Error(
+        "Lyrics otomatik getirilemedi (Genius Cloudflare engeli). Lütfen sözleri manuel yapıştırın.",
+      );
+    }
+    throw new Error(
+      `Genius song page failed (${htmlRes.status}): ${compact || htmlRes.statusText}`,
+    );
   }
 
   const html = await htmlRes.text();
@@ -121,6 +158,8 @@ export async function getGeniusLyricsBySongId(songId: number): Promise<string> {
     // Fallback: older markup sometimes stores lyrics in `.lyrics` container.
     const legacy = root.querySelector(".lyrics")?.innerText?.trim();
     if (legacy) return legacy;
+    const fallback = await tryLyricsOvhFallback(song?.primary_artist?.name ?? "", song?.title ?? "");
+    if (fallback) return fallback;
     throw new Error("Lyrics bulunamadı (sayfa markup değişmiş olabilir).");
   }
 
