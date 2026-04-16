@@ -69,7 +69,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Zorunlu alanlar eksik." }, { status: 400 });
   }
 
-  const moderationStatus = canPublishSongs(auth.user.uid) ? "approved" : "pending";
+  const source = sanitizePlainField(b.source);
+  // Song Studio akışında her zaman moderasyona düşsün.
+  const moderationStatus =
+    source === "studio"
+      ? "pending"
+      : (canPublishSongs(auth.user.uid) ? "approved" : "pending");
 
   let id: string;
   try {

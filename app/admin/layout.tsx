@@ -5,13 +5,7 @@ import { getServerSessionUser } from "@/lib/auth/server-session";
 
 const adminNav = [
   { href: "/admin", label: "Pano" },
-  { href: "/admin/kesfet", label: "Editör seçimi" },
-  { href: "/admin/sarkilar", label: "Şarkılar" },
-  { href: "/admin/sanatcilar", label: "Sanatçılar" },
-  { href: "/admin/moderasyon", label: "Moderasyon" },
-  { href: "/katki", label: "Katkı girişi" },
   { href: "/admin/akor-kutuphanesi", label: "Akorlar" },
-  { href: "/admin/import", label: "İçe aktar" },
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
@@ -37,6 +31,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             </Link>
           ))}
         </nav>
+        <div className="ml-auto">
+          <Link
+            href="/admin/yeni-sarki"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
+          >
+            Yeni şarkı ekle
+          </Link>
+        </div>
       </div>
       {children}
     </div>

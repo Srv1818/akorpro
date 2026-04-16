@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 type PendingSong = {
   id: string;
@@ -111,6 +112,12 @@ export function ModerationClient() {
                   <p className="text-sm text-muted">{s.artistName} · {s.originalKey}</p>
                 </div>
                 <div className="flex gap-2">
+                  <Link
+                    href={`/admin/yeni-sarki?id=${encodeURIComponent(s.id)}`}
+                    className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface"
+                  >
+                    Düzenle
+                  </Link>
                   <button
                     type="button"
                     disabled={!canPublishSongs}

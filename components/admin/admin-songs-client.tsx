@@ -37,6 +37,15 @@ type Song = {
   moderationStatus: string;
 };
 
+type GeniusHit = {
+  id: number;
+  title: string;
+  artist: string;
+  fullTitle: string;
+  url?: string;
+  thumbnailUrl?: string;
+};
+
 const EMPTY: Song[] = [];
 
 const KEY_MODES: readonly KeyMode[] = ["major", "natural", "harmonic", "melodic"];
@@ -48,9 +57,9 @@ export function AdminSongsClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
-  const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [title, setTitle] = useState("");
   const [songSlug, setSongSlug] = useState("");
   const [songSlugDirty, setSongSlugDirty] = useState(false);
@@ -71,6 +80,15 @@ export function AdminSongsClient() {
   const [showHarmonyDetails, setShowHarmonyDetails] = useState(true);
   const [harmonyDetailsNotes, setHarmonyDetailsNotes] = useState("");
   const [chordBody, setChordBody] = useState("");
+
+  const [geniusQuery, setGeniusQuery] = useState("");
+  const [geniusHits, setGeniusHits] = useState<GeniusHit[]>([]);
+  const [geniusLoading, setGeniusLoading] = useState(false);
+  const [geniusLyricsLoading, setGeniusLyricsLoading] = useState(false);
+  const [geniusError, setGeniusError] = useState<string | null>(null);
+
+  const [spotifyLoading, setSpotifyLoading] = useState(false);
+  const [spotifyError, setSpotifyError] = useState<string | null>(null);
 
   function resetFormState() {
     setEditId(null);
@@ -94,6 +112,15 @@ export function AdminSongsClient() {
     setShowHarmonyDetails(true);
     setHarmonyDetailsNotes("");
     setChordBody("");
+
+    setGeniusQuery("");
+    setGeniusHits([]);
+    setGeniusLoading(false);
+    setGeniusLyricsLoading(false);
+    setGeniusError(null);
+
+    setSpotifyLoading(false);
+    setSpotifyError(null);
   }
 
   const nextSongSlug = useMemo(() => slugify(title), [title]);
@@ -105,14 +132,14 @@ export function AdminSongsClient() {
   }, [keyMode]);
 
   useEffect(() => {
-    if (!showForm) return;
+    if (!editId) return;
     if (!songSlugDirty) setSongSlug(nextSongSlug);
-  }, [nextSongSlug, showForm, songSlugDirty]);
+  }, [nextSongSlug, editId, songSlugDirty]);
 
   useEffect(() => {
-    if (!showForm) return;
+    if (!editId) return;
     if (!artistSlugDirty) setArtistSlug(nextArtistSlug);
-  }, [nextArtistSlug, showForm, artistSlugDirty]);
+  }, [nextArtistSlug, editId, artistSlugDirty]);
 
   const fetchSongs = useCallback(async () => {
     setLoading(true);
@@ -139,9 +166,115 @@ export function AdminSongsClient() {
       .catch(() => {});
   }, []);
 
+  const searchGenius = useCallback(async () => {
+    const q = geniusQuery.trim();
+    if (!q || geniusLoading) return;
+    setGeniusLoading(true);
+    setGeniusError(null);
+    try {
+      const res = await fetch("/api/admin/genius/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q, limit: 8 }),
+      });
+      const data = (await res.json()) as { hits?: GeniusHit[]; error?: string };
+      if (!res.ok) {
+        setGeniusError(data.error ?? "Genius araması başarısız.");
+        setGeniusHits([]);
+        return;
+      }
+      setGeniusHits(Array.isArray(data.hits) ? data.hits : []);
+    } catch (err) {
+      setGeniusError(err instanceof Error ? err.message : "Genius araması başarısız.");
+      setGeniusHits([]);
+    } finally {
+      setGeniusLoading(false);
+    }
+  }, [geniusLoading, geniusQuery]);
+
+  const applyGeniusHit = useCallback(
+    async (hit: GeniusHit) => {
+      if (!hit?.id || geniusLyricsLoading) return;
+      setGeniusLyricsLoading(true);
+      setGeniusError(null);
+
+      // Temel alanları doldur.
+      setTitle(hit.title ?? "");
+      setArtistName(hit.artist ?? "");
+      setSongSlugDirty(false);
+      setArtistSlugDirty(false);
+
+      try {
+        const res = await fetch("/api/admin/genius/lyrics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ songId: hit.id }),
+        });
+        const data = (await res.json()) as { lyrics?: string; error?: string };
+        if (!res.ok) {
+          setGeniusError(data.error ?? "Lyrics alınamadı.");
+          return;
+        }
+        const lyrics = typeof data.lyrics === "string" ? data.lyrics : "";
+        if (lyrics.trim()) {
+          setChordBody(lyrics.trim());
+        }
+      } catch (err) {
+        setGeniusError(err instanceof Error ? err.message : "Lyrics alınamadı.");
+      } finally {
+        setGeniusLyricsLoading(false);
+      }
+    },
+    [geniusLyricsLoading],
+  );
+
+  const fillFromSpotify = useCallback(async () => {
+    if (spotifyLoading) return;
+    const t = title.trim();
+    const a = artistName.trim();
+    if (!t || !a) {
+      setSpotifyError("Spotify için önce başlık ve sanatçı adı girin.");
+      return;
+    }
+    setSpotifyLoading(true);
+    setSpotifyError(null);
+    try {
+      const res = await fetch("/api/admin/spotify/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: t, artist: a }),
+      });
+      const data = (await res.json()) as {
+        resolved?: { tempo?: number; timeSignature?: string; originalKey?: string; keyMode?: "major" | "natural" };
+        error?: string;
+      };
+      if (!res.ok) {
+        setSpotifyError(data.error ?? "Spotify verisi alınamadı.");
+        return;
+      }
+      const r = data.resolved;
+      if (r?.tempo !== undefined) setTempo(String(Math.round(r.tempo)));
+      if (r?.timeSignature) setTimeSignature(r.timeSignature);
+      if (r?.originalKey) setOriginalKey(r.originalKey);
+
+      if (r?.keyMode) {
+        setKeyMode(r.keyMode);
+        setGamlarScaleId(keyModeToGamlarCatalogScaleId(r.keyMode as KeyMode));
+      }
+    } catch (err) {
+      setSpotifyError(err instanceof Error ? err.message : "Spotify verisi alınamadı.");
+    } finally {
+      setSpotifyLoading(false);
+    }
+  }, [artistName, spotifyLoading, title]);
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (saving) return;
+    if (!editId) {
+      setMsg("Yeni şarkı ekleme bu sayfadan kaldırıldı. Üst menüden “Yeni şarkı ekle” ile ekleyin.");
+      return;
+    }
     setSaving(true);
     setMsg("");
     const body: Record<string, unknown> = {
@@ -165,8 +298,8 @@ export function AdminSongsClient() {
     body.showHarmonyDetails = showHarmonyDetails;
     body.harmonyDetailsNotes = harmonyDetailsNotes;
 
-    const url = editId ? `/api/admin/songs/${editId}` : "/api/admin/songs";
-    const method = editId ? "PATCH" : "POST";
+    const url = `/api/admin/songs/${editId}`;
+    const method = "PATCH";
     try {
       const res = await fetch(url, {
         method,
@@ -196,21 +329,7 @@ export function AdminSongsClient() {
         return;
       }
 
-      const createdId =
-        data && typeof data === "object" && "id" in data && typeof (data as { id?: unknown }).id === "string"
-          ? (data as { id: string }).id
-          : null;
-      const createdStatus =
-        data && typeof data === "object" && "moderationStatus" in data && typeof (data as { moderationStatus?: unknown }).moderationStatus === "string"
-          ? (data as { moderationStatus: string }).moderationStatus
-          : null;
-
-      if (!editId && createdStatus === "pending") {
-        setMsg(`Oluşturuldu (beklemede)${createdId ? ` — ${createdId}` : ""}. Yayın yetkilisi moderasyonda onayladığında sitede görünür.`);
-      } else {
-        setMsg(editId ? "Güncellendi." : `Oluşturuldu${createdId ? `: ${createdId}` : "."}`);
-      }
-      setShowForm(false);
+      setMsg("Güncellendi.");
       resetFormState();
       fetchSongs();
     } catch (err) {
@@ -232,7 +351,6 @@ export function AdminSongsClient() {
       return;
     }
     setEditId(song.id);
-    setShowForm(true);
     setLoadingEdit(true);
     setMsg("");
     try {
@@ -275,9 +393,18 @@ export function AdminSongsClient() {
     }
   }
 
-  if (loading) return <p className="text-sm text-muted">Yükleniyor…</p>;
-
   const lockedLive = publisherGateActive && !canPublish;
+  const filteredSongs = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return songs;
+    return songs.filter((s) => {
+      const t = (s.title ?? "").toLowerCase();
+      const a = (s.artistName ?? "").toLowerCase();
+      return t.includes(q) || a.includes(q);
+    });
+  }, [songs, searchTerm]);
+
+  if (loading) return <p className="text-sm text-muted">Yükleniyor…</p>;
 
   return (
     <div>
@@ -291,21 +418,115 @@ export function AdminSongsClient() {
         </p>
       ) : null}
 
-      <div className="mb-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setShowForm(!showForm);
-            if (showForm) resetFormState();
-          }}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent-muted"
-        >
-          {showForm ? "Formu kapat" : "Yeni şarkı"}
-        </button>
+      <div className="mb-4 grid gap-2 sm:grid-cols-2">
+        <input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.currentTarget.value)}
+          placeholder="Şarkı veya sanatçı ara…"
+          className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+        />
+        <div className="flex items-center justify-between gap-2 text-xs text-muted sm:justify-end">
+          <span>
+            {filteredSongs.length} / {songs.length}
+          </span>
+          {searchTerm.trim() ? (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs text-muted hover:bg-surface"
+            >
+              Temizle
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      {showForm ? (
+      {editId ? (
         <form onSubmit={onSubmit} className="mb-6 grid gap-3 rounded-2xl border border-border bg-surface p-5 sm:grid-cols-2">
+          <div className="col-span-full rounded-xl border border-border bg-bg/40 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="flex-1 text-xs font-medium text-muted-foreground">
+                Genius’tan getir (başlık + sanatçı + lyrics)
+                <input
+                  value={geniusQuery}
+                  onChange={(e) => setGeniusQuery(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      searchGenius();
+                    }
+                  }}
+                  placeholder="Örn: Sezen Aksu Gülümse"
+                  className="mt-1.5 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-foreground"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={!geniusQuery.trim() || geniusLoading}
+                onClick={searchGenius}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {geniusLoading ? "Aranıyor…" : "Ara"}
+              </button>
+            </div>
+
+            {geniusError ? (
+              <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+                {geniusError}
+              </p>
+            ) : null}
+
+            {geniusHits.length > 0 ? (
+              <div className="mt-3 grid gap-2">
+                <p className="text-xs text-muted-foreground">Sonuçlar (tıklayınca formu doldurur)</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {geniusHits.map((h) => (
+                    <button
+                      key={h.id}
+                      type="button"
+                      onClick={() => applyGeniusHit(h)}
+                      disabled={geniusLyricsLoading}
+                      className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 text-left hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-60"
+                      title={h.fullTitle}
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">{h.title}</div>
+                        <div className="truncate text-xs text-muted-foreground">{h.artist}</div>
+                      </div>
+                      <div className="ml-auto text-[11px] text-muted-foreground">
+                        {geniusLyricsLoading ? "Yükleniyor…" : "Seç"}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="col-span-full rounded-xl border border-border bg-bg/40 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <p className="text-xs font-medium text-muted-foreground">Spotify’dan getir (ton + BPM + ölçü)</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Başlık + sanatçı adına göre arar; eşleşen ilk kayıttan tempo/ton çeker.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fillFromSpotify}
+                disabled={spotifyLoading}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {spotifyLoading ? "Çekiliyor…" : "Ton+BPM çek"}
+              </button>
+            </div>
+            {spotifyError ? (
+              <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+                {spotifyError}
+              </p>
+            ) : null}
+          </div>
+
           <input
             name="title"
             placeholder="Başlık *"
@@ -499,12 +720,11 @@ export function AdminSongsClient() {
               disabled={saving}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Kaydediliyor…" : (editId ? "Güncelle" : "Oluştur")}
+              {saving ? "Kaydediliyor…" : "Güncelle"}
             </button>
             <button
               type="button"
               onClick={() => {
-                setShowForm(false);
                 resetFormState();
               }}
               className="rounded-lg border border-border px-4 py-2 text-sm text-muted"
@@ -529,7 +749,7 @@ export function AdminSongsClient() {
             </tr>
           </thead>
           <tbody>
-            {songs.map((s) => (
+            {filteredSongs.map((s) => (
               <tr key={s.id} className="border-b border-border last:border-0">
                 <td className="max-w-[10rem] px-4 py-3">
                   <code className="break-all text-[11px] text-muted" title={s.id}>
@@ -555,15 +775,13 @@ export function AdminSongsClient() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={lockedLive && s.moderationStatus === "approved"}
+                    <Link
+                      href={`/admin/yeni-sarki?id=${encodeURIComponent(s.id)}`}
+                      className={`text-xs text-accent hover:underline ${lockedLive && s.moderationStatus === "approved" ? "pointer-events-none opacity-40 no-underline" : ""}`}
                       title={lockedLive && s.moderationStatus === "approved" ? "Yayında — yalnız yayın yetkilisi" : undefined}
-                      onClick={() => startEdit(s)}
-                      className="text-xs text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline"
                     >
                       Düzenle
-                    </button>
+                    </Link>
                     <button
                       type="button"
                       disabled={lockedLive && s.moderationStatus === "approved"}
