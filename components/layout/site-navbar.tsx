@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AuthHeaderActions } from "@/components/auth/auth-header-actions";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { NavTabs } from "@/components/layout/nav-tabs";
 import { SearchDialog } from "@/components/search/search-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { mainNav } from "@/lib/nav";
@@ -56,19 +57,9 @@ export function SiteNavbar() {
           </div>
         </div>
 
-        {/* --- 2. SATIR: Menü Linkleri (Görseldeki gibi alt kısma ortalandı) --- */}
+        {/* --- 2. SATIR: Tab Bar --- */}
         <div className="hidden md:flex w-full justify-center overflow-x-auto pb-3 pt-1">
-          <nav className="flex shrink-0 items-center gap-1 sm:gap-2" aria-label="Ana menü">
-            {items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="whitespace-nowrap rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-medium text-muted shadow-sm shadow-black/5 transition hover:border-accent/30 hover:bg-bg/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg active:translate-y-px active:shadow-inner"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <NavTabs />
         </div>
         
       </div>
