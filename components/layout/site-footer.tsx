@@ -26,7 +26,7 @@ export function SiteFooter() {
             </p>
           </div>
 
-          {/* Sağ: Sadece Yasal Linkler */}
+          {/* Sağ: Yasal Linkler + Attributions */}
           <nav className="flex gap-x-5" aria-label="Yasal">
             {legalNav.map((l) => (
               <Link
@@ -37,6 +37,14 @@ export function SiteFooter() {
                 {l.label}
               </Link>
             ))}
+            <a
+              href="https://getsongbpm.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-muted/40 transition hover:text-muted/80"
+            >
+              BPM verisi: GetSongBPM
+            </a>
           </nav>
 
         </div>

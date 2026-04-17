@@ -36,19 +36,6 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Spotify çözümleme başarısız.";
-    // Spotify 403'ü (developer mode / premium) kullanıcıya net göster.
-    if (typeof message === "string" && message.includes("Spotify API failed (403)")) {
-      return NextResponse.json(
-        {
-          error:
-            `${message}\n\n` +
-            "Not: Spotify 2026 itibarıyla bazı hesap/app durumlarında audio-features için app owner Premium ve/veya ek erişim isteyebiliyor. " +
-            "Premium'u yeni aldıysanız birkaç saat sonra düzelebilir; devam ederse app'i Premium olan hesapla yeniden oluşturun.",
-        },
-        { status: 403 },
-      );
-    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
