@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useState, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 
 type Item = { readonly href: string; readonly label: string };
 
 export function MobileNav({ items }: { items: readonly Item[] }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -59,17 +61,26 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
                 aria-modal="true"
                 onClick={close}
               >
-                <nav className="flex flex-col gap-1" aria-label="Mobil menü">
-                  {items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="flex min-h-[44px] items-center rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-surface"
-                      onClick={close}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
+                <nav className="flex flex-col gap-0.5" aria-label="Mobil menü">
+                  {items.map((item) => {
+                    const active =
+                      item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={[
+                          "flex min-h-[44px] items-center rounded-xl px-3 py-3 text-base font-medium transition-all duration-150",
+                          active
+                            ? "text-accent bg-white/50 dark:bg-white/[0.10] border border-white/60 dark:border-white/[0.16] shadow-sm"
+                            : "text-foreground hover:bg-white/30 dark:hover:bg-white/[0.07]",
+                        ].join(" ")}
+                        onClick={close}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
                 </nav>
               </div>
             </>,
