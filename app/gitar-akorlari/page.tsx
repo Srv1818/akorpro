@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/content/page-header";
-import { SongCard } from "@/components/content/song-card";
+import { SongList } from "@/components/content/song-list";
 import { SongFilters } from "@/components/content/song-filters";
 import { getFilteredSongs, getFilterFacetOptions } from "@/lib/firestore/songs";
 import type { SongDoc } from "@/lib/types/firestore";
@@ -90,13 +90,7 @@ export default async function GitarAkorlariPage({ searchParams }: Props) {
       />
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
         <SongFilters basePath="/gitar-akorlari" current={current} facets={facets} />
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {songSummaries.map((song) => (
-            <li key={song.id}>
-              <SongCard song={song} />
-            </li>
-          ))}
-        </ul>
+        <SongList songs={songSummaries} />
         {songs.length === 0 ? <p className="text-center text-sm text-muted">Bu filtrelere uygun şarkı bulunamadı.</p> : null}
       </div>
     </>

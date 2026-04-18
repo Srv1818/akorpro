@@ -26,11 +26,11 @@ export function SiteNavbar() {
             className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-display"
           >
             <img
-              src="/icons/icon.svg"
+              src="/assets/logo/akorpro_ap_logo.svg"
               alt=""
-              width={32}
-              height={32}
-              className="h-8 w-8 shrink-0 select-none"
+              width={40}
+              height={40}
+              className="h-10 w-10 shrink-0 select-none"
               decoding="async"
             />
             <span className="hidden sm:inline" aria-hidden>
