@@ -11,10 +11,10 @@ type DiscoverTab = {
   panel: ReactNode;
 };
 
-const TAB_ACTIVE: Record<DiscoverAccent, string> = {
-  rose: "bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/30 shadow-sm",
-  emerald: "bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/30 shadow-sm",
-  amber: "bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/30 shadow-sm",
+const TAB_ACTIVE_TEXT: Record<DiscoverAccent, string> = {
+  rose: "text-rose-500",
+  emerald: "text-emerald-500",
+  amber: "text-amber-500",
 };
 
 export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
@@ -29,7 +29,7 @@ export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
       <div
         role="tablist"
         aria-label="Keşfet kategorileri"
-        className="grid grid-cols-3 gap-1.5 rounded-t-2xl border border-b-0 border-border bg-surface p-1.5 lg:hidden"
+        className="relative z-10 flex gap-1 px-1 lg:hidden"
       >
         {tabs.map((tab) => {
           const isActive = active === tab.id;
@@ -43,8 +43,10 @@ export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
               aria-controls={`discover-panel-${tab.id}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => setActive(tab.id)}
-              className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-semibold transition-all ${
-                isActive ? TAB_ACTIVE[tab.accent] : "text-muted hover:text-display"
+              className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-t-xl px-2 py-2.5 text-xs font-semibold transition-all ${
+                isActive
+                  ? `-mb-px border border-b-0 border-border bg-surface ${TAB_ACTIVE_TEXT[tab.accent]}`
+                  : "border border-transparent text-muted hover:text-display"
               }`}
             >
               <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">

@@ -161,7 +161,7 @@ function DiscoverBlockSkeleton({
 }) {
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border border-border bg-surface p-4 sm:p-5"
+      className="relative overflow-hidden rounded-2xl border border-border bg-surface px-4 pb-4 pt-0 sm:px-5 sm:pb-5 lg:p-5"
       aria-labelledby={id}
     >
       <div
