@@ -136,10 +136,6 @@ export function AdminSongStudioClient({ initialSongId }: { initialSongId?: strin
   const [geniusLyricsLoading, setGeniusLyricsLoading] = useState(false);
   const [geniusError, setGeniusError] = useState<string | null>(null);
 
-  // Spotify
-  const [spotifyLoading, setSpotifyLoading] = useState(false);
-  const [spotifyError, setSpotifyError] = useState<string | null>(null);
-
   // ChordPro studio
   const [lyricsRaw, setLyricsRaw] = useState("");
   const [chordsByLine, setChordsByLine] = useState<string[]>([]);
@@ -446,45 +442,6 @@ export function AdminSongStudioClient({ initialSongId }: { initialSongId?: strin
     [geniusLyricsLoading],
   );
 
-  const fillFromSpotify = useCallback(async () => {
-    if (spotifyLoading) return;
-    const t = title.trim();
-    const a = artistName.trim();
-    if (!t || !a) {
-      setSpotifyError("Spotify için önce başlık ve sanatçı adı girin.");
-      return;
-    }
-    setSpotifyLoading(true);
-    setSpotifyError(null);
-    try {
-      const res = await fetch("/api/admin/spotify/resolve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: t, artist: a }),
-      });
-      const data = (await res.json()) as {
-        resolved?: { tempo?: number; timeSignature?: string; originalKey?: string; keyMode?: "major" | "natural" };
-        error?: string;
-      };
-      if (!res.ok) {
-        setSpotifyError(data.error ?? "Spotify verisi alınamadı.");
-        return;
-      }
-      const r = data.resolved;
-      if (r?.tempo !== undefined) setTempo(String(Math.round(r.tempo)));
-      if (r?.timeSignature) setTimeSignature(r.timeSignature);
-      if (r?.originalKey) setOriginalKey(r.originalKey);
-
-      if (r?.keyMode) {
-        setKeyMode(r.keyMode);
-        setGamlarScaleId(keyModeToGamlarCatalogScaleId(r.keyMode as KeyMode));
-      }
-    } catch (err) {
-      setSpotifyError(err instanceof Error ? err.message : "Spotify verisi alınamadı.");
-    } finally {
-      setSpotifyLoading(false);
-    }
-  }, [artistName, spotifyLoading, title]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -603,30 +560,6 @@ export function AdminSongStudioClient({ initialSongId }: { initialSongId?: strin
                 ))}
               </div>
             </div>
-          ) : null}
-        </div>
-
-        <div className="col-span-full rounded-xl border border-border bg-bg/40 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex-1">
-              <p className="text-xs font-medium text-muted-foreground">Spotify’dan getir (ton + BPM + ölçü)</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Başlık + sanatçı adına göre arar; eşleşen ilk kayıttan tempo/ton çeker.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={fillFromSpotify}
-              disabled={spotifyLoading}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {spotifyLoading ? "Çekiliyor…" : "Ton+BPM çek"}
-            </button>
-          </div>
-          {spotifyError ? (
-            <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
-              {spotifyError}
-            </p>
           ) : null}
         </div>
 
