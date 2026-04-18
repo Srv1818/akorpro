@@ -48,7 +48,7 @@ function SongListRow({
       <svg
         aria-hidden="true"
         viewBox="0 0 20 20"
-        className="relative z-10 h-4 w-4 shrink-0 text-muted/40 pointer-events-none transition-all group-hover:translate-x-0.5 group-hover:text-accent"
+        className="relative z-10 h-4 w-4 shrink-0 pointer-events-none text-muted/40 transition-all group-hover:translate-x-0.5 group-hover:text-accent"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
