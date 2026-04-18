@@ -1,10 +1,14 @@
 "use client";
 
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { GoogleAuthProvider, getRedirectResult, signInWithRedirect } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { postSessionCookie } from "@/lib/auth/post-session-client";
 import { getClientAuth } from "@/lib/firebase/client";
+
+const RETURN_TO_KEY = "auth_return_to";
+
+type AuthStatus = "idle" | "checking" | "redirecting" | "processing";
 
 function mapGoogleAuthError(code: string): string {
   switch (code) {
@@ -12,68 +16,100 @@ function mapGoogleAuthError(code: string): string {
       return "Bu hesap devre dışı bırakılmış.";
     case "auth/too-many-requests":
       return "Çok fazla deneme. Lütfen sonra tekrar deneyin.";
-    case "auth/popup-closed-by-user":
-      return "Giriş penceresi kapatıldı.";
-    case "auth/popup-blocked":
-      return "Açılır pencere engellendi. Tarayıcıda pop-up’a izin verin.";
-    case "auth/cancelled-popup-request":
-      return "Yalnızca bir giriş penceresi açılabilir.";
     case "auth/account-exists-with-different-credential":
       return "Bu e-posta başka bir giriş yöntemiyle kayıtlı.";
     case "auth/operation-not-allowed":
-      return "Google girişi kapalı. Firebase Console’da Google sağlayıcısını açın.";
+      return "Google girişi kapalı. Firebase Console'da Google sağlayıcısını açın.";
     default:
       return "Giriş başarısız. Lütfen tekrar deneyin.";
   }
 }
 
+const statusLabel: Record<AuthStatus, string> = {
+  idle: "Google ile devam et",
+  checking: "Kontrol ediliyor…",
+  redirecting: "Google'a yönlendiriliyor…",
+  processing: "Oturum açılıyor…",
+};
+
 export function LoginForm({ returnTo }: { returnTo: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState<AuthStatus>("checking");
+
+  useEffect(() => {
+    const auth = getClientAuth();
+    getRedirectResult(auth)
+      .then(async (cred) => {
+        if (!cred) {
+          setStatus("idle");
+          return;
+        }
+        setStatus("processing");
+        const idToken = await cred.user.getIdToken();
+        const sessionErr = await postSessionCookie(idToken);
+        if (sessionErr) {
+          setError(sessionErr);
+          setStatus("idle");
+          return;
+        }
+        const savedReturnTo = sessionStorage.getItem(RETURN_TO_KEY) ?? "/";
+        sessionStorage.removeItem(RETURN_TO_KEY);
+        router.push(savedReturnTo);
+        router.refresh();
+      })
+      .catch((err: unknown) => {
+        const code =
+          typeof err === "object" && err && "code" in err
+            ? String((err as { code: string }).code)
+            : "";
+        setError(mapGoogleAuthError(code));
+        setStatus("idle");
+      });
+  }, [router]);
 
   async function onGoogleSignIn() {
     setError(null);
-    setPending(true);
+    setStatus("redirecting");
     try {
       const auth = getClientAuth();
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      const cred = await signInWithPopup(auth, provider);
-      const idToken = await cred.user.getIdToken();
-      const sessionErr = await postSessionCookie(idToken);
-      if (sessionErr) {
-        setError(sessionErr);
-        return;
-      }
-      router.push(returnTo);
-      router.refresh();
+      sessionStorage.setItem(RETURN_TO_KEY, returnTo);
+      await signInWithRedirect(auth, provider);
     } catch (err: unknown) {
-      const code = typeof err === "object" && err && "code" in err ? String((err as { code: string }).code) : "";
+      const code =
+        typeof err === "object" && err && "code" in err
+          ? String((err as { code: string }).code)
+          : "";
       setError(mapGoogleAuthError(code));
-    } finally {
-      setPending(false);
+      setStatus("idle");
     }
   }
 
   return (
     <div className="space-y-4 rounded-2xl border border-border bg-surface p-6">
       {error ? (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+        <p
+          className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+          role="alert"
+        >
           {error}
         </p>
       ) : null}
 
-      <p className="text-center text-sm text-muted">Oturum açmak için Google hesabınızı kullanın.</p>
+      <p className="text-center text-sm text-muted">
+        Oturum açmak için Google hesabınızı kullanın.
+      </p>
 
       <button
         type="button"
         onClick={() => void onGoogleSignIn()}
-        disabled={pending}
+        disabled={status !== "idle"}
         className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-bg py-2.5 text-sm font-medium text-foreground transition hover:bg-surface disabled:opacity-60"
       >
         <GoogleGlyph className="h-5 w-5 shrink-0" aria-hidden />
-        {pending ? "Google’a yönlendiriliyor…" : "Google ile devam et"}
+        {statusLabel[status]}
       </button>
     </div>
   );
