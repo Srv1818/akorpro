@@ -59,6 +59,10 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
   }, [pathname]);
 
   useEffect(() => {
+    close();
+  }, [pathname, close]);
+
+  useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     document.addEventListener("keydown", onKey);
@@ -142,8 +146,8 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
                 </nav>
 
                 <div className="flex items-center justify-between border-t border-border px-4 py-3">
-                  <span className="text-sm text-muted">Tema &amp; Hesap</span>
-                  <div className="flex items-center gap-2">
+                  
+                <div className="flex items-center gap-2 ml-auto">
                     <ThemeToggle />
                     <AuthHeaderActions />
                   </div>
