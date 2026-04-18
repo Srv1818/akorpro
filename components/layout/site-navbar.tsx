@@ -3,6 +3,7 @@ import { AuthHeaderActions } from "@/components/auth/auth-header-actions";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { MobilePageTitle } from "@/components/layout/mobile-page-title";
 import { NavTabs } from "@/components/layout/nav-tabs";
+import { MobileSearchButton } from "@/components/search/mobile-search-button";
 import { SearchDialog } from "@/components/search/search-dialog";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { mainNav } from "@/lib/nav";
@@ -43,25 +44,7 @@ export function SiteNavbar() {
 
           {/* Sağ: arama ikonu + hamburger */}
           <div className="flex shrink-0 items-center gap-1">
-            <Link
-              href="/arama"
-              aria-label="Arama"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface text-foreground transition hover:border-accent/40"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-            </Link>
+            <MobileSearchButton />
             <MobileNav items={items} />
           </div>
         </div>
