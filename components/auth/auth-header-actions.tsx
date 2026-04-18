@@ -138,6 +138,7 @@ export function AuthHeaderActions() {
       /* İstemci yapılandırması yoksa yalnızca çerez silinir. */
     }
     startTransition(() => setUser(null));
+    window.dispatchEvent(new Event("akorpro:auth-change"));
     router.refresh();
   }
 
