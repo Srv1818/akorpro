@@ -26,7 +26,7 @@ export function SiteNavbar() {
             className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-display"
           >
             <img
-              src="/icons/icon.svg"
+              src="/assets/logo/akorpro_ap_logo.svg"
               alt=""
               width={40}
               height={40}
