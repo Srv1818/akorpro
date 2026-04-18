@@ -1,6 +1,11 @@
 "use client";
 
-import { GoogleAuthProvider, getRedirectResult, signInWithRedirect } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  getRedirectResult,
+  signInWithPopup,
+  signInWithRedirect,
+} from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { postSessionCookie } from "@/lib/auth/post-session-client";
@@ -10,16 +15,26 @@ const RETURN_TO_KEY = "auth_return_to";
 
 type AuthStatus = "idle" | "checking" | "redirecting" | "processing";
 
+function errorCode(err: unknown): string {
+  return typeof err === "object" && err !== null && "code" in err
+    ? String((err as { code: string }).code)
+    : "";
+}
+
 function mapGoogleAuthError(code: string): string {
   switch (code) {
     case "auth/user-disabled":
       return "Bu hesap devre dışı bırakılmış.";
     case "auth/too-many-requests":
       return "Çok fazla deneme. Lütfen sonra tekrar deneyin.";
+    case "auth/popup-closed-by-user":
+      return "Giriş penceresi kapatıldı.";
     case "auth/account-exists-with-different-credential":
       return "Bu e-posta başka bir giriş yöntemiyle kayıtlı.";
     case "auth/operation-not-allowed":
       return "Google girişi kapalı. Firebase Console'da Google sağlayıcısını açın.";
+    case "auth/unauthorized-domain":
+      return "Bu domain Firebase'de yetkili değil. Firebase Console → Authentication → Authorized domains listesine 'localhost' ekleyin.";
     default:
       return "Giriş başarısız. Lütfen tekrar deneyin.";
   }
@@ -37,6 +52,7 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<AuthStatus>("checking");
 
+  // Redirect fallback'ten (veya önceki redirect testinden) kalan sonucu işle
   useEffect(() => {
     const auth = getClientAuth();
     getRedirectResult(auth)
@@ -53,35 +69,50 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
           setStatus("idle");
           return;
         }
-        const savedReturnTo = sessionStorage.getItem(RETURN_TO_KEY) ?? "/";
+        const savedReturnTo = sessionStorage.getItem(RETURN_TO_KEY) ?? returnTo;
         sessionStorage.removeItem(RETURN_TO_KEY);
         router.push(savedReturnTo);
         router.refresh();
       })
       .catch((err: unknown) => {
-        const code =
-          typeof err === "object" && err && "code" in err
-            ? String((err as { code: string }).code)
-            : "";
-        setError(mapGoogleAuthError(code));
+        setError(mapGoogleAuthError(errorCode(err)));
         setStatus("idle");
       });
-  }, [router]);
+  }, [router, returnTo]);
 
   async function onGoogleSignIn() {
     setError(null);
     setStatus("redirecting");
+    const auth = getClientAuth();
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
     try {
-      const auth = getClientAuth();
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      sessionStorage.setItem(RETURN_TO_KEY, returnTo);
-      await signInWithRedirect(auth, provider);
+      // Birincil yöntem: popup (masaüstünde daha iyi UX)
+      const cred = await signInWithPopup(auth, provider);
+      setStatus("processing");
+      const idToken = await cred.user.getIdToken();
+      const sessionErr = await postSessionCookie(idToken);
+      if (sessionErr) {
+        setError(sessionErr);
+        setStatus("idle");
+        return;
+      }
+      router.push(returnTo);
+      router.refresh();
     } catch (err: unknown) {
-      const code =
-        typeof err === "object" && err && "code" in err
-          ? String((err as { code: string }).code)
-          : "";
+      const code = errorCode(err);
+      // Popup engellenirse redirect fallback'e geç
+      if (code === "auth/popup-blocked" || code === "auth/cancelled-popup-request") {
+        sessionStorage.setItem(RETURN_TO_KEY, returnTo);
+        try {
+          await signInWithRedirect(auth, provider);
+        } catch (redirectErr: unknown) {
+          setError(mapGoogleAuthError(errorCode(redirectErr)));
+          setStatus("idle");
+        }
+        return;
+      }
       setError(mapGoogleAuthError(code));
       setStatus("idle");
     }
