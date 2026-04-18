@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/content/page-header";
-import { SongCard } from "@/components/content/song-card";
+import { SongList } from "@/components/content/song-list";
 import { searchContent, getPopularArtists } from "@/lib/firestore/search";
 import { artistPath } from "@/lib/paths";
 import { firstParam } from "@/lib/search-params";
@@ -90,13 +90,7 @@ export default async function AramaPage({ searchParams }: Props) {
                     Şarkılar
                     <span className="ml-2 text-xs">({results.songs.length})</span>
                   </h2>
-                  <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {results.songs.map((song) => (
-                      <li key={song.id}>
-                        <SongCard song={song} />
-                      </li>
-                    ))}
-                  </ul>
+                  <SongList songs={results.songs} />
                 </div>
               )}
             </>
