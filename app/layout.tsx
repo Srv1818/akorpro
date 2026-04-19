@@ -58,7 +58,8 @@ export async function generateMetadata(): Promise<Metadata> {
       : {}),
     icons: {
       icon: [
-        { url: "/akorpro_favicon.ico", sizes: "48x48" },
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon.png", type: "image/png" },
         { url: "/assets/logo/akorpro_ap_logo.svg", type: "image/svg+xml" },
       ],
       apple: [{ url: "/assets/logo/akorpro_ap_logo.svg", type: "image/svg+xml" }],
