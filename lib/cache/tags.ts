@@ -80,12 +80,22 @@ export function filterHash(params: {
   sanatci?: string;
   ton?: string;
   zorluk?: string;
+  sarkiAdi?: string;
+  mod?: string;
+  tur?: string;
+  olcu?: string;
+  bpm?: string;
 }): string {
   const parts = [
     params.harf ?? "_",
     params.sanatci ?? "_",
     params.ton ?? "_",
     params.zorluk ?? "_",
+    params.sarkiAdi ?? "_",
+    params.mod ?? "_",
+    params.tur ?? "_",
+    params.olcu ?? "_",
+    params.bpm ?? "_",
   ];
   return parts.join("|");
 }
