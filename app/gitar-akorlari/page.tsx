@@ -12,16 +12,20 @@ type Props = {
 };
 
 function hasActiveFilters(p: Record<string, string | undefined>): boolean {
-  return Boolean(p.harf || p.sanatci || p.ton || p.zorluk);
+  return Boolean(p.harf || p.sanatci || p.ton || p.zorluk || p.sarkiAdi || p.mod || p.tur || p.olcu || p.bpm);
 }
 
 function deriveFacetOptionsFromSongs(songs: Array<SongDoc & { id: string }>) {
   const artistMap = new Map<string, string>();
   const keysSet = new Set<string>();
+  const genresSet = new Set<string>();
+  const timeSignaturesSet = new Set<string>();
 
   for (const s of songs) {
     artistMap.set(s.artistSlug, s.artistName);
     keysSet.add(s.originalKey);
+    if (s.genre) genresSet.add(s.genre);
+    if (s.timeSignature) timeSignaturesSet.add(s.timeSignature);
   }
 
   const artists = [...artistMap.entries()]
@@ -33,6 +37,8 @@ function deriveFacetOptionsFromSongs(songs: Array<SongDoc & { id: string }>) {
     keys: [...keysSet].sort(),
     difficulties: ["kolay", "orta", "zor"] as const,
     letters: "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ".split(""),
+    genres: [...genresSet].sort(),
+    timeSignatures: [...timeSignaturesSet].sort(),
   };
 }
 
@@ -43,6 +49,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     sanatci: firstParam(sp.sanatci),
     ton: firstParam(sp.ton),
     zorluk: firstParam(sp.zorluk),
+    sarkiAdi: firstParam(sp.sarkiAdi),
+    mod: firstParam(sp.mod),
+    tur: firstParam(sp.tur),
+    olcu: firstParam(sp.olcu),
+    bpm: firstParam(sp.bpm),
   };
   const filtered = hasActiveFilters(current);
   return {
@@ -65,6 +76,11 @@ export default async function GitarAkorlariPage({ searchParams }: Props) {
     sanatci: firstParam(sp.sanatci),
     ton: firstParam(sp.ton),
     zorluk: firstParam(sp.zorluk),
+    sarkiAdi: firstParam(sp.sarkiAdi),
+    mod: firstParam(sp.mod),
+    tur: firstParam(sp.tur),
+    olcu: firstParam(sp.olcu),
+    bpm: firstParam(sp.bpm),
   };
 
   const filtered = hasActiveFilters(current);
