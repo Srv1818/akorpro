@@ -50,7 +50,7 @@ import {
   signedSemitoneDelta,
   transposeChordToken,
 } from "@/lib/music/transpose";
-import { ChevronLeft, ChevronRight, Info, Mic, MoreHorizontal, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Mic, MoreHorizontal, RotateCcw, X } from "lucide-react";
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
@@ -2177,147 +2177,35 @@ export function PreviewClient({
         </>
       ) : null}
 
-      <h1 className="mb-2 text-balance text-xl font-semibold leading-snug tracking-tight sm:mb-2.5 sm:text-2xl [font-synthesis:none]">
-        <span className="text-display">{songTitle}</span>
-        <span className="font-medium text-muted"> Akorları </span>
-        <span className="text-muted">- </span>
-        <span className="text-foreground">{artistName}</span>
-      </h1>
-
-      <div className="preview-toolbar-row mt-1 flex flex-col gap-2 sm:mt-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
-        <div className="flex flex-col gap-2 sm:gap-3">
-          <div className="flex flex-wrap items-center justify-start gap-1 sm:gap-x-1 sm:gap-y-1.5">
-            <button
-              type="button"
-              onClick={() =>
-                setOpenWidgets((w) => {
-                  const opening = !w.gamlar;
-                  if (opening) tryLockGamlarLandscape();
-                  return { ...w, gamlar: opening };
-                })
-              }
-              aria-pressed={openWidgets.gamlar}
-            className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
-                openWidgets.gamlar
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-bg text-foreground hover:border-accent/50"
-              }`}
-            >
-              Solo/Gam
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))}
-              aria-pressed={openWidgets.metronome}
-              className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
-                openWidgets.metronome
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-bg text-foreground hover:border-accent/50"
-              }`}
-            >
-              Metronom
-            </button>
-            <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} />
-            <button
-              type="button"
-              id="chord-strip-trigger"
-              onClick={() => setChordStripOpen((o) => !o)}
-              aria-expanded={chordStripOpen}
-              aria-controls="chord-strip-panel"
-              className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
-                chordStripOpen
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-bg text-foreground hover:border-accent/50"
-              }`}
-            >
-              Akorlar
-            </button>
-          </div>
+      <div className="mb-2 flex items-start justify-between gap-3 sm:mb-2.5">
+        <div className="min-w-0">
+          <h1 className="text-balance text-xl font-semibold leading-snug tracking-tight sm:text-2xl [font-synthesis:none]">
+            <span className="text-display">{songTitle}</span>
+            <span className="font-medium text-muted"> Akorları </span>
+            <span className="text-muted">- </span>
+            <span className="text-foreground">{artistName}</span>
+          </h1>
+          <p className="mt-1 text-xs text-muted">
+            Ton: <span className="text-foreground">{originalKey}</span>
+            <span className="mx-1.5 opacity-40">·</span>
+            BPM: <span className="text-foreground">{tempo ?? "-"}</span>
+            <span className="mx-1.5 opacity-40">·</span>
+            Ölçü: <span className="text-foreground">{timeSignature ?? "-"}</span>
+          </p>
         </div>
-        <div className="hidden w-full items-end justify-center sm:flex sm:w-auto sm:flex-1">
-          <div className="relative inline-flex items-end justify-center">
+        <div className="shrink-0">
           <button
             type="button"
-            onClick={() => {
-              const next = !sceneMode;
-              setSceneMode(next);
-              replaceSceneParam(next);
-            }}
-            aria-pressed={sceneMode}
-            aria-label="Tam ekran"
-            title="Tam ekran"
-            className={`group relative inline-flex min-h-[36px] w-11 flex-col items-center justify-center gap-px rounded-md border px-0.5 py-0.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
-              sceneMode
-                ? "border-accent bg-accent text-accent-foreground shadow-md shadow-black/10 ring-1 ring-accent/30"
-                : "border-border bg-surface text-foreground shadow-sm shadow-black/5 hover:border-accent/40 hover:bg-bg/70"
-            }`}
+            disabled={!canSave || saveState === "saving"}
+            onClick={() => void onSave()}
+            title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
+            className="rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[36px]"
           >
-            <Mic
-              aria-hidden
-              className="size-4 drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]"
-              strokeWidth={2.25}
-            />
-            <span className="rounded bg-black/25 px-1 py-0.5 text-[9px] font-semibold leading-none tracking-wide text-current/95">
-              Tam ekran
-            </span>
-          </button>
-          </div>
-        </div>
-        <div className="preview-info-badges w-full text-[11px] leading-none text-muted sm:w-auto">
-          <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
-            Ton: <span className="font-mono text-foreground">{originalKey}</span>
-          </div>
-          <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
-            BPM:{" "}
-            <span className="font-mono text-foreground">
-              {tempo ?? "-"}
-            </span>
-          </div>
-          <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 sm:py-1">
-            Ölçü:{" "}
-            <span className="font-mono text-foreground">
-              {timeSignature ?? "-"}
-            </span>
-          </div>
-          {showHarmonyDetails ? (
-            <button
-              type="button"
-              onClick={() => setHarmonyDetailOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={harmonyDetailOpen}
-              aria-label="Armoni özeti — ayrıntıları göster"
-              title="Armoni özeti"
-              className="inline-flex min-h-[32px] max-w-full items-center gap-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-left leading-none transition hover:border-accent/40 hover:bg-bg/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg sm:py-1"
-            >
-              <Info
-                className="size-3.5 shrink-0 text-muted-foreground opacity-90"
-                strokeWidth={2}
-                aria-hidden
-              />
-              <span className="min-w-0 leading-none">
-                Mod:{" "}
-                <span className="text-foreground">
-                  {formatModLineLabel(gamlarWidgetScaleId)}
-                </span>
-              </span>
-            </button>
-          ) : (
-            <div className="inline-flex min-h-[32px] items-center rounded-lg border border-border bg-surface px-2 py-1.5 leading-none sm:py-1">
-              Mod:{" "}
-              <span className="text-foreground">
-                {formatModLineLabel(gamlarWidgetScaleId)}
-              </span>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={resetOriginal}
-            className="col-span-2 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs font-medium text-foreground hover:bg-surface min-h-[36px] sm:col-span-1"
-          >
-            Orijinale dön
+            {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
           </button>
         </div>
       </div>
+
 
       {(openWidgets.gamlar || openWidgets.metronome) ? (
         <div className="pointer-events-none fixed inset-0 z-50 p-0 sm:p-4">
@@ -2421,7 +2309,7 @@ export function PreviewClient({
                     className={`select-none inline-flex min-h-[36px] w-full min-w-[36px] items-center justify-center rounded-md border px-1.5 py-1 text-xs font-medium leading-none transition sm:w-auto ${
                       isActive
                         ? "border-accent bg-accent text-accent-foreground"
-                        : "border-border bg-bg text-foreground hover:border-accent/50"
+                        : "border-border bg-bg text-foreground hover:border-accent/50 hover:bg-surface"
                     }`}
                   >
                     {label}
@@ -2437,7 +2325,7 @@ export function PreviewClient({
                   setLyricsAutoFitEnabled(false);
                   setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP));
                 }}
-                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Söz yazısını küçült"
                 title="Söz yazısını küçült"
               >
@@ -2450,7 +2338,7 @@ export function PreviewClient({
                   setLyricsAutoFitEnabled(false);
                   setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP));
                 }}
-                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Söz yazısını büyüt"
                 title="Söz yazısını büyüt"
               >
@@ -2458,33 +2346,39 @@ export function PreviewClient({
               </button>
               <button
                 type="button"
-                aria-pressed={splitLyricsEnabled}
-                onClick={() => setSplitLyricsEnabled((prev) => !prev)}
-                className={`inline-flex min-h-[36px] items-center justify-center rounded-lg border px-2 py-1.5 text-sm font-semibold transition ${
-                  splitLyricsEnabled
-                    ? "border-accent bg-accent text-accent-foreground"
-                    : "border-border bg-bg text-foreground hover:bg-surface"
-                }`}
-                aria-label="Sözleri iki sütuna böl"
-                title="Sözleri iki sütuna böl"
+                onClick={resetOriginal}
+                aria-label="Orijinale dön"
+                title="Orijinale dön"
+                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Böl
+                <span className="flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <RotateCcw className="size-3.5" strokeWidth={2.5} />
+                </span>
               </button>
             </div>
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:min-w-[12rem] sm:items-end sm:gap-2">
-          <div className="flex w-full items-center justify-end sm:w-auto">
-            <button
-              type="button"
-              disabled={!canSave || saveState === "saving"}
-              onClick={() => void onSave()}
-              title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-              className="w-full rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[36px] sm:w-auto"
-            >
-              {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
-            </button>
+        <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:items-end sm:gap-2">
+          <div className="flex items-center justify-end gap-1.5">
+            {showHarmonyDetails ? (
+              <button
+                type="button"
+                onClick={() => setHarmonyDetailOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={harmonyDetailOpen}
+                aria-label="Armoni özeti — ayrıntıları göster"
+                title="Armoni özeti"
+                className="inline-flex items-center gap-1 text-xs text-muted transition hover:text-foreground focus-visible:outline-none"
+              >
+                <Info className="size-3 shrink-0 opacity-70" strokeWidth={2} aria-hidden />
+                Mod: <span className="text-foreground">{formatModLineLabel(gamlarWidgetScaleId)}</span>
+              </button>
+            ) : (
+              <span className="text-xs text-muted">
+                Mod: <span className="text-foreground">{formatModLineLabel(gamlarWidgetScaleId)}</span>
+              </span>
+            )}
           </div>
           <div className="w-full sm:hidden">
             <button
@@ -2551,8 +2445,92 @@ export function PreviewClient({
 
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
+      <div className="mt-6 flex items-start gap-2 sm:mt-8 sm:gap-3">
+      {/* Sağ kenar buton sütunu */}
+      <div className="sticky top-4 order-last flex shrink-0 flex-col gap-1.5 self-start print:hidden">
+        <button
+          type="button"
+          onClick={() => {
+            const next = !sceneMode;
+            setSceneMode(next);
+            replaceSceneParam(next);
+          }}
+          aria-pressed={sceneMode}
+          aria-label="Tam ekran"
+          title="Tam ekran"
+          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+            sceneMode
+              ? "border-accent bg-accent text-accent-foreground"
+              : "border-border bg-bg text-foreground"
+          }`}
+        >
+          🎤 Tam ekran
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setOpenWidgets((w) => {
+              const opening = !w.gamlar;
+              if (opening) tryLockGamlarLandscape();
+              return { ...w, gamlar: opening };
+            })
+          }
+          aria-pressed={openWidgets.gamlar}
+          title="Solo/Gam"
+          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+            openWidgets.gamlar
+              ? "border-accent bg-accent text-accent-foreground"
+              : "border-border bg-bg text-foreground"
+          }`}
+        >
+          🎸 Solo/Gam
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))}
+          aria-pressed={openWidgets.metronome}
+          title="Metronom"
+          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+            openWidgets.metronome
+              ? "border-accent bg-accent text-accent-foreground"
+              : "border-border bg-bg text-foreground"
+          }`}
+        >
+          ⏱️ Metronom
+        </button>
+        <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} />
+        <button
+          type="button"
+          id="chord-strip-trigger"
+          onClick={() => setChordStripOpen((o) => !o)}
+          aria-expanded={chordStripOpen}
+          aria-controls="chord-strip-panel"
+          title="Akorlar"
+          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+            chordStripOpen
+              ? "border-accent bg-accent text-accent-foreground"
+              : "border-border bg-bg text-foreground"
+          }`}
+        >
+          🎵 Akorlar
+        </button>
+        <button
+          type="button"
+          aria-pressed={splitLyricsEnabled}
+          onClick={() => setSplitLyricsEnabled((prev) => !prev)}
+          title="Sözleri iki sütuna böl"
+          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+            splitLyricsEnabled
+              ? "border-accent bg-accent text-accent-foreground"
+              : "border-border bg-bg text-foreground"
+          }`}
+        >
+          ✂️ Böl
+        </button>
+      </div>
+
       <article
-        className="mt-6 bg-transparent pb-4 sm:mt-8 sm:pb-6 print:border-0 print:p-0"
+        className="min-w-0 flex-1 bg-transparent pb-4 sm:pb-6 print:border-0 print:p-0"
         id="chord-body"
         data-split={splitLyricsEnabled ? "true" : "false"}
       >
@@ -2587,6 +2565,7 @@ export function PreviewClient({
           </div>
         </div>
       </article>
+      </div>
 
       {showHarmonyDetails ? (
         <>

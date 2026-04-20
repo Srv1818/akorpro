@@ -4,9 +4,9 @@
 /* Faz 1 — Neumorphism tabanlı token seti; .dark ile gündüz/gece */
 :root {
   color-scheme: light;
-  /* Açık neu: tek yüzey tonu #E0E5EC (tema-neu referansı) */
+  /* Açık neu: bg=#E0E4EC, surface=#D4D8E2 (karanlık temayla tutarlı ~12 birim fark) */
   --color-bg: 224 228 236;
-  --color-surface: 224 228 236;
+  --color-surface: 212 216 226;
   --color-foreground: 68 71 90;
   --color-muted: 105 110 124;
   --color-border: 210 215 225;
@@ -575,4 +575,33 @@ html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4
     flex-wrap: wrap;
     gap: 0.375rem;
   }
+}
+
+/* Preview toolbar butonları — hover efekti */
+.preview-tool-btn {
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Neu-theme !important kurallarını aşmak için yüksek özgüllük + !important */
+html:not(.dark) body.neu-theme button.preview-tool-btn.border-border:not([aria-pressed="true"]):hover {
+  background-color: #c8cdd9 !important;
+  border-color: rgb(109 93 252 / 0.55) !important;
+  box-shadow:
+    3px 3px 7px rgb(163 177 198 / 0.3),
+    -2px -2px 6px rgb(255 255 255 / 0.5) !important;
+}
+
+html.dark body.neu-theme button.preview-tool-btn.border-border:not([aria-pressed="true"]):hover {
+  background-color: #363a4a !important;
+  border-color: rgb(129 115 252 / 0.55) !important;
+  box-shadow:
+    3px 3px 8px rgb(0 0 0 / 0.35),
+    -2px -2px 7px rgb(255 255 255 / 0.05) !important;
+}
+
+/* Neu olmayan temalar için normal hover */
+.preview-tool-btn:not([aria-pressed="true"]):hover {
+  background-color: rgb(var(--color-surface));
+  border-color: rgb(var(--color-accent) / 0.5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }
