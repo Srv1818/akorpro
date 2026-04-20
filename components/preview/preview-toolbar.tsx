@@ -60,14 +60,14 @@ export function AutoScrollButton({
             ? active
               ? sceneActive
               : sceneIdle
-            : `rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
+            : `preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] sm:px-2.5 ${
                 active
                   ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-surface text-foreground hover:border-accent/50"
+                  : "border-border bg-surface text-foreground"
               }`
         }
       >
-        {active ? "Durdur" : "Kaydır"}
+        {active ? "⏹️ Durdur" : "↕️ Kaydır"}
       </button>
       {active ? (
         <select

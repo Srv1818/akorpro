@@ -21,7 +21,6 @@ const STRING_COUNT = 6;
 const INLAY_SINGLE_FRETS = [3, 5, 7, 9, 15] as const;
 const INLAY_DOUBLE_FRET = 12;
 
-const FRET_COL_STYLE = { gridTemplateColumns: "repeat(16, minmax(1.6rem, 1fr))" } as const;
 
 const btnSelected =
   "bg-accent text-accent-foreground shadow-sm ring-1 ring-accent/40";
@@ -218,12 +217,15 @@ function ChordDiagram({
       <div className="mx-auto min-w-[38rem] space-y-1 sm:min-w-[44rem]">
         <div className="flex items-end gap-1.5 sm:gap-2">
           <div className="flex w-6 shrink-0 flex-col justify-end sm:w-7" aria-hidden />
-          <div
-            className="relative grid min-w-0 flex-1 text-center text-[0.6rem] font-semibold tabular-nums text-zinc-400 sm:text-[0.65rem]"
-            style={FRET_COL_STYLE}
-          >
+          <div className="relative h-4 min-w-0 flex-1">
             {Array.from({ length: FRET_COUNT }, (_, f) => (
-              <div key={f}>{f}</div>
+              <span
+                key={f}
+                className="pointer-events-none absolute -translate-x-1/2 text-[0.6rem] font-semibold tabular-nums text-zinc-400 sm:text-[0.65rem]"
+                style={{ left: `calc((${f} + 0.5) / ${FRET_COUNT} * 100%)` }}
+              >
+                {f}
+              </span>
             ))}
           </div>
         </div>
@@ -240,7 +242,7 @@ function ChordDiagram({
             ))}
           </div>
 
-          <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl border border-zinc-800/90 bg-gradient-to-b from-[#3d2b1f] via-[#5c4033] to-[#3d2b1f] shadow-[inset_0_2px_14px_rgba(0,0,0,0.45)]">
+          <div className="relative min-w-0 flex-1 overflow-hidden rounded-xl border border-zinc-800/90 bg-gradient-to-b from-[#3d2b1f] via-[#5c4033] to-[#3d2b1f] shadow-[inset_0_2px_14px_rgba(0,0,0,0.45)] [clip-path:inset(0_round_0.75rem)]">
             {Array.from({ length: STRING_COUNT }, (_, s) => {
               const thickString = s >= 3;
               return (
