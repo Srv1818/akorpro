@@ -10,11 +10,11 @@ import { ArrowDownUp, Square } from "lucide-react";
 export function AutoScrollButton({
   scrollContainerRef,
   variant = "default",
+  compact = false,
 }: {
-  /** Varsa (ör. sahne modu söz alanı) bu öğe kayar; yoksa pencere/document */
   scrollContainerRef?: RefObject<HTMLElement | null>;
-  /** Sahne modu başlığında koyu tema */
   variant?: "default" | "scene";
+  compact?: boolean;
 } = {}) {
   const [active, setActive] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -61,11 +61,9 @@ export function AutoScrollButton({
             ? active
               ? sceneActive
               : sceneIdle
-            : `preview-tool-btn inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] sm:px-2.5 ${
-                active
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-surface text-foreground"
-              }`
+            : compact
+              ? `lyrics-size-btn inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 h-7 text-xs font-medium transition ${active ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground"}`
+              : `preview-tool-btn inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] sm:px-2.5 ${active ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground"}`
         }
       >
         {active ? (

@@ -100,6 +100,7 @@ export default async function SanatciPage({ params }: Props) {
     <>
       <JsonLd data={artistJsonLd(artistForPage as Exclude<typeof artistForPage, null>)} />
       <Breadcrumbs
+        visuallyHidden
         items={[
           { label: "Ana Sayfa", href: "/" },
           { label: artistForPage.name, href: artistPath(slug) },

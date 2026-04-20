@@ -2195,23 +2195,31 @@ export function PreviewClient({
             <span className="text-muted">- </span>
             <span className="text-foreground">{artistName}</span>
           </h1>
-          <p className="mt-1 text-xs font-light text-muted/70 tracking-wide">
-            Ton: <span className="font-semibold text-foreground tracking-normal">{originalKey}</span>
-            <span className="mx-1.5 opacity-30">·</span>
-            BPM: <span className="font-semibold text-foreground tracking-normal">{tempo ?? "-"}</span>
-            <span className="mx-1.5 opacity-30">·</span>
-            Ölçü: <span className="font-semibold text-foreground tracking-normal">{timeSignature ?? "-"}</span>
-            <span className="mx-1.5 opacity-30">·</span>
-            Mod: <span className="font-semibold text-foreground tracking-normal">{formatModLineLabel(gamlarWidgetScaleId)}</span>
+          <p className="mt-1 flex items-center gap-x-2 overflow-hidden text-xs font-light text-muted/70 tracking-wide">
+            <span className="inline-flex shrink-0 items-center gap-1"><span className="opacity-60">🎵</span><span className="font-semibold text-foreground tracking-normal">{originalKey}</span></span>
+            <span className="shrink-0 opacity-20">·</span>
+            <span className="inline-flex shrink-0 items-center gap-1"><span className="opacity-60">♩</span><span className="font-semibold text-foreground tracking-normal">{tempo ?? "-"}</span></span>
+            <span className="shrink-0 opacity-20">·</span>
+            <span className="inline-flex shrink-0 items-center gap-1"><span className="opacity-60">⏱</span><span className="font-semibold text-foreground tracking-normal">{timeSignature ?? "-"}</span></span>
+            <span className="shrink-0 opacity-20">·</span>
+            <span className="inline-flex min-w-0 items-center gap-1"><span className="opacity-60">✦</span><span className="truncate font-semibold text-foreground tracking-normal">{formatModLineLabel(gamlarWidgetScaleId)}</span></span>
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex items-center gap-1.5">
+          {/* Şarkı Analizi rozeti — mobilde başlık yanında */}
+          {showHarmonyDetails && (
+            <button type="button" onClick={() => setHarmonyDetailOpen(true)}
+              className="lyrics-size-btn sm:hidden inline-flex items-center gap-1 rounded-full border border-accent/50 bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
+              <Sparkles className="size-3 shrink-0" strokeWidth={1.75} />
+              Analiz
+            </button>
+          )}
           <button
             type="button"
             disabled={!canSave || saveState === "saving"}
             onClick={() => void onSave()}
             title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-            className="rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[36px]"
+            className="lyrics-size-btn rounded-lg bg-accent px-2.5 py-0.5 sm:py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[36px]"
           >
             {saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
           </button>
@@ -2303,9 +2311,9 @@ export function PreviewClient({
         </div>
       ) : null}
 
-      <div className="preview-toolbar-row mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+      <div className="preview-toolbar-row mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3 overflow-x-hidden">
         <div className="min-w-0 flex-1" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1 min-w-0">
             <div className="transpose-grid w-full min-w-0 sm:w-auto">
               {([
                 { label: "C",  pc: 0  },
@@ -2344,71 +2352,61 @@ export function PreviewClient({
                   </button>
                 );
               })}
+              {/* Orijinale dön — mobilde grid'in 18. hücresi */}
+              <button type="button" onClick={resetOriginal} aria-label="Orijinale dön"
+                className="lyrics-size-btn sm:hidden select-none inline-flex h-6 w-full items-center justify-center rounded border border-border bg-bg transition hover:bg-surface">
+                <span className="flex size-4 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <RotateCcw className="size-2.5" strokeWidth={2.5} />
+                </span>
+              </button>
             </div>
-            <div className="flex items-center justify-end gap-1 sm:ml-4 sm:justify-start">
-              <button
-                type="button"
-                onClick={resetOriginal}
-                aria-label="Orijinale dön"
-                title="Orijinale dön"
-                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-              >
+            {/* Mobil: Tam ekran + A-/A+ + araçlar tek yatay şerit */}
+            <div className="sm:hidden mt-1.5 w-full min-w-0 flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <button type="button" onClick={() => { const n = !sceneMode; setSceneMode(n); replaceSceneParam(n); }} aria-pressed={sceneMode}
+                className={`lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${sceneMode ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground"}`}>
+                <Mic className="size-3 shrink-0" strokeWidth={2.25} aria-hidden /> Tam ekran
+              </button>
+              <button type="button" disabled={!canDecreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.max(LYRICS_FONT_SIZE_MIN, s - LYRICS_FONT_SIZE_STEP)); }}
+                className="lyrics-size-btn inline-flex shrink-0 h-7 w-8 items-center justify-center rounded-lg border border-border bg-bg text-xs font-semibold text-foreground disabled:opacity-50">A-</button>
+              <button type="button" disabled={!canIncreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.min(LYRICS_FONT_SIZE_MAX, s + LYRICS_FONT_SIZE_STEP)); }}
+                className="lyrics-size-btn inline-flex shrink-0 h-7 w-8 items-center justify-center rounded-lg border border-border bg-bg text-xs font-semibold text-foreground disabled:opacity-50">A+</button>
+              <div className="w-px shrink-0 self-stretch bg-border/50 mx-0.5" />
+              <button type="button" onClick={() => setOpenWidgets((w) => { const o = !w.gamlar; if (o) tryLockGamlarLandscape(); return { ...w, gamlar: o }; })} aria-pressed={openWidgets.gamlar}
+                className={`lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${openWidgets.gamlar ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
+                <Music2 className="size-3 shrink-0" strokeWidth={1.75} /> Solo/Gam
+              </button>
+              <button type="button" onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))} aria-pressed={openWidgets.metronome}
+                className={`lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${openWidgets.metronome ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
+                <Timer className="size-3 shrink-0" strokeWidth={1.75} /> Metronom
+              </button>
+              <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} compact />
+              <button type="button" onClick={() => setChordStripOpen((o) => !o)} aria-expanded={chordStripOpen}
+                className={`lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${chordStripOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
+                <ListMusic className="size-3 shrink-0" strokeWidth={1.75} /> Akorlar
+              </button>
+              <button type="button" aria-pressed={splitLyricsEnabled} onClick={() => setSplitLyricsEnabled((p) => !p)}
+                className={`lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${splitLyricsEnabled ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
+                <Columns2 className="size-3 shrink-0" strokeWidth={1.75} /> Böl
+              </button>
+            </div>
+
+            {/* Masaüstü: Orijinale dön + A-/A+ */}
+            <div className="hidden sm:flex items-center gap-1 mt-0 ml-4">
+              <button type="button" onClick={resetOriginal} aria-label="Orijinale dön"
+                className="lyrics-size-btn inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-bg transition hover:bg-surface">
                 <span className="flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
                   <RotateCcw className="size-3.5" strokeWidth={2.5} />
                 </span>
               </button>
-              <button
-                type="button"
-                disabled={!canDecreaseLyricsFont}
-                onClick={() => {
-                  setLyricsAutoFitEnabled(false);
-                  setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP));
-                }}
-                className="ml-3 inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Söz yazısını küçült"
-                title="Söz yazısını küçült"
-              >
-                A-
-              </button>
-              <button
-                type="button"
-                disabled={!canIncreaseLyricsFont}
-                onClick={() => {
-                  setLyricsAutoFitEnabled(false);
-                  setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP));
-                }}
-                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Söz yazısını büyüt"
-                title="Söz yazısını büyüt"
-              >
-                A+
-              </button>
+              <button type="button" disabled={!canDecreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.max(LYRICS_FONT_SIZE_MIN, s - LYRICS_FONT_SIZE_STEP)); }}
+                className="lyrics-size-btn inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-bg px-1.5 text-xs font-semibold text-foreground disabled:opacity-50">A-</button>
+              <button type="button" disabled={!canIncreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.min(LYRICS_FONT_SIZE_MAX, s + LYRICS_FONT_SIZE_STEP)); }}
+                className="lyrics-size-btn inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-bg px-1.5 text-xs font-semibold text-foreground disabled:opacity-50">A+</button>
             </div>
           </div>
         </div>
 
         <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:items-end sm:gap-2">
-          <div className="w-full sm:hidden">
-            <button
-              type="button"
-              onClick={() => {
-                const next = !sceneMode;
-                setSceneMode(next);
-                replaceSceneParam(next);
-              }}
-              aria-pressed={sceneMode}
-              aria-label="Tam ekran"
-              title="Tam ekran"
-              className={`group relative inline-flex min-h-[36px] w-full items-center justify-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${
-                sceneMode
-                  ? "border-accent bg-accent text-accent-foreground shadow-md shadow-black/10 ring-1 ring-accent/30"
-                  : "border-border bg-surface text-foreground shadow-sm shadow-black/5 hover:border-accent/40 hover:bg-bg/70"
-              }`}
-            >
-              <Mic aria-hidden className="size-4 drop-shadow-[0_1px_1px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
-              <span className="leading-none tracking-wide">Tam ekran</span>
-            </button>
-          </div>
           {firebaseUid === undefined ? (
             <span className="text-center text-sm text-muted sm:text-right">Oturum kontrol ediliyor…</span>
           ) : firebaseUid === null ? (
@@ -2453,19 +2451,19 @@ export function PreviewClient({
 
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
-      <div className="mt-6 flex items-start gap-2 sm:mt-8 sm:gap-3">
-      {/* Sağ kenar buton sütunu */}
-      <div className="sticky top-4 order-last flex shrink-0 flex-col gap-1.5 self-start print:hidden">
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-start gap-2 sm:mt-8 sm:gap-3">
+      {/* Sağ kenar buton sütunu — mobilde yatay satır, masaüstünde dikey sütun */}
+      <div className="hidden sm:flex order-last sm:w-auto sm:flex-col gap-1.5 sm:sticky sm:top-4 sm:shrink-0 sm:self-start print:hidden">
         <button
           type="button"
           onClick={() => setHarmonyDetailOpen(true)}
           disabled={!showHarmonyDetails}
-          className="preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border border-accent/60 bg-accent/10 px-2 py-1.5 text-xs font-semibold text-accent min-h-[36px] w-full disabled:cursor-not-allowed disabled:opacity-40"
+          className="preview-tool-btn hidden sm:inline-flex items-center justify-center gap-1.5 rounded-lg border border-accent/60 bg-accent/10 px-2 py-1.5 text-xs font-semibold text-accent min-h-[36px] w-full disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Sparkles className="size-3.5 shrink-0" strokeWidth={1.75} />
           Şarkı Analizi
         </button>
-        <hr className="border-border opacity-50 my-0.5" />
+        <hr className="hidden sm:block border-border opacity-50 my-0.5" />
         <button
           type="button"
           onClick={() => {
@@ -2476,7 +2474,7 @@ export function PreviewClient({
           aria-pressed={sceneMode}
           aria-label="Tam ekran"
           title="Tam ekran"
-          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+          className={`preview-tool-btn hidden sm:inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
             sceneMode
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground"
@@ -2588,7 +2586,7 @@ export function PreviewClient({
           </div>
         </div>
       </article>
-      </div>
+      </div>{/* mt-6 flex items-start */}
 
       {showHarmonyDetails ? (
         <>

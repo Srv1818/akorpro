@@ -128,6 +128,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
     <>
       <JsonLd data={songJsonLd(song)} />
       <Breadcrumbs
+        visuallyHidden
         currentCrumbTone="display"
         items={[
           { label: "Ana Sayfa", href: "/" },
