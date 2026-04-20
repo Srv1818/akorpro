@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @config "../tailwind.config.mjs";
 
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 /* Faz 1 — Neumorphism tabanlı token seti; .dark ile gündüz/gece */
 :root {
   color-scheme: light;
@@ -120,6 +123,10 @@ body {
   .transpose-grid button {
     min-height: unset;
     min-width: unset;
+  }
+  .lyrics-size-btn {
+    min-height: unset !important;
+    min-width: unset !important;
   }
 }
 
@@ -486,6 +493,17 @@ html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4
 .preview-container {
   container-type: inline-size;
   container-name: preview;
+}
+
+/* Mobile: prevent toolbar row and its children from overflowing page width */
+@media (max-width: 639px) {
+  .preview-toolbar-row {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  .preview-container {
+    overflow-x: hidden;
+  }
 }
 
 /* Landscape phones: more horizontal space, pack tighter vertically */
