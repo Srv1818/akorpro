@@ -29,7 +29,8 @@ export function activateAppCheck(): AppCheck | null {
 
   const isDebug =
     typeof window !== "undefined" &&
-    process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "1";
+    (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "1" ||
+      process.env.NODE_ENV === "development");
 
   if (isDebug && typeof window !== "undefined") {
     (self as unknown as Record<string, unknown>).FIREBASE_APPCHECK_DEBUG_TOKEN = true;

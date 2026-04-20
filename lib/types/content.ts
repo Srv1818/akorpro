@@ -24,6 +24,8 @@ export type FilterFacets = {
   keys: string[];
   difficulties: readonly Difficulty[];
   letters: string[];
+  genres: string[];
+  timeSignatures: string[];
 };
 
 export type MockArtist = {

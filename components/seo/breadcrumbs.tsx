@@ -11,9 +11,11 @@ type BreadcrumbsProps = {
   items: BreadcrumbItem[];
   /** Son öğe şarkı başlığıysa yumuşak `display`; sanatçı adıysa `foreground` (mevcut parlaklık korunur). */
   currentCrumbTone?: "display" | "foreground";
+  /** Görsel navigasyonu gizler, JSON-LD yapısal veriyi korur. */
+  visuallyHidden?: boolean;
 };
 
-export function Breadcrumbs({ items, currentCrumbTone = "foreground" }: BreadcrumbsProps) {
+export function Breadcrumbs({ items, currentCrumbTone = "foreground", visuallyHidden = false }: BreadcrumbsProps) {
   const currentClass =
     currentCrumbTone === "display"
       ? "whitespace-nowrap font-semibold text-display [font-synthesis:none]"
@@ -32,7 +34,7 @@ export function Breadcrumbs({ items, currentCrumbTone = "foreground" }: Breadcru
   return (
     <>
       <JsonLd data={jsonLd} />
-      <nav aria-label="Breadcrumb" className="mx-auto min-w-0 max-w-6xl px-4 pt-3 sm:px-6 lg:px-8">
+      <nav aria-label="Breadcrumb" className={`mx-auto min-w-0 max-w-6xl px-4 pt-3 sm:px-6 lg:px-8${visuallyHidden ? " hidden" : ""}`}>
         <ol className="flex w-full min-w-0 max-w-full flex-nowrap items-baseline gap-x-2 overflow-x-auto overscroll-x-contain pb-1 text-sm leading-tight text-muted [-webkit-overflow-scrolling:touch]">
           {items.map((item, i) => (
             <li

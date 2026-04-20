@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/content/page-header";
 import { CoverImage } from "@/components/content/cover-image";
-import { SongCard } from "@/components/content/song-card";
+import { SongList } from "@/components/content/song-list";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { getArtistBySlug, getAllArtists } from "@/lib/firestore/artists";
@@ -100,6 +100,7 @@ export default async function SanatciPage({ params }: Props) {
     <>
       <JsonLd data={artistJsonLd(artistForPage as Exclude<typeof artistForPage, null>)} />
       <Breadcrumbs
+        visuallyHidden
         items={[
           { label: "Ana Sayfa", href: "/" },
           { label: artistForPage.name, href: artistPath(slug) },
@@ -124,13 +125,7 @@ export default async function SanatciPage({ params }: Props) {
         }
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {songSummaries.map((song) => (
-            <li key={song.id}>
-              <SongCard song={song} showArtist={false} />
-            </li>
-          ))}
-        </ul>
+        <SongList songs={songSummaries} showArtist={false} />
         {songs.length === 0 ? (
           <p className="text-sm text-muted">
             Henüz şarkı yok.{" "}

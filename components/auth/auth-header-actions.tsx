@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { usePathname, useRouter } from "next/navigation";
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { getClientAuth } from "@/lib/firebase/client";
 // Dropdown ikonları için Lucide-react (shadcn projelerinde standarttır)
@@ -14,6 +14,13 @@ type MeResponse = { user: SessionUser | null };
 function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => Promise<void> }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
+  const close = useCallback(() => setIsOpen(false), []);
+
+  // Navigasyon başladığında menüyü kapat (transition sırasında eski ağaç görünürken de çalışır)
+  useEffect(() => {
+    close();
+  }, [pathname, close]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -21,11 +28,11 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
     function onPointerDown(e: PointerEvent) {
       const el = containerRef.current;
       if (!el) return;
-      if (!el.contains(e.target as Node)) setIsOpen(false);
+      if (!el.contains(e.target as Node)) close();
     }
 
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape") close();
     }
 
     document.addEventListener("pointerdown", onPointerDown);
@@ -34,7 +41,7 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   const userInitial = user.email ? user.email.charAt(0).toUpperCase() : "U";
 
@@ -57,7 +64,7 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
           <div className="py-1">
             <Link
               href={`/profil/${user.uid}`}
-              onClick={() => setIsOpen(false)}
+              onClick={close}
               className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-surface transition-colors"
             >
               <User className="h-4 w-4 text-muted" />
@@ -65,7 +72,7 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
             </Link>
             <Link
               href="/iletisim"
-              onClick={() => setIsOpen(false)}
+              onClick={close}
               className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-surface transition-colors"
             >
               <MessageCircle className="h-4 w-4 text-muted" />
@@ -74,7 +81,7 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
             {user.admin ? (
               <Link
                 href="/katki"
-                onClick={() => setIsOpen(false)}
+                onClick={close}
                 className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-surface transition-colors"
               >
                 <PenLine className="h-4 w-4 text-muted" />
@@ -86,7 +93,7 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
           <div className="border-t border-border/50 py-1">
             <button
               onClick={() => {
-                setIsOpen(false);
+                close();
                 void onSignOut();
               }}
               className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
@@ -138,6 +145,7 @@ export function AuthHeaderActions() {
       /* İstemci yapılandırması yoksa yalnızca çerez silinir. */
     }
     startTransition(() => setUser(null));
+    window.dispatchEvent(new Event("akorpro:auth-change"));
     router.refresh();
   }
 

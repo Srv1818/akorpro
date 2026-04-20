@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { ArrowDownUp, Square } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Auto-scroll                                                        */
@@ -9,11 +10,13 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 export function AutoScrollButton({
   scrollContainerRef,
   variant = "default",
+  compact = false,
+  className = "",
 }: {
-  /** Varsa (ör. sahne modu söz alanı) bu öğe kayar; yoksa pencere/document */
   scrollContainerRef?: RefObject<HTMLElement | null>;
-  /** Sahne modu başlığında koyu tema */
   variant?: "default" | "scene";
+  compact?: boolean;
+  className?: string;
 } = {}) {
   const [active, setActive] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -45,12 +48,12 @@ export function AutoScrollButton({
   }, [active, speed, scrollContainerRef]);
 
   const sceneBase =
-    "shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold transition min-h-[36px]";
+    "inline-flex items-center gap-1.5 shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold transition min-h-[36px]";
   const sceneIdle = `${sceneBase} border-white/15 bg-white/5 text-white hover:bg-white/10`;
   const sceneActive = `${sceneBase} border-accent bg-accent text-accent-foreground`;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={`flex items-center gap-1${className ? ` ${className}` : ""}`}>
       <button
         type="button"
         onClick={() => setActive((a) => !a)}
@@ -60,14 +63,16 @@ export function AutoScrollButton({
             ? active
               ? sceneActive
               : sceneIdle
-            : `rounded-lg border px-2 py-1.5 text-xs font-medium transition min-h-[36px] sm:px-2.5 ${
-                active
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-surface text-foreground hover:border-accent/50"
-              }`
+            : compact
+              ? `lyrics-size-btn inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 h-7 text-xs font-medium transition ${active ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground"}`
+              : `preview-tool-btn inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] sm:px-2.5 ${active ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground"}`
         }
       >
-        {active ? "Durdur" : "Kaydır"}
+        {active ? (
+          <><Square className="size-3.5 shrink-0 text-accent-foreground" strokeWidth={1.75} /> Durdur</>
+        ) : (
+          <><ArrowDownUp className="size-3.5 shrink-0 text-accent" strokeWidth={1.75} /> Kaydır</>
+        )}
       </button>
       {active ? (
         <select

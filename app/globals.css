@@ -1,12 +1,52 @@
 @import "tailwindcss";
 @config "../tailwind.config.mjs";
 
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* Mobil araç şeridi wrapper: sağ kenar fade */
+.tools-strip-wrapper {
+  position: relative;
+}
+.tools-strip-wrapper::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgb(var(--color-bg)) 90%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Mobil araç şeridi: scroll-snap + scrollbar gizleme */
+.tools-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding-left: 0;
+  padding-right: 12px;
+  gap: 6px;
+}
+.tools-strip::-webkit-scrollbar { display: none; }
+.tools-strip > * {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
 /* Faz 1 — Neumorphism tabanlı token seti; .dark ile gündüz/gece */
 :root {
   color-scheme: light;
-  /* Açık neu: tek yüzey tonu #E0E5EC (tema-neu referansı) */
+  /* Açık neu: bg=#E0E4EC, surface=#D4D8E2 (karanlık temayla tutarlı ~12 birim fark) */
   --color-bg: 224 228 236;
-  --color-surface: 224 228 236;
+  --color-surface: 212 216 226;
   --color-foreground: 68 71 90;
   --color-muted: 105 110 124;
   --color-border: 210 215 225;
@@ -116,6 +156,21 @@ body {
   .song-chord-text a {
     min-height: unset;
     min-width: unset;
+  }
+  .transpose-grid button {
+    min-height: unset;
+    min-width: unset;
+  }
+  .lyrics-size-btn {
+    min-height: unset !important;
+    min-width: unset !important;
+  }
+}
+
+/* Mobil: lyrics-size-btn butonlarına finger-friendly min-height */
+@media (max-width: 639px) {
+  .lyrics-size-btn {
+    min-height: 36px !important;
   }
 }
 
@@ -473,6 +528,7 @@ html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4
   color: #44475a !important;
 }
 
+
 /* ------------------------------------------------------------------ */
 /* Preview — Cross-platform auto-layout                                */
 /* ------------------------------------------------------------------ */
@@ -481,6 +537,17 @@ html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4
 .preview-container {
   container-type: inline-size;
   container-name: preview;
+}
+
+/* Mobile: prevent toolbar row and its children from overflowing page width */
+@media (max-width: 639px) {
+  .preview-toolbar-row {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+  .preview-container {
+    overflow-x: hidden;
+  }
 }
 
 /* Landscape phones: more horizontal space, pack tighter vertically */
@@ -547,11 +614,28 @@ html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4
 }
 
 
-/* Transpose grid: auto-fill for cross-platform */
+/* Transpose grid: 9 sütun — 17 buton 2 satıra (9+8) düzgün sığar */
 .transpose-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
-  gap: 0.25rem;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+@media (max-width: 639px) {
+  .transpose-grid button {
+    min-height: 40px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+  }
+  .transpose-grid {
+    gap: 4px;
+  }
+}
+
+/* Neu-theme gölgelerini transpose butonlarında sıfırla — yoksa gölgeler birbirine girer */
+html body.neu-theme .transpose-grid button {
+  box-shadow: none !important;
 }
 
 @container preview (min-width: 640px) {
@@ -575,4 +659,33 @@ html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4
     flex-wrap: wrap;
     gap: 0.375rem;
   }
+}
+
+/* Preview toolbar butonları — hover efekti */
+.preview-tool-btn {
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Neu-theme !important kurallarını aşmak için yüksek özgüllük + !important */
+html:not(.dark) body.neu-theme button.preview-tool-btn.border-border:not([aria-pressed="true"]):hover {
+  background-color: #c8cdd9 !important;
+  border-color: rgb(109 93 252 / 0.55) !important;
+  box-shadow:
+    3px 3px 7px rgb(163 177 198 / 0.3),
+    -2px -2px 6px rgb(255 255 255 / 0.5) !important;
+}
+
+html.dark body.neu-theme button.preview-tool-btn.border-border:not([aria-pressed="true"]):hover {
+  background-color: #363a4a !important;
+  border-color: rgb(129 115 252 / 0.55) !important;
+  box-shadow:
+    3px 3px 8px rgb(0 0 0 / 0.35),
+    -2px -2px 7px rgb(255 255 255 / 0.05) !important;
+}
+
+/* Neu olmayan temalar için normal hover */
+.preview-tool-btn:not([aria-pressed="true"]):hover {
+  background-color: rgb(var(--color-surface));
+  border-color: rgb(var(--color-accent) / 0.5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }

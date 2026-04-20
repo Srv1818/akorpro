@@ -200,6 +200,11 @@ async function _getFilteredSongs(params: {
   sanatci?: string;
   ton?: string;
   zorluk?: string;
+  sarkiAdi?: string;
+  mod?: string;
+  tur?: string;
+  olcu?: string;
+  bpm?: string;
 }): Promise<(SongDoc & { id: string })[]> {
   let results: (SongDoc & { id: string })[];
 
@@ -247,6 +252,25 @@ async function _getFilteredSongs(params: {
     const h = params.harf.toUpperCase();
     results = results.filter((s) => s.title.toUpperCase().startsWith(h));
   }
+  if (params.sarkiAdi) {
+    const q = params.sarkiAdi.toLowerCase();
+    results = results.filter((s) => s.title.toLowerCase().includes(q));
+  }
+  if (params.mod) {
+    results = results.filter((s) => s.keyMode === params.mod);
+  }
+  if (params.tur) {
+    results = results.filter((s) => s.genre === params.tur);
+  }
+  if (params.olcu) {
+    results = results.filter((s) => s.timeSignature === params.olcu);
+  }
+  if (params.bpm) {
+    const bpmVal = Number(params.bpm);
+    if (!isNaN(bpmVal)) {
+      results = results.filter((s) => Number(s.tempo) === bpmVal);
+    }
+  }
 
   return results;
 }
@@ -265,10 +289,14 @@ async function _getFilterFacetOptions() {
 
   const artistMap = new Map<string, string>();
   const keysSet = new Set<string>();
+  const genresSet = new Set<string>();
+  const timeSignaturesSet = new Set<string>();
 
   for (const s of songs) {
     artistMap.set(s.artistSlug, s.artistName);
     keysSet.add(s.originalKey);
+    if (s.genre) genresSet.add(s.genre);
+    if (s.timeSignature) timeSignaturesSet.add(s.timeSignature);
   }
 
   const artists = [...artistMap.entries()]
@@ -280,6 +308,8 @@ async function _getFilterFacetOptions() {
     keys: [...keysSet].sort(),
     difficulties: ["kolay", "orta", "zor"] as const,
     letters: "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ".split(""),
+    genres: [...genresSet].sort(),
+    timeSignatures: [...timeSignaturesSet].sort(),
   };
 }
 
@@ -355,6 +385,11 @@ export function getFilteredSongs(params: {
   sanatci?: string;
   ton?: string;
   zorluk?: string;
+  sarkiAdi?: string;
+  mod?: string;
+  tur?: string;
+  olcu?: string;
+  bpm?: string;
 }) {
   const hash = filterHash(params);
   return unstable_cache(
