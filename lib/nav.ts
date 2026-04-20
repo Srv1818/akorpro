@@ -1,12 +1,12 @@
 import { chordPath } from "@/lib/paths";
 
 export const mainNav = [
-  { href: "/", label: "🧭 Keşfet" },
-  { href: "/gitar-akorlari", label: "🎵 Şarkılar" },
-  { href: "/akor-kutuphanesi", label: "🎸 Akorlar" },
-  { href: "/gamlar", label: "🎼 Gamlar" },
-  { href: "/besli-cember", label: "⭕ 5'li Çember" },
-  { href: "/calma-listeleri", label: "📋 Listeler" },
+  { href: "/", label: "Keşfet", icon: "Compass" },
+  { href: "/gitar-akorlari", label: "Şarkılar", icon: "Music" },
+  { href: "/akor-kutuphanesi", label: "Akorlar", icon: "Guitar" },
+  { href: "/gamlar", label: "Gamlar", icon: "BookOpen" },
+  { href: "/besli-cember", label: "5'li Çember", icon: "Circle" },
+  { href: "/calma-listeleri", label: "Listeler", icon: "ListMusic" },
 ] as const;
 
 export const footerNav = [

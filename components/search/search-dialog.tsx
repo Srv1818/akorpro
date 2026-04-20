@@ -168,15 +168,9 @@ export function SearchDialog({
             aria-expanded={open}
             aria-haspopup="listbox"
             aria-autocomplete="list"
-            className="min-w-0 w-full rounded-l-xl border border-r-0 border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent md:pl-12"
+            className="min-w-0 w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent md:pl-12"
           />
         </div>
-        <button
-          type="submit"
-          className="shrink-0 rounded-r-xl border border-border bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition hover:bg-accent-muted active:scale-95"
-        >
-          Ara
-        </button>
       </form>
 
       {open && allItems.length > 0 && (

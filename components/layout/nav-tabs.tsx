@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BookOpen, Circle, Compass, Guitar, ListMusic, Music, type LucideIcon } from "lucide-react";
 import { mainNav } from "@/lib/nav";
+
+const iconMap: Record<string, LucideIcon> = {
+  Compass, Music, Guitar, BookOpen, Circle, ListMusic,
+};
 
 export function NavTabs() {
   const pathname = usePathname();
@@ -25,7 +30,7 @@ export function NavTabs() {
             key={item.href}
             href={item.href}
             className={[
-              "relative whitespace-nowrap rounded-xl px-3.5 py-1.5 text-sm font-medium",
+              "relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-sm font-medium",
               "transition-all duration-200 ease-out",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
               active
@@ -38,6 +43,7 @@ export function NavTabs() {
                 : "text-muted hover:text-foreground hover:bg-white/25 dark:hover:bg-white/[0.08] active:scale-95",
             ].join(" ")}
           >
+            {(() => { const Icon = iconMap[item.icon]; return Icon ? <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden /> : null; })()}
             {item.label}
           </Link>
         );
