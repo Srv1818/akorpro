@@ -11,10 +11,12 @@ export function AutoScrollButton({
   scrollContainerRef,
   variant = "default",
   compact = false,
+  className = "",
 }: {
   scrollContainerRef?: RefObject<HTMLElement | null>;
   variant?: "default" | "scene";
   compact?: boolean;
+  className?: string;
 } = {}) {
   const [active, setActive] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -51,7 +53,7 @@ export function AutoScrollButton({
   const sceneActive = `${sceneBase} border-accent bg-accent text-accent-foreground`;
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={`flex items-center gap-1${className ? ` ${className}` : ""}`}>
       <button
         type="button"
         onClick={() => setActive((a) => !a)}
