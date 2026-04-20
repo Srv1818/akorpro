@@ -4,11 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
+import { BookOpen, Circle, Compass, Guitar, ListMusic, Music, type LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { AuthHeaderActions } from "@/components/auth/auth-header-actions";
 import type { SessionUser } from "@/lib/auth/session-user";
 
-type Item = { readonly href: string; readonly label: string };
+const iconMap: Record<string, LucideIcon> = {
+  Compass, Music, Guitar, BookOpen, Circle, ListMusic,
+};
+
+type Item = { readonly href: string; readonly label: string; readonly icon?: string };
 type MeResponse = { user: SessionUser | null };
 
 export function MobileNav({ items }: { items: readonly Item[] }) {
@@ -132,13 +137,14 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
                         key={item.href}
                         href={item.href}
                         className={[
-                          "flex min-h-[44px] items-center rounded-xl px-3 py-3 text-base font-medium transition-all duration-150",
+                          "flex min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-3 text-base font-medium transition-all duration-150",
                           active
                             ? "text-accent bg-white/50 dark:bg-white/[0.10] border border-white/60 dark:border-white/[0.16] shadow-sm"
                             : "text-foreground hover:bg-white/30 dark:hover:bg-white/[0.07]",
                         ].join(" ")}
                         onClick={close}
                       >
+                        {(() => { const Icon = item.icon ? iconMap[item.icon] : undefined; return Icon ? <Icon className="size-4.5 shrink-0" strokeWidth={1.75} aria-hidden /> : null; })()}
                         {item.label}
                       </Link>
                     );

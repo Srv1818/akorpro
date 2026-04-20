@@ -1557,7 +1557,7 @@ export function PreviewClient({
     <div className="py-2 sm:py-3">
       {sceneMode ? (
         <div
-          className="scene-overlay-root fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black"
+          className="dark scene-overlay-root fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black"
           role="dialog"
           aria-modal="true"
           aria-label="Sahne modu"
@@ -1703,26 +1703,31 @@ export function PreviewClient({
                 >
                   A+
                 </button>
-                <button
-                  type="button"
-                  disabled={!canDecreaseTranspose}
-                  onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
-                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Transpoze: yarım ton düşür"
-                  title="Transpoze: yarım ton düşür"
-                >
-                  T-
-                </button>
-                <button
-                  type="button"
-                  disabled={!canIncreaseTranspose}
-                  onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
-                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Transpoze: yarım ton yükselt"
-                  title="Transpoze: yarım ton yükselt"
-                >
-                  T+
-                </button>
+                <div className="flex shrink-0 items-stretch overflow-hidden rounded-lg border border-white/15">
+                  <button
+                    type="button"
+                    disabled={!canDecreaseTranspose}
+                    onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
+                    className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center border-r border-white/15 bg-white/5 px-2.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Transpoze: yarım ton düşür"
+                    title="Transpoze: yarım ton düşür"
+                  >
+                    T-
+                  </button>
+                  <span className={`flex min-w-[2.5rem] items-center justify-center px-2 text-xs font-bold tabular-nums ${semitones === 0 ? "bg-white/5 text-white/40" : "bg-accent/20 text-accent"}`}>
+                    {semitones > 0 ? `+${semitones}` : semitones}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!canIncreaseTranspose}
+                    onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
+                    className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center border-l border-white/15 bg-white/5 px-2.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Transpoze: yarım ton yükselt"
+                    title="Transpoze: yarım ton yükselt"
+                  >
+                    T+
+                  </button>
+                </div>
                 <button
                   type="button"
                   aria-pressed={splitLyricsEnabled}
@@ -1859,24 +1864,29 @@ export function PreviewClient({
                           >
                             A+
                           </button>
-                          <button
-                            type="button"
-                            disabled={!canDecreaseTranspose}
-                            onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
-                            className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="Transpoze: yarım ton düşür"
-                          >
-                            T-
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!canIncreaseTranspose}
-                            onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
-                            className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="Transpoze: yarım ton yükselt"
-                          >
-                            T+
-                          </button>
+                          <div className="col-span-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={!canDecreaseTranspose}
+                              onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
+                              className="inline-flex flex-1 min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                              aria-label="Transpoze: yarım ton düşür"
+                            >
+                              T-
+                            </button>
+                            <span className={`shrink-0 min-w-[2.5rem] rounded-lg border px-2 py-1 text-center text-xs font-bold tabular-nums ${semitones === 0 ? "border-white/15 bg-white/5 text-white/40" : "border-accent/60 bg-accent/20 text-accent"}`}>
+                              {semitones > 0 ? `+${semitones}` : semitones}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={!canIncreaseTranspose}
+                              onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
+                              className="inline-flex flex-1 min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                              aria-label="Transpoze: yarım ton yükselt"
+                            >
+                              T+
+                            </button>
+                          </div>
                         </div>
 
                         <div className="mt-3">

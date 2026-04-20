@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { ArrowDownUp, Square } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /*  Auto-scroll                                                        */
@@ -45,7 +46,7 @@ export function AutoScrollButton({
   }, [active, speed, scrollContainerRef]);
 
   const sceneBase =
-    "shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold transition min-h-[36px]";
+    "inline-flex items-center gap-1.5 shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold transition min-h-[36px]";
   const sceneIdle = `${sceneBase} border-white/15 bg-white/5 text-white hover:bg-white/10`;
   const sceneActive = `${sceneBase} border-accent bg-accent text-accent-foreground`;
 
@@ -60,14 +61,18 @@ export function AutoScrollButton({
             ? active
               ? sceneActive
               : sceneIdle
-            : `preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] sm:px-2.5 ${
+            : `preview-tool-btn inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] sm:px-2.5 ${
                 active
                   ? "border-accent bg-accent text-accent-foreground"
                   : "border-border bg-surface text-foreground"
               }`
         }
       >
-        {active ? "⏹️ Durdur" : "↕️ Kaydır"}
+        {active ? (
+          <><Square className="size-3.5 shrink-0 text-accent-foreground" strokeWidth={1.75} /> Durdur</>
+        ) : (
+          <><ArrowDownUp className="size-3.5 shrink-0 text-accent" strokeWidth={1.75} /> Kaydır</>
+        )}
       </button>
       {active ? (
         <select
