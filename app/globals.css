@@ -117,6 +117,10 @@ body {
     min-height: unset;
     min-width: unset;
   }
+  .transpose-grid button {
+    min-height: unset;
+    min-width: unset;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -547,11 +551,16 @@ html:not(.dark) body.neu-theme .song-chord-text :where(strong, b, h1, h2, h3, h4
 }
 
 
-/* Transpose grid: auto-fill for cross-platform */
+/* Transpose grid: 9 sütun — 17 buton 2 satıra (9+8) düzgün sığar */
 .transpose-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
-  gap: 0.25rem;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+/* Neu-theme gölgelerini transpose butonlarında sıfırla — yoksa gölgeler birbirine girer */
+html body.neu-theme .transpose-grid button {
+  box-shadow: none !important;
 }
 
 @container preview (min-width: 640px) {

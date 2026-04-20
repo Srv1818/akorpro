@@ -2311,8 +2311,8 @@ export function PreviewClient({
                 { label: "Ab", pc: 8  },
                 { label: "A",  pc: 9  },
                 { label: "A#", pc: 10 },
-                { label: "B",  pc: 11 },
                 { label: "Bb", pc: 10 },
+                { label: "B",  pc: 11 },
               ] as const).map(({ label, pc }) => {
                 const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
                 const isActive = semitones === delta;
@@ -2322,7 +2322,7 @@ export function PreviewClient({
                     type="button"
                     aria-pressed={isActive}
                     onClick={() => replaceTranspose(delta)}
-                    className={`select-none inline-flex min-h-[36px] w-full min-w-[36px] items-center justify-center rounded-md border px-1.5 py-1 text-xs font-medium leading-none transition sm:w-auto ${
+                    className={`select-none inline-flex h-6 w-full items-center justify-center rounded border px-0.5 py-0 text-[10px] font-medium leading-none transition sm:h-[36px] sm:min-w-[36px] sm:rounded-md sm:px-1.5 sm:py-1 sm:text-xs sm:w-auto ${
                       isActive
                         ? "border-accent bg-accent text-accent-foreground"
                         : "border-border bg-bg text-foreground hover:border-accent/50 hover:bg-surface"
@@ -2334,6 +2334,17 @@ export function PreviewClient({
               })}
             </div>
             <div className="flex items-center justify-end gap-1 sm:ml-4 sm:justify-start">
+              <button
+                type="button"
+                onClick={resetOriginal}
+                aria-label="Orijinale dön"
+                title="Orijinale dön"
+                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <RotateCcw className="size-3.5" strokeWidth={2.5} />
+                </span>
+              </button>
               <button
                 type="button"
                 disabled={!canDecreaseLyricsFont}
@@ -2359,17 +2370,6 @@ export function PreviewClient({
                 title="Söz yazısını büyüt"
               >
                 A+
-              </button>
-              <button
-                type="button"
-                onClick={resetOriginal}
-                aria-label="Orijinale dön"
-                title="Orijinale dön"
-                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <RotateCcw className="size-3.5" strokeWidth={2.5} />
-                </span>
               </button>
             </div>
           </div>
