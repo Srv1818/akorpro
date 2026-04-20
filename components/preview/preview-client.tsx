@@ -2295,14 +2295,30 @@ export function PreviewClient({
         <div className="min-w-0 flex-1" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1">
             <div className="transpose-grid w-full min-w-0 sm:w-auto">
-              {Array.from({ length: 12 }, (_, pc) => {
-                const label = PC_TO_NAME[pc];
+              {([
+                { label: "C",  pc: 0  },
+                { label: "C#", pc: 1  },
+                { label: "Db", pc: 1  },
+                { label: "D",  pc: 2  },
+                { label: "D#", pc: 3  },
+                { label: "Eb", pc: 3  },
+                { label: "E",  pc: 4  },
+                { label: "F",  pc: 5  },
+                { label: "F#", pc: 6  },
+                { label: "Gb", pc: 6  },
+                { label: "G",  pc: 7  },
+                { label: "G#", pc: 8  },
+                { label: "Ab", pc: 8  },
+                { label: "A",  pc: 9  },
+                { label: "A#", pc: 10 },
+                { label: "B",  pc: 11 },
+                { label: "Bb", pc: 10 },
+              ] as const).map(({ label, pc }) => {
                 const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
                 const isActive = semitones === delta;
-
                 return (
                   <button
-                    key={pc}
+                    key={label}
                     type="button"
                     aria-pressed={isActive}
                     onClick={() => replaceTranspose(delta)}
