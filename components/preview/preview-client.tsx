@@ -50,7 +50,7 @@ import {
   signedSemitoneDelta,
   transposeChordToken,
 } from "@/lib/music/transpose";
-import { ChevronLeft, ChevronRight, Info, Mic, MoreHorizontal, RotateCcw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Columns2, Info, ListMusic, Maximize2, Mic, MoreHorizontal, Music2, RotateCcw, Sparkles, Timer, X } from "lucide-react";
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
@@ -2185,12 +2185,14 @@ export function PreviewClient({
             <span className="text-muted">- </span>
             <span className="text-foreground">{artistName}</span>
           </h1>
-          <p className="mt-1 text-xs text-muted">
-            Ton: <span className="text-foreground">{originalKey}</span>
-            <span className="mx-1.5 opacity-40">·</span>
-            BPM: <span className="text-foreground">{tempo ?? "-"}</span>
-            <span className="mx-1.5 opacity-40">·</span>
-            Ölçü: <span className="text-foreground">{timeSignature ?? "-"}</span>
+          <p className="mt-1 text-xs font-light text-muted/70 tracking-wide">
+            Ton: <span className="font-semibold text-foreground tracking-normal">{originalKey}</span>
+            <span className="mx-1.5 opacity-30">·</span>
+            BPM: <span className="font-semibold text-foreground tracking-normal">{tempo ?? "-"}</span>
+            <span className="mx-1.5 opacity-30">·</span>
+            Ölçü: <span className="font-semibold text-foreground tracking-normal">{timeSignature ?? "-"}</span>
+            <span className="mx-1.5 opacity-30">·</span>
+            Mod: <span className="font-semibold text-foreground tracking-normal">{formatModLineLabel(gamlarWidgetScaleId)}</span>
           </p>
         </div>
         <div className="shrink-0">
@@ -2201,7 +2203,7 @@ export function PreviewClient({
             title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
             className="rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 min-h-[36px]"
           >
-            {saveState === "saving" ? "Kaydediliyor…" : "Kaydet ve Listeye ekle"}
+            {saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
           </button>
         </div>
       </div>
@@ -2325,7 +2327,7 @@ export function PreviewClient({
                     className={`select-none inline-flex h-6 w-full items-center justify-center rounded border px-0.5 py-0 text-[10px] font-medium leading-none transition sm:h-[36px] sm:min-w-[36px] sm:rounded-md sm:px-1.5 sm:py-1 sm:text-xs sm:w-auto ${
                       isActive
                         ? "border-accent bg-accent text-accent-foreground"
-                        : "border-border bg-bg text-foreground hover:border-accent/50 hover:bg-surface"
+                        : "border-white/10 bg-bg text-muted hover:border-white/30 hover:text-foreground"
                     }`}
                   >
                     {label}
@@ -2352,7 +2354,7 @@ export function PreviewClient({
                   setLyricsAutoFitEnabled(false);
                   setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP));
                 }}
-                className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                className="ml-3 inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-border bg-bg px-2 py-1.5 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Söz yazısını küçült"
                 title="Söz yazısını küçült"
               >
@@ -2376,26 +2378,6 @@ export function PreviewClient({
         </div>
 
         <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:items-end sm:gap-2">
-          <div className="flex items-center justify-end gap-1.5">
-            {showHarmonyDetails ? (
-              <button
-                type="button"
-                onClick={() => setHarmonyDetailOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={harmonyDetailOpen}
-                aria-label="Armoni özeti — ayrıntıları göster"
-                title="Armoni özeti"
-                className="inline-flex items-center gap-1 text-xs text-muted transition hover:text-foreground focus-visible:outline-none"
-              >
-                <Info className="size-3 shrink-0 opacity-70" strokeWidth={2} aria-hidden />
-                Mod: <span className="text-foreground">{formatModLineLabel(gamlarWidgetScaleId)}</span>
-              </button>
-            ) : (
-              <span className="text-xs text-muted">
-                Mod: <span className="text-foreground">{formatModLineLabel(gamlarWidgetScaleId)}</span>
-              </span>
-            )}
-          </div>
           <div className="w-full sm:hidden">
             <button
               type="button"
@@ -2466,6 +2448,16 @@ export function PreviewClient({
       <div className="sticky top-4 order-last flex shrink-0 flex-col gap-1.5 self-start print:hidden">
         <button
           type="button"
+          onClick={() => setHarmonyDetailOpen(true)}
+          disabled={!showHarmonyDetails}
+          className="preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border border-accent/60 bg-accent/10 px-2 py-1.5 text-xs font-semibold text-accent min-h-[36px] w-full disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Sparkles className="size-3.5 shrink-0" strokeWidth={1.75} />
+          Şarkı Analizi
+        </button>
+        <hr className="border-border opacity-50 my-0.5" />
+        <button
+          type="button"
           onClick={() => {
             const next = !sceneMode;
             setSceneMode(next);
@@ -2474,13 +2466,14 @@ export function PreviewClient({
           aria-pressed={sceneMode}
           aria-label="Tam ekran"
           title="Tam ekran"
-          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
             sceneMode
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground"
           }`}
         >
-          🎤 Tam ekran
+          <Maximize2 className="size-3.5 shrink-0" strokeWidth={1.75} />
+          Tam ekran
         </button>
         <button
           type="button"
@@ -2493,26 +2486,28 @@ export function PreviewClient({
           }
           aria-pressed={openWidgets.gamlar}
           title="Solo/Gam"
-          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
             openWidgets.gamlar
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground"
           }`}
         >
-          🎸 Solo/Gam
+          <Music2 className="size-3.5 shrink-0" strokeWidth={1.75} />
+          Solo/Gam
         </button>
         <button
           type="button"
           onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))}
           aria-pressed={openWidgets.metronome}
           title="Metronom"
-          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
             openWidgets.metronome
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground"
           }`}
         >
-          ⏱️ Metronom
+          <Timer className="size-3.5 shrink-0" strokeWidth={1.75} />
+          Metronom
         </button>
         <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} />
         <button
@@ -2522,26 +2517,28 @@ export function PreviewClient({
           aria-expanded={chordStripOpen}
           aria-controls="chord-strip-panel"
           title="Akorlar"
-          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
             chordStripOpen
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground"
           }`}
         >
-          🎵 Akorlar
+          <ListMusic className="size-3.5 shrink-0" strokeWidth={1.75} />
+          Akorlar
         </button>
         <button
           type="button"
           aria-pressed={splitLyricsEnabled}
           onClick={() => setSplitLyricsEnabled((prev) => !prev)}
           title="Sözleri iki sütuna böl"
-          className={`preview-tool-btn rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
+          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
             splitLyricsEnabled
               ? "border-accent bg-accent text-accent-foreground"
               : "border-border bg-bg text-foreground"
           }`}
         >
-          ✂️ Böl
+          <Columns2 className="size-3.5 shrink-0" strokeWidth={1.75} />
+          Böl
         </button>
       </div>
 
