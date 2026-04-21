@@ -43,6 +43,7 @@ export const TAGS = {
   SONGS_ALL: "songs:all",
   SONGS_FACETS: "songs:facets",
   ARTISTS_ALL: "artists:all",
+  CHORD_LIBRARY: "chord_library:all",
   DISCOVER_POPULAR: "discover:popular",
   DISCOVER_NEW: "discover:new",
   DISCOVER_FEATURED: "discover:featured",
@@ -69,6 +70,9 @@ export const TTL = {
 
   /** Filtered song queries — stale after 10 minutes */
   SONGS_FILTERED: 600,
+
+  /** Chord library (custom shapes) — stale after 1 hour; admin writes invalidate via tag */
+  CHORD_LIBRARY: 3600,
 } as const;
 
 /* ------------------------------------------------------------------ */

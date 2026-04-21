@@ -9,6 +9,72 @@ import { getClientAuth } from "@/lib/firebase/client";
 import { MessageCircle, PenLine, User, LogOut } from "lucide-react";
 
 type MeResponse = { user: SessionUser | null };
+type SessionState = SessionUser | null | undefined;
+
+/* Modül-seviyesi oturum önbelleği. Tüm bileşenler (desktop header, mobil giriş
+ * butonu, hamburger menü) tek bir kaynağa abone olur; /api/auth/me sayfa ömrü
+ * boyunca yalnızca 1 kez çağrılır. Navigasyon, remount veya ek bileşen mount'u
+ * yeniden istek tetiklemez — yalnızca `akorpro:auth-change` eventi yeniler. */
+let cachedSession: SessionState = undefined;
+let inflight: Promise<void> | null = null;
+let hasFetched = false;
+const listeners = new Set<(value: SessionState) => void>();
+
+function publishSession(value: SessionState) {
+  cachedSession = value;
+  listeners.forEach((fn) => fn(value));
+}
+
+function fetchSessionOnce(): Promise<void> {
+  if (inflight) return inflight;
+  hasFetched = true;
+  inflight = (async () => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (!res.ok) {
+        publishSession(null);
+        return;
+      }
+      const data = (await res.json()) as MeResponse;
+      publishSession(data.user);
+    } catch {
+      publishSession(null);
+    } finally {
+      inflight = null;
+    }
+  })();
+  return inflight;
+}
+
+let authChangeInstalled = false;
+function ensureAuthChangeListener() {
+  if (authChangeInstalled || typeof window === "undefined") return;
+  authChangeInstalled = true;
+  window.addEventListener("akorpro:auth-change", () => {
+    hasFetched = false;
+    void fetchSessionOnce();
+  });
+}
+
+function useSessionUser(): SessionState {
+  const [state, setState] = useState<SessionState>(cachedSession);
+
+  useEffect(() => {
+    ensureAuthChangeListener();
+    listeners.add(setState);
+    if (!hasFetched) {
+      void fetchSessionOnce();
+    } else if (cachedSession !== state) {
+      setState(cachedSession);
+    }
+    return () => {
+      listeners.delete(setState);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return state;
+}
 
 function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => Promise<void> }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -110,30 +176,7 @@ function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => P
 export function AuthHeaderActions() {
   const router = useRouter();
   const pathname = usePathname();
-  // Sadece maili değil, tüm kullanıcı objesini tutalım (eğer profil resmi vs. varsa kullanırız)
-  const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
-
-  /* pathname: /giris sonrası layout unmount olmaz; rota değişince oturumu yeniden oku (önceki UI’ı tutup arka planda güncelle). */
-  useEffect(() => {
-    const ac = new AbortController();
-    void (async () => {
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include", signal: ac.signal });
-        if (!res.ok) {
-          startTransition(() => setUser(null));
-          return;
-        }
-        const data = (await res.json()) as MeResponse;
-        startTransition(() => {
-          setUser(data.user);
-        });
-      } catch {
-        if (ac.signal.aborted) return;
-        startTransition(() => setUser(null));
-      }
-    })();
-    return () => ac.abort();
-  }, [pathname]);
+  const user = useSessionUser();
 
   async function onSignOut() {
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
@@ -143,7 +186,7 @@ export function AuthHeaderActions() {
     } catch {
       /* İstemci yapılandırması yoksa yalnızca çerez silinir. */
     }
-    startTransition(() => setUser(null));
+    startTransition(() => publishSession(null));
     window.dispatchEvent(new Event("akorpro:auth-change"));
     router.refresh();
   }
@@ -171,29 +214,6 @@ export function AuthHeaderActions() {
 
   // Rota değişince menüyü kapatmak için effect yerine remount kullanıyoruz.
   return <AuthedMenu key={pathname} user={user} onSignOut={onSignOut} />;
-}
-
-function useSessionUser() {
-  const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    const ac = new AbortController();
-    void (async () => {
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include", signal: ac.signal });
-        if (!res.ok) { startTransition(() => setUser(null)); return; }
-        const data = (await res.json()) as MeResponse;
-        startTransition(() => setUser(data.user));
-      } catch {
-        if (ac.signal.aborted) return;
-        startTransition(() => setUser(null));
-      }
-    })();
-    return () => ac.abort();
-  }, [pathname]);
-
-  return user;
 }
 
 /** Mobil navbar'da yalnızca giriş yapılmamışken "Giriş Yap" butonunu gösterir. */
@@ -225,7 +245,7 @@ export function MobileNavUserSection({ onClose }: { onClose: () => void }) {
       const auth = getClientAuth();
       await signOut(auth);
     } catch { /* İstemci yapılandırması yoksa yalnızca çerez silinir. */ }
-    startTransition(() => {});
+    startTransition(() => publishSession(null));
     window.dispatchEvent(new Event("akorpro:auth-change"));
     router.refresh();
     onClose();

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/content/page-header";
 import { ChordLibraryExplorer } from "@/components/chord-library/chord-library-explorer";
-import { getAllChordShapes } from "@/lib/firestore/chord-library";
+import { getAllChordShapesCached } from "@/lib/firestore/chord-library";
 
 export const metadata: Metadata = {
   title: "Akorlar",
@@ -15,7 +15,9 @@ export const metadata: Metadata = {
     url: "/akor-kutuphanesi",
   },
 };
-export const dynamic = "force-dynamic";
+
+/** ISR: 1 hour (TTL.CHORD_LIBRARY). Admin write'ları tag invalidation ile anlık yansıtır. */
+export const revalidate = 3600;
 
 export default async function AkorKutuphanesiPage() {
   let customShapes: Array<{
@@ -29,7 +31,7 @@ export default async function AkorKutuphanesiPage() {
     barreFret?: number;
   }> = [];
   try {
-    const rows = await getAllChordShapes();
+    const rows = await getAllChordShapesCached();
     customShapes = rows.map((row) => ({
       id: row.id,
       name: row.name,

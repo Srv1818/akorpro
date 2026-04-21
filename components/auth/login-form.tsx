@@ -71,6 +71,7 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
         }
         const savedReturnTo = sessionStorage.getItem(RETURN_TO_KEY) ?? returnTo;
         sessionStorage.removeItem(RETURN_TO_KEY);
+        window.dispatchEvent(new Event("akorpro:auth-change"));
         router.push(savedReturnTo);
         router.refresh();
       })
@@ -98,6 +99,7 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
         setStatus("idle");
         return;
       }
+      window.dispatchEvent(new Event("akorpro:auth-change"));
       router.push(returnTo);
       router.refresh();
     } catch (err: unknown) {

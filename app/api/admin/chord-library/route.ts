@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   getAllChordShapes,
@@ -6,9 +7,15 @@ import {
   updateChordShape,
   deleteChordShape,
 } from "@/lib/firestore/chord-library";
+import { TAGS } from "@/lib/cache/tags";
 import { sanitizePlainField } from "@/lib/security/sanitize";
 
 export const runtime = "nodejs";
+
+function invalidateChordLibrary(): void {
+  revalidateTag(TAGS.CHORD_LIBRARY, "max");
+  revalidatePath("/akor-kutuphanesi", "page");
+}
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -56,6 +63,7 @@ export async function POST(request: Request) {
 
   const id = await createChordShape(payload as Parameters<typeof createChordShape>[0], auth.user.uid);
 
+  invalidateChordLibrary();
   return NextResponse.json({ ok: true, id });
 }
 
@@ -87,6 +95,7 @@ export async function PATCH(request: Request) {
   if (typeof b.sortOrder === "number") updates.sortOrder = b.sortOrder;
 
   await updateChordShape(id, updates, auth.user.uid);
+  invalidateChordLibrary();
   return NextResponse.json({ ok: true });
 }
 
@@ -99,5 +108,6 @@ export async function DELETE(request: Request) {
   if (!id) return NextResponse.json({ error: "id zorunlu." }, { status: 400 });
 
   await deleteChordShape(id, auth.user.uid);
+  invalidateChordLibrary();
   return NextResponse.json({ ok: true });
 }

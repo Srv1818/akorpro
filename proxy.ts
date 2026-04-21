@@ -13,24 +13,33 @@ function isAuthRoute(pathname: string): boolean {
   );
 }
 
-function buildCsp(nonce: string): string {
+/**
+ * CSP, modül yükleme zamanında bir kez hesaplanır — request başına nonce üretmiyoruz.
+ * Bu sayede root layout `headers()` çağrısı yapmadan tamamen statik prerender edilebilir.
+ *
+ * Trade-off: `'strict-dynamic'` + nonce kombinasyonu yerine `'self'` + `'unsafe-inline'`
+ * kullanıyoruz. `'unsafe-inline'`, next-themes'in FOUC önleyici inline scripti için gerekli.
+ * Diğer XSS koruma katmanları (input sanitize, escape) korunuyor.
+ */
+function buildCsp(): string {
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "";
   const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "";
   const isDev = process.env.NODE_ENV !== "production";
   const scriptSrc = [
     "script-src 'self'",
-    `'nonce-${nonce}'`,
-    "'strict-dynamic'",
+    "'unsafe-inline'",
     "https://www.googletagmanager.com",
+    "https://va.vercel-scripts.com",
+    "https://apis.google.com",
     ...(isDev ? ["'unsafe-eval'"] : []),
   ].join(" ");
 
   const directives: string[] = [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https://*.googleusercontent.com https://www.google-analytics.com${storageBucket ? ` https://${storageBucket}` : ""}`,
-    "font-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    `img-src 'self' data: blob: https://*.googleusercontent.com https://www.google-analytics.com https://firebasestorage.googleapis.com${storageBucket ? ` https://${storageBucket}` : ""}`,
+    "font-src 'self' https://fonts.gstatic.com",
     [
       "connect-src 'self'",
       "https://*.googleapis.com",
@@ -42,8 +51,9 @@ function buildCsp(nonce: string): string {
       "https://www.google-analytics.com",
       "https://analytics.google.com",
       "https://*.sentry.io",
+      "https://vitals.vercel-insights.com",
     ].join(" "),
-    `frame-src 'self'${authDomain ? ` https://${authDomain}` : ""}`,
+    `frame-src 'self' https://apis.google.com${authDomain ? ` https://${authDomain}` : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -53,37 +63,33 @@ function buildCsp(nonce: string): string {
   return directives.join("; ");
 }
 
+const CSP = buildCsp();
+
 export async function proxy(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = buildCsp(nonce);
-
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-
   if (isAuthRoute(request.nextUrl.pathname)) {
     if (projectId) {
       const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-      if (!token) return redirectToLogin(request, csp);
+      if (!token) return redirectToLogin(request);
       const adminAuth = getAdminAuth();
       try {
         if (adminAuth) {
-          /** Giriş API’si `createSessionCookie` üretir; ID token JWKS ile doğrulanamaz. */
+          /** Giriş API'si `createSessionCookie` üretir; ID token JWKS ile doğrulanamaz. */
           await adminAuth.verifySessionCookie(token, true);
         } else {
           await verifyFirebaseJwt(token, projectId);
         }
       } catch {
-        return redirectToLogin(request, csp);
+        return redirectToLogin(request);
       }
     }
   }
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
-  response.headers.set("Content-Security-Policy", csp);
+  const response = NextResponse.next();
+  response.headers.set("Content-Security-Policy", CSP);
   return response;
 }
 
-function redirectToLogin(request: NextRequest, csp: string) {
+function redirectToLogin(request: NextRequest) {
   const url = request.nextUrl.clone();
   url.pathname = "/giris";
   const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
@@ -91,13 +97,13 @@ function redirectToLogin(request: NextRequest, csp: string) {
     url.searchParams.set("returnTo", returnTo);
   }
   const res = NextResponse.redirect(url);
-  res.headers.set("Content-Security-Policy", csp);
+  res.headers.set("Content-Security-Policy", CSP);
   return res;
 }
 
 export const config = {
   matcher: [
-    /* API route’ları hariç tut (Next önerisi); aksi halde /api/auth/me vb. 404 veya bozuk yanıt görülebilir. */
+    /* API route'ları hariç tut (Next önerisi); aksi halde /api/auth/me vb. 404 veya bozuk yanıt görülebilir. */
     "/((?!api|_next/static|_next/image|favicon\\.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
