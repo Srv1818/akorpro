@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld";
+import { webPageJsonLd } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "İletişim",
@@ -19,7 +21,16 @@ const MAILTO_HREF = `mailto:${CONTACT_EMAIL}`;
 
 export default function IletisimPage() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
+    <>
+      <JsonLd
+        data={webPageJsonLd({
+          name: "İletişim",
+          description:
+            "AkorPro ile iletişim — hata bildirimi, katkı, şarkı talebi ve genel sorular için info@akorpro.com.tr.",
+          url: "/iletisim",
+        })}
+      />
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">
       <article className="prose-custom">
         <h1 id="iletisim-baslik" className="!mb-2">
           İletişim
@@ -78,5 +89,6 @@ export default function IletisimPage() {
         </p>
       </article>
     </div>
+    </>
   );
 }

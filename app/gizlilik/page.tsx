@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld";
+import { webPageJsonLd } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Gizlilik ve KVKK Politikası",
@@ -10,7 +12,16 @@ export const metadata: Metadata = {
 
 export default function GizlilikPage() {
   return (
-    <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+    <>
+      <JsonLd
+        data={webPageJsonLd({
+          name: "Gizlilik ve KVKK Politikası",
+          description:
+            "AkorPro gizlilik politikası — kişisel verilerin korunması, KVKK hakları ve veri işleme ilkeleri.",
+          url: "/gizlilik",
+        })}
+      />
+      <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
       <h1>Gizlilik ve KVKK Politikası</h1>
       <p className="lead">
         Son güncelleme: Mart 2026
@@ -134,5 +145,6 @@ export default function GizlilikPage() {
         <strong>info@akorpro.com.tr</strong>
       </p>
     </article>
+    </>
   );
 }
