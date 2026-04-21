@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { cookies, headers } from "next/headers";
 import { Inter, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteNavbar } from "@/components/layout/site-navbar";
 import { ThemeProvider } from "@/components/theme/providers";
-import { THEME_COOKIE, defaultThemeFromCookie } from "@/lib/theme";
 import { SITE_URL } from "@/lib/paths";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { WebVitalsReporter } from "@/components/analytics/web-vitals";
@@ -35,60 +33,52 @@ export const viewport: Viewport = {
   themeColor: "#6D5DFC",
 };
 
-/** Geçici: içerik hazır olana kadar (ör. 2–3 gün) `.env` → BLOCK_SEARCH_INDEXING=true */
-export async function generateMetadata(): Promise<Metadata> {
-  const blockSearchIndexing = process.env.BLOCK_SEARCH_INDEXING === "true";
+const blockSearchIndexing = process.env.BLOCK_SEARCH_INDEXING === "true";
+const firebaseAuthHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 
-  return {
-    metadataBase: new URL(SITE_URL),
-    title: {
-      default: "AkorPro — Gitar akorları ve müzik araçları",
-      template: "%s · AkorPro",
-    },
-    description:
-      "Şarkı akorları, akorlar, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform. Topluluk ve erişilebilirlik odaklı.",
-    ...(blockSearchIndexing
-      ? {
-          robots: {
-            index: false,
-            follow: false,
-            googleBot: { index: false, follow: false },
-          },
-        }
-      : {}),
-    icons: {
-      icon: [
-        { url: "/favicon.ico", sizes: "any" },
-        { url: "/favicon.png", type: "image/png" },
-        { url: "/assets/logo/akorpro_ap_logo.svg", type: "image/svg+xml" },
-      ],
-      apple: [{ url: "/assets/logo/akorpro_ap_logo.svg", type: "image/svg+xml" }],
-    },
-    openGraph: {
-      type: "website",
-      locale: "tr_TR",
-      siteName,
-    },
-    twitter: {
-      card: "summary_large_image",
-    },
-    alternates: {
-      canonical: "/",
-    },
-  };
-}
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "AkorPro — Gitar akorları ve müzik araçları",
+    template: "%s · AkorPro",
+  },
+  description:
+    "Şarkı akorları, akorlar, gamlar ve 5'li çember ile çalışmayı kolaylaştıran modern bir platform. Topluluk ve erişilebilirlik odaklı.",
+  ...(blockSearchIndexing
+    ? {
+        robots: {
+          index: false,
+          follow: false,
+          googleBot: { index: false, follow: false },
+        },
+      }
+    : {}),
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/assets/logo/akorpro_ap_logo.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/assets/logo/akorpro_ap_logo.svg", type: "image/svg+xml" }],
+  },
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    siteName,
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
+  alternates: {
+    canonical: "/",
+  },
+};
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [jar, hdrs] = await Promise.all([cookies(), headers()]);
-  const defaultTheme = defaultThemeFromCookie(jar.get(THEME_COOKIE)?.value);
-  const nonce = hdrs.get("x-nonce") ?? undefined;
-
-  const firebaseAuthHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
@@ -110,7 +100,7 @@ export default async function RootLayout({
         <SiteJsonLd />
         <WebVitalsReporter />
         <SwRegister />
-        <ThemeProvider defaultTheme={defaultTheme} nonce={nonce}>
+        <ThemeProvider>
           <nav aria-label="Erişim kısayolları" className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:left-4 focus-within:top-4 focus-within:z-[100] focus-within:flex focus-within:gap-2">
             <a
               href="#icerik"
