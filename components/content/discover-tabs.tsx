@@ -17,6 +17,12 @@ const TAB_ACTIVE_TEXT: Record<DiscoverAccent, string> = {
   amber: "text-amber-500",
 };
 
+const TAB_INDICATOR: Record<DiscoverAccent, string> = {
+  rose: "bg-rose-500",
+  emerald: "bg-emerald-500",
+  amber: "bg-amber-500",
+};
+
 export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
   const [active, setActive] = useState(() => tabs[0]?.id ?? "");
   const activeIndex = Math.max(
@@ -25,11 +31,11 @@ export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
   );
 
   return (
-    <>
+    <div className="overflow-hidden rounded-2xl border border-border bg-surface lg:contents">
       <div
         role="tablist"
         aria-label="Keşfet kategorileri"
-        className="relative z-10 flex gap-1 px-1 lg:hidden"
+        className="flex border-b border-border lg:hidden"
       >
         {tabs.map((tab) => {
           const isActive = active === tab.id;
@@ -43,16 +49,20 @@ export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
               aria-controls={`discover-panel-${tab.id}`}
               tabIndex={isActive ? 0 : -1}
               onClick={() => setActive(tab.id)}
-              className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-t-xl px-2 py-2.5 text-xs font-semibold transition-all ${
-                isActive
-                  ? `-mb-px border border-b-0 border-border bg-surface ${TAB_ACTIVE_TEXT[tab.accent]}`
-                  : "border border-transparent text-muted hover:text-display"
+              className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3 text-xs font-semibold transition-colors ${
+                isActive ? TAB_ACTIVE_TEXT[tab.accent] : "text-muted hover:text-display"
               }`}
             >
               <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
                 {tab.icon}
               </span>
               <span className="truncate">{tab.label}</span>
+              {isActive ? (
+                <span
+                  className={`pointer-events-none absolute inset-x-3 -bottom-px h-0.5 rounded-full ${TAB_INDICATOR[tab.accent]}`}
+                  aria-hidden="true"
+                />
+              ) : null}
             </button>
           );
         })}
@@ -70,13 +80,13 @@ export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
               id={`discover-panel-${tab.id}`}
               aria-labelledby={`discover-tab-${tab.id}`}
               aria-hidden={active !== tab.id ? true : undefined}
-              className="w-full shrink-0 px-0.5 lg:w-auto lg:shrink lg:px-0"
+              className="w-full shrink-0 lg:w-auto lg:shrink"
             >
               {tab.panel}
             </div>
           ))}
         </div>
       </div>
-    </>
+    </div>
   );
 }
