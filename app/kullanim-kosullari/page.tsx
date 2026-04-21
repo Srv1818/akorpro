@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld";
+import { webPageJsonLd } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Kullanım Koşulları",
@@ -9,8 +11,16 @@ export const metadata: Metadata = {
 
 export default function KullanimKosullariPage() {
   return (
-    <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1>Kullanım Koşulları</h1>
+    <>
+      <JsonLd
+        data={webPageJsonLd({
+          name: "Kullanım Koşulları",
+          description: "AkorPro kullanım koşulları — platformun kullanım kuralları, sorumluluklar ve kısıtlamalar.",
+          url: "/kullanim-kosullari",
+        })}
+      />
+      <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <h1>Kullanım Koşulları</h1>
       <p className="lead">Son güncelleme: Mart 2026</p>
 
       <h2>1. Kabul</h2>
@@ -81,5 +91,6 @@ export default function KullanimKosullariPage() {
         Sorularınız için: <strong>info@akorpro.com.tr</strong>
       </p>
     </article>
+    </>
   );
 }

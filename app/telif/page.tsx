@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { TakedownForm } from "./takedown-form";
+import { JsonLd } from "@/components/seo/json-ld";
+import { webPageJsonLd } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Telif ve İçerik Kaldırma",
@@ -10,8 +12,17 @@ export const metadata: Metadata = {
 
 export default function TelifPage() {
   return (
-    <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1>Telif Hakları ve İçerik Kaldırma</h1>
+    <>
+      <JsonLd
+        data={webPageJsonLd({
+          name: "Telif ve İçerik Kaldırma",
+          description:
+            "AkorPro telif hakları politikası — içerik kaldırma talebi süreci ve iletişim bilgileri.",
+          url: "/telif",
+        })}
+      />
+      <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <h1>Telif Hakları ve İçerik Kaldırma</h1>
       <p className="lead">Son güncelleme: Mart 2026</p>
 
       <h2>1. Genel İlke</h2>
@@ -76,5 +87,6 @@ export default function TelifPage() {
         askıya alınabilir veya kalıcı olarak kapatılabilir.
       </p>
     </article>
+    </>
   );
 }

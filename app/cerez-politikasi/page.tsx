@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld";
+import { webPageJsonLd } from "@/lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Çerez Politikası",
@@ -9,8 +11,16 @@ export const metadata: Metadata = {
 
 export default function CerezPolitikasiPage() {
   return (
-    <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <h1>Çerez Politikası</h1>
+    <>
+      <JsonLd
+        data={webPageJsonLd({
+          name: "Çerez Politikası",
+          description: "AkorPro çerez politikası — kullanılan çerez türleri, amaçları ve yönetim seçenekleri.",
+          url: "/cerez-politikasi",
+        })}
+      />
+      <article className="prose-custom mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <h1>Çerez Politikası</h1>
       <p className="lead">Son güncelleme: Mart 2026</p>
 
       <h2>1. Çerez Nedir?</h2>
@@ -91,5 +101,6 @@ export default function CerezPolitikasiPage() {
         iletişim adresini kullanabilirsiniz.
       </p>
     </article>
+    </>
   );
 }
