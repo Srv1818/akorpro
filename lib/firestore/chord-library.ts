@@ -1,7 +1,9 @@
 import admin from "firebase-admin";
+import { unstable_cache } from "next/cache";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { serializeDoc } from "@/lib/firestore/serialize";
 import { writeAuditLog } from "@/lib/security/audit-log";
+import { TAGS, TTL } from "@/lib/cache/tags";
 import type { ChordShapeDoc } from "@/lib/types/chord-library";
 
 const COLLECTION = "chord_library";
@@ -12,6 +14,7 @@ function db() {
   return fs;
 }
 
+/** Uncached read — admin API ve write sonrası taze değer gereken yerlerde kullan. */
 export async function getAllChordShapes(): Promise<(ChordShapeDoc & { id: string })[]> {
   const snap = await db().collection(COLLECTION).get();
   return snap.docs
@@ -25,6 +28,18 @@ export async function getAllChordShapes(): Promise<(ChordShapeDoc & { id: string
       const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
       return aOrder - bOrder;
     });
+}
+
+/** Public site (`/akor-kutuphanesi`) için ISR-cached varyant. Admin write'ları `TAGS.CHORD_LIBRARY` ile invalide eder. */
+export function getAllChordShapesCached() {
+  return unstable_cache(
+    getAllChordShapes,
+    ["chord-library-all-v1"],
+    {
+      tags: [TAGS.CHORD_LIBRARY],
+      revalidate: TTL.CHORD_LIBRARY,
+    },
+  )();
 }
 
 export async function createChordShape(
