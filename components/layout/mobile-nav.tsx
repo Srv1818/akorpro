@@ -1,24 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import { BookOpen, Circle, Compass, Guitar, ListMusic, Music, type LucideIcon } from "lucide-react";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { AuthHeaderActions } from "@/components/auth/auth-header-actions";
-import type { SessionUser } from "@/lib/auth/session-user";
+import { BookOpen, Circle, Compass, Guitar, ListMusic, Moon, Music, Sun, type LucideIcon } from "lucide-react";
+import { useTheme } from "next-themes";
+import { MobileNavUserSection } from "@/components/auth/auth-header-actions";
 
 const iconMap: Record<string, LucideIcon> = {
   Compass, Music, Guitar, BookOpen, Circle, ListMusic,
 };
 
 type Item = { readonly href: string; readonly label: string; readonly icon?: string };
-type MeResponse = { user: SessionUser | null };
 
 export function MobileNav({ items }: { items: readonly Item[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -26,42 +25,6 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
   );
   const id = useId();
   const close = useCallback(() => setOpen(false), []);
-
-  const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
-  const fetchingRef = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchUser() {
-      if (fetchingRef.current) return;
-      fetchingRef.current = true;
-      try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        if (cancelled) return;
-        if (!res.ok) { setUser(null); return; }
-        const data = (await res.json()) as MeResponse;
-        if (!cancelled) setUser(data.user);
-      } catch {
-        if (!cancelled) setUser(null);
-      } finally {
-        fetchingRef.current = false;
-      }
-    }
-
-    void fetchUser();
-
-    function onAuthChange() { void fetchUser(); }
-    function onFocus() { void fetchUser(); }
-
-    window.addEventListener("akorpro:auth-change", onAuthChange);
-    window.addEventListener("focus", onFocus);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("akorpro:auth-change", onAuthChange);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [pathname]);
 
   useEffect(() => {
     close();
@@ -78,28 +41,6 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
     };
   }, [open, close]);
 
-  // Logged out → show "Giriş Yap" button
-  if (user === null) {
-    return (
-      <Link
-        href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
-        className="inline-flex h-10 items-center justify-center rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted"
-      >
-        Giriş Yap
-      </Link>
-    );
-  }
-
-  // Loading → show placeholder same size as button
-  if (user === undefined) {
-    return (
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-surface">
-        <span className="h-4 w-4 animate-pulse rounded bg-border" />
-      </span>
-    );
-  }
-
-  // Logged in → hamburger
   return (
     <div className="md:hidden">
       <button
@@ -128,7 +69,7 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
                 role="dialog"
                 aria-modal="true"
               >
-                <nav className="flex flex-col gap-0.5 px-4 pt-4 pb-3" aria-label="Mobil menü">
+                <nav className="flex flex-col gap-0.5 px-4 py-4" aria-label="Mobil menü">
                   {items.map((item) => {
                     const active =
                       item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -149,15 +90,27 @@ export function MobileNav({ items }: { items: readonly Item[] }) {
                       </Link>
                     );
                   })}
-                </nav>
 
-                <div className="flex items-center justify-between border-t border-border px-4 py-3">
-                  
-                <div className="flex items-center gap-2 ml-auto">
-                    <ThemeToggle />
-                    <AuthHeaderActions />
-                  </div>
-                </div>
+                  {/* Tema değiştirici */}
+                  {mounted ? (
+                    <div className="border-t border-border/50 mt-1 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                        className="flex w-full min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-3 text-base font-medium text-foreground hover:bg-white/30 dark:hover:bg-white/[0.07] transition-colors"
+                      >
+                        {resolvedTheme === "dark"
+                          ? <Sun className="size-[1.125rem] shrink-0 text-amber-400" strokeWidth={1.75} aria-hidden />
+                          : <Moon className="size-[1.125rem] shrink-0 text-zinc-500" strokeWidth={1.75} aria-hidden />
+                        }
+                        {resolvedTheme === "dark" ? "Açık tema" : "Koyu tema"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {/* Giriş yapmış kullanıcı bölümü */}
+                  <MobileNavUserSection onClose={close} />
+                </nav>
               </div>
             </>,
             document.body,

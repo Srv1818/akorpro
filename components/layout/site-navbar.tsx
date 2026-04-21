@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AuthHeaderActions } from "@/components/auth/auth-header-actions";
+import { AuthHeaderActions, MobileNavLoginButton } from "@/components/auth/auth-header-actions";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { MobilePageTitle } from "@/components/layout/mobile-page-title";
 import { NavTabs } from "@/components/layout/nav-tabs";
@@ -42,9 +42,10 @@ export function SiteNavbar() {
             <MobilePageTitle />
           </div>
 
-          {/* Sağ: arama ikonu + hamburger */}
+          {/* Sağ: arama + giriş yap (yalnızca çıkışlıyken) + hamburger */}
           <div className="flex shrink-0 items-center gap-1">
             <MobileSearchButton />
+            <MobileNavLoginButton />
             <MobileNav items={items} />
           </div>
         </div>
