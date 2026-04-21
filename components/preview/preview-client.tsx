@@ -1316,9 +1316,7 @@ export function PreviewClient({
   const onSave = useCallback(async () => {
     setSaveMessage(null);
     if (!firebaseUid) {
-      setSaveState("error");
-      setSaveMessage("Önce giriş yapın.");
-      setSaveAndAddOpen(false);
+      router.push(`/giris?returnTo=${encodeURIComponent(pathname)}`);
       return;
     }
     if (serverUid && serverUid !== firebaseUid) {
@@ -2222,9 +2220,9 @@ export function PreviewClient({
           )}
           <button
             type="button"
-            disabled={!canSave || saveState === "saving"}
+            disabled={saveState === "saving" || (firebaseUid !== null && !canSave)}
             onClick={() => void onSave()}
-            title={!firebaseConfigured ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
+            title={!firebaseConfigured && firebaseUid !== null ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
             className="lyrics-size-btn rounded-lg bg-accent px-2.5 py-0.5 sm:py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[36px]"
           >
             {saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
@@ -2361,8 +2359,8 @@ export function PreviewClient({
               {/* Orijinale dön — mobilde grid'in 18. hücresi */}
               <button type="button" onClick={resetOriginal} aria-label="Orijinale dön"
                 className="lyrics-size-btn sm:hidden select-none inline-flex w-full items-center justify-center rounded border border-border bg-bg transition hover:bg-surface">
-                <span className="flex size-4 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <RotateCcw className="size-2.5" strokeWidth={2.5} />
+                <span className="flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <RotateCcw className="size-4" strokeWidth={2.5} />
                 </span>
               </button>
             </div>
@@ -2411,16 +2409,6 @@ export function PreviewClient({
         </div>
 
         <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:items-end sm:gap-2">
-          {firebaseUid === undefined ? (
-            <span className="text-center text-sm text-muted sm:text-right">Oturum kontrol ediliyor…</span>
-          ) : firebaseUid === null ? (
-            <Link
-              href={`/giris?returnTo=${encodeURIComponent(pathname)}`}
-              className="flex min-h-[36px] w-full items-center justify-center rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface sm:inline-flex sm:w-auto"
-            >
-              Giriş (Kaydet için)
-            </Link>
-          ) : null}
         </div>
       </div>
 
