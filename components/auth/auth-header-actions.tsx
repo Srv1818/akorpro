@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
 import { getClientAuth } from "@/lib/firebase/client";
-// Dropdown ikonları için Lucide-react (shadcn projelerinde standarttır)
 import { MessageCircle, PenLine, User, LogOut } from "lucide-react";
 
 type MeResponse = { user: SessionUser | null };
@@ -172,4 +171,111 @@ export function AuthHeaderActions() {
 
   // Rota değişince menüyü kapatmak için effect yerine remount kullanıyoruz.
   return <AuthedMenu key={pathname} user={user} onSignOut={onSignOut} />;
+}
+
+function useSessionUser() {
+  const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const ac = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include", signal: ac.signal });
+        if (!res.ok) { startTransition(() => setUser(null)); return; }
+        const data = (await res.json()) as MeResponse;
+        startTransition(() => setUser(data.user));
+      } catch {
+        if (ac.signal.aborted) return;
+        startTransition(() => setUser(null));
+      }
+    })();
+    return () => ac.abort();
+  }, [pathname]);
+
+  return user;
+}
+
+/** Mobil navbar'da yalnızca giriş yapılmamışken "Giriş Yap" butonunu gösterir. */
+export function MobileNavLoginButton() {
+  const user = useSessionUser();
+
+  if (user === null) {
+    return (
+      <Link
+        href="/giris"
+        className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted sm:px-4"
+      >
+        Giriş Yap
+      </Link>
+    );
+  }
+
+  return null;
+}
+
+/** Hamburger menü içinde giriş yapılmış kullanıcı bölümünü gösterir. */
+export function MobileNavUserSection({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const user = useSessionUser();
+
+  async function handleSignOut() {
+    await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
+    try {
+      const auth = getClientAuth();
+      await signOut(auth);
+    } catch { /* İstemci yapılandırması yoksa yalnızca çerez silinir. */ }
+    startTransition(() => {});
+    window.dispatchEvent(new Event("akorpro:auth-change"));
+    router.refresh();
+    onClose();
+  }
+
+  if (!user) return null;
+
+  const userInitial = user.email ? user.email.charAt(0).toUpperCase() : "U";
+
+  return (
+    <div className="border-t border-border/50 mt-1 pt-1">
+      <div className="flex items-center gap-3 px-3 py-2">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface border border-border">
+          <span className="text-sm font-medium text-foreground">{userInitial}</span>
+        </div>
+        <p className="truncate text-xs text-muted">{user.email}</p>
+      </div>
+      <Link
+        href={`/profil/${user.uid}`}
+        onClick={onClose}
+        className="flex min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-3 text-base font-medium text-foreground hover:bg-white/30 dark:hover:bg-white/[0.07]"
+      >
+        <User className="size-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden />
+        Profil
+      </Link>
+      <Link
+        href="/iletisim"
+        onClick={onClose}
+        className="flex min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-3 text-base font-medium text-foreground hover:bg-white/30 dark:hover:bg-white/[0.07]"
+      >
+        <MessageCircle className="size-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden />
+        İletişim
+      </Link>
+      {user.admin ? (
+        <Link
+          href="/katki"
+          onClick={onClose}
+          className="flex min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-3 text-base font-medium text-foreground hover:bg-white/30 dark:hover:bg-white/[0.07]"
+        >
+          <PenLine className="size-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden />
+          Katkı girişi
+        </Link>
+      ) : null}
+      <button
+        onClick={() => void handleSignOut()}
+        className="flex w-full min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-3 text-base font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+      >
+        <LogOut className="size-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden />
+        Çıkış Yap
+      </button>
+    </div>
+  );
 }
