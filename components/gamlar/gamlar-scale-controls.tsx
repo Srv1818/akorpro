@@ -329,8 +329,11 @@ export function createGamlarScaleControls(useToolsStore: UseToolingHook, default
   const [persistReady, setPersistReady] = useState(false);
 
   const familyOrder = useMemo(
-    () => (hideBlues ? GAMLAR_FAMILY_ORDER.filter((f) => f !== "blues") : [...GAMLAR_FAMILY_ORDER]),
-    [hideBlues]
+    () =>
+      GAMLAR_FAMILY_ORDER.filter(
+        (f) => f !== "natural-minor" && (!hideBlues || f !== "blues"),
+      ),
+    [hideBlues],
   );
 
   useEffect(() => {
@@ -409,7 +412,7 @@ export function createGamlarScaleControls(useToolsStore: UseToolingHook, default
         <div
           className={[
             "grid grid-cols-2 gap-1.5 rounded-2xl border border-border bg-surface/90 p-2 sm:gap-2 sm:p-2.5",
-            hideBlues ? "md:grid-cols-4" : "md:grid-cols-5",
+            hideBlues ? "md:grid-cols-3" : "md:grid-cols-4",
           ].join(" ")}
         >
           {familyOrder.map((fid) => {
