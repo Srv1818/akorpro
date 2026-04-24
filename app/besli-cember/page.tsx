@@ -8,11 +8,11 @@ import { SITE_URL } from "@/lib/paths";
 export const metadata: Metadata = {
   title: "5'li Çember",
   description:
-    "5'li çember: Gamlar sayfasıyla aynı gam ailesi ve mod seçimi; diyatonik üçlüler çemberde vurgulanır.",
+    "5'li çember: ton ve mod seçerek diyatonik akorları interaktif çemberde keşfet. Gitaristler için ücretsiz armoni ve müzik teorisi aracı.",
   alternates: { canonical: "/besli-cember" },
   openGraph: {
     title: "5'li Çember",
-    description: "5'li çember — gam aileleri, modlar ve tonal merkez; diyatonik akorlar çemberle eşlenir.",
+    description: "Ton ve mod seçerek diyatonik akorları 5'li çember üzerinde keşfet. Ücretsiz, interaktif müzik teorisi aracı.",
     url: "/besli-cember",
   },
 };
