@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: titleAbsolute,
       description,
       url,
-      type: "article",
+      type: "music.song",
     },
   };
 }

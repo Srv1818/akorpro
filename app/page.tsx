@@ -10,11 +10,13 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Keşfet",
-  description: "Popüler, yeni ve öne çıkan şarkılar.",
+  description:
+    "Türkçe ve yabancı şarkıların gitar akorlarını keşfet. Popüler, yeni ve editör seçimi şarkılar — AkorPro'da ücretsiz.",
   alternates: { canonical: "/" },
   openGraph: {
     title: "Keşfet",
-    description: "Popüler, yeni ve öne çıkan şarkılar.",
+    description:
+      "Türkçe ve yabancı şarkıların gitar akorlarını keşfet. Popüler, yeni ve editör seçimi şarkılar — AkorPro'da ücretsiz.",
     url: "/",
   },
 };

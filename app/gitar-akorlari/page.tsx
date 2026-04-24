@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/content/page-header";
 import { SongList } from "@/components/content/song-list";
 import { SongFilters } from "@/components/content/song-filters";
+import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { getFilteredSongs, getFilterFacetOptions } from "@/lib/firestore/songs";
 import type { SongDoc } from "@/lib/types/firestore";
 import type { SongSummary } from "@/lib/types/content";
@@ -100,6 +101,13 @@ export default async function GitarAkorlariPage({ searchParams }: Props) {
 
   return (
     <>
+      <Breadcrumbs
+        visuallyHidden
+        items={[
+          { label: "Ana Sayfa", href: "/" },
+          { label: "Tüm şarkılar", href: "/gitar-akorlari" },
+        ]}
+      />
       <PageHeader
         title="Tüm şarkılar"
         description="Filtreler query parametreleri ile çalışır; bu URL'ler kanonik değildir (noindex). Şarkı kartları her zaman kanonik /akor/... adresine gider."
