@@ -33,6 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!url) continue;
       artistEntries.push({
         url,
+        lastModified: artist.updatedAt ? new Date(artist.updatedAt) : undefined,
         changeFrequency: "weekly",
         priority: 0.7,
       });
@@ -44,8 +45,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!url) continue;
       songEntries.push({
         url,
+        lastModified: song.updatedAt ? new Date(song.updatedAt) : undefined,
         changeFrequency: "weekly",
         priority: 0.8,
+        ...(song.coverImageUrl ? { images: [song.coverImageUrl] } : {}),
       });
     }
 
