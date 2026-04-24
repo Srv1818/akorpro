@@ -22,6 +22,7 @@ import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
 import { songJsonLd } from "@/lib/seo/structured-data";
 import { getServerSessionUser } from "@/lib/auth/server-session";
 import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
+import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
 import { firstParam } from "@/lib/search-params";
 import type { SongSummary } from "@/lib/types/content";
 
@@ -45,12 +46,25 @@ export async function generateStaticParams() {
   }
 }
 
+function keyModeLabel(mode: string | undefined, originalKey: string): string {
+  if (!mode) return originalKey.trim().toLowerCase().endsWith("m") ? "Doğal Minör" : "Majör";
+  const map: Record<string, string> = {
+    major: "Majör", natural: "Doğal Minör",
+    harmonic: "Harmonik Minör", melodic: "Melodik Minör",
+  };
+  return map[mode] ?? "Majör";
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { sanatciSlug, sarkiSlug } = await params;
   const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) return { title: "Şarkı bulunamadı" };
   const titleAbsolute = `${song.title} Akor — ${song.artistName} | AkorPro`;
-  const description = `${song.title} akor ve sözleri — ${song.artistName} · Orijinal ton: ${song.originalKey}`;
+  const modLabel = keyModeLabel(song.keyMode, song.originalKey);
+  const metaScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
+  const metaScaleName = gamlarScaleById(metaScaleId)?.name;
+  const scalePart = metaScaleName ? `, solo gam: ${metaScaleName}` : "";
+  const description = `${song.title} gitar akorları — ${song.artistName}. ${song.originalKey} ${modLabel}${scalePart}. Transpoze, akor diyagramları ve gam analizi.`;
   const url = chordPath(sanatciSlug, sarkiSlug);
   return {
     title: { absolute: titleAbsolute },
@@ -89,6 +103,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
   if (!song) notFound();
 
   const initialGamlarScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
+  const gamScaleName = gamlarScaleById(initialGamlarScaleId)?.name;
 
   const sessionUser = await getServerSessionUser();
   let artistSongs: Awaited<ReturnType<typeof getSongsByArtist>> = [];
@@ -126,7 +141,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
 
   return (
     <>
-      <JsonLd data={songJsonLd(song)} />
+      <JsonLd data={songJsonLd(song, gamScaleName)} />
       <Breadcrumbs
         visuallyHidden
         currentCrumbTone="display"
@@ -158,6 +173,24 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
               <>
                 <span className="text-muted"> · Kapo: </span>
                 <span className="text-foreground">{song.capo}. perde</span>
+              </>
+            ) : null}
+            {song.keyMode ? (
+              <>
+                <span className="text-muted"> · Mod: </span>
+                <span className="text-foreground">{keyModeLabel(song.keyMode, song.originalKey)}</span>
+              </>
+            ) : null}
+            {song.timeSignature ? (
+              <>
+                <span className="text-muted"> · Ölçü: </span>
+                <span className="text-foreground">{song.timeSignature}</span>
+              </>
+            ) : null}
+            {gamScaleName ? (
+              <>
+                <span className="text-muted"> · Solo/Gam/Mod: </span>
+                <span className="text-foreground">{gamScaleName}</span>
               </>
             ) : null}
           </>
@@ -237,6 +270,12 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
         </Suspense>
 
         {song.copyrightSource ? <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p> : null}
+        {song.harmonyDetailsNotes?.trim() ? (
+          <div id="sarki-analizi" className="mt-4 rounded-lg border border-border bg-surface p-4">
+            <p className="mb-1 text-xs font-medium text-muted">Şarkı Analizi</p>
+            <p className="whitespace-pre-wrap text-sm text-foreground">{song.harmonyDetailsNotes}</p>
+          </div>
+        ) : null}
 
         {related.length > 0 && (
           <section className="mt-12">
