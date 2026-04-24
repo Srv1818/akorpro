@@ -60,7 +60,7 @@ export default function BesliCemberPage() {
               geçişleri ve modülasyonlar için idealdir.
             </p>
 
-            <h3>Gitarcılar için ne işe yarar?</h3>
+            <h3>Gitaristlerin ne işine yarar?</h3>
             <p>
               Bir şarkının hangi akorlarının doğal hissettiğini anlamak için 5'li çember
               kullanılır. Örneğin C majör tonunda çalarken çembere bakarak Dm, Em, F, G, Am ve
