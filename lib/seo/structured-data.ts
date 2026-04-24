@@ -5,7 +5,7 @@ import type { ArtistDoc } from "@/lib/types/firestore";
 type SongWithId = SongDoc & { id: string };
 type ArtistWithId = ArtistDoc & { id: string };
 
-export function songJsonLd(song: SongWithId): Record<string, unknown> {
+export function songJsonLd(song: SongWithId, gamScaleName?: string): Record<string, unknown> {
   const url = `${SITE_URL}${chordPath(song.artistSlug, song.slug)}`;
 
   const data: Record<string, unknown> = {
@@ -34,6 +34,13 @@ export function songJsonLd(song: SongWithId): Record<string, unknown> {
   }
   if (song.timeSignature) {
     data.timeSignature = song.timeSignature;
+  }
+  if (gamScaleName) {
+    data.additionalProperty = {
+      "@type": "PropertyValue",
+      name: "Solo/Gam/Mod",
+      value: gamScaleName,
+    };
   }
 
   return data;

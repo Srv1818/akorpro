@@ -40,10 +40,8 @@ import { keyModeToGamlarCatalogScaleId } from "@/lib/music/key-mode-gamlar";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
 import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
-import { romanNumeralForChordInKey } from "@/lib/music/harmony-details";
 import {
   chordBodyUsesFlatRootNotation,
-  extractChordTokensInOrderAsRendered,
   extractUniqueChordTokensAsRendered,
   formatChordSymbolDisplay,
   parseTonicFromOriginalKey,
@@ -54,9 +52,6 @@ import { ChevronLeft, ChevronRight, Columns2, Info, ListMusic, Maximize2, Mic, M
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
-/** «Meraklısına daha fazla detay» modalı — varsayılan eğitim / sorumluluk reddi. */
-const HARMONY_DETAIL_DEFAULT_DISCLAIMER =
-  "Bu özet yalnızca eğitim ve genel bilgi amaçlıdır; hata veya eksiklik olabilir. Metin veya yapılandırma otomatik veya yapay zeka araçlarıyla oluşturulmuş olabilir; kesin veya profesyonel referans olarak kullanılmamalıdır.";
 
 type Props = {
   songId: string;
@@ -634,7 +629,7 @@ export function PreviewClient({
     setMetronomeTimeSignature(initialTimeSignatureValue);
     setSaveAndAddOpen(false);
     setChordStripOpen(false);
-    setHarmonyDetailOpen(false);
+
     setLyricsAutoFitEnabled(true);
     setSceneMoreOpen(false);
   }, [songId, initialBpmNumber, initialTimeSignatureValue]);
@@ -666,7 +661,6 @@ export function PreviewClient({
   const [saveAndAddOpen, setSaveAndAddOpen] = useState(false);
   const [chordStripOpen, setChordStripOpen] = useState(false);
   const [chordPosIndices, setChordPosIndices] = useState<Record<string, number>>({});
-  const [harmonyDetailOpen, setHarmonyDetailOpen] = useState(false);
 
   const [playlistNextSong, setPlaylistNextSong] = useState<{ title: string; href: string } | null>(null);
   const [playlistNextLoading, setPlaylistNextLoading] = useState(false);
@@ -700,18 +694,6 @@ export function PreviewClient({
     setChordPosIndices({});
   }, [chordStripTokens]);
 
-  const chordProgressionTokens = useMemo(() => {
-    const raw = extractChordTokensInOrderAsRendered(chordBody);
-    return raw.map((t) => displayChordForPreview(t, semitones, preferFlatsForNaturalRoots));
-  }, [chordBody, semitones, preferFlatsForNaturalRoots]);
-
-  const harmonyRomanRows = useMemo(() => {
-    if (transposedTonicPc === null) return [];
-    return chordStripTokens.map((token) => ({
-      symbol: token,
-      roman: romanNumeralForChordInKey(token, transposedTonicPc, originalMode),
-    }));
-  }, [chordStripTokens, transposedTonicPc, originalMode]);
 
   const sceneParam = searchParams.get("scene");
   const sceneParamActive = sceneParam === "1" || sceneParam === "true";
@@ -1259,7 +1241,7 @@ export function PreviewClient({
 
   // Ok tuşlarıyla yarım ses (semitone) hareketi.
   useEffect(() => {
-    if (openWidgets.gamlar || saveAndAddOpen || (showHarmonyDetails && harmonyDetailOpen)) return;
+    if (openWidgets.gamlar || saveAndAddOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -1280,20 +1262,8 @@ export function PreviewClient({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openWidgets, saveAndAddOpen, harmonyDetailOpen, replaceTranspose, semitones, showHarmonyDetails]);
+  }, [openWidgets, saveAndAddOpen, replaceTranspose, semitones]);
 
-  useEffect(() => {
-    if (!showHarmonyDetails || !harmonyDetailOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setHarmonyDetailOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [harmonyDetailOpen, showHarmonyDetails]);
-
-  useEffect(() => {
-    if (!showHarmonyDetails) setHarmonyDetailOpen(false);
-  }, [showHarmonyDetails]);
 
   const resetOriginal = useCallback(() => {
     transposeLockRef.current = true;
@@ -2212,7 +2182,7 @@ export function PreviewClient({
         </div>
         <div className="flex items-center gap-1.5 sm:shrink-0">
           {showHarmonyDetails && (
-            <button type="button" onClick={() => setHarmonyDetailOpen(true)}
+            <button type="button" onClick={() => document.getElementById("sarki-analizi")?.scrollIntoView({ behavior: "smooth" })}
               className="lyrics-size-btn sm:hidden inline-flex items-center gap-1 rounded-full border border-accent/50 bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
               <Sparkles className="size-3 shrink-0" strokeWidth={1.75} />
               Analiz
@@ -2448,7 +2418,7 @@ export function PreviewClient({
       <div className="hidden sm:flex order-last sm:w-auto sm:flex-col gap-1.5 sm:sticky sm:top-4 sm:shrink-0 sm:self-start print:hidden">
         <button
           type="button"
-          onClick={() => setHarmonyDetailOpen(true)}
+          onClick={() => document.getElementById("sarki-analizi")?.scrollIntoView({ behavior: "smooth" })}
           disabled={!showHarmonyDetails}
           className="preview-tool-btn hidden sm:inline-flex items-center justify-center gap-1.5 rounded-lg border border-accent/60 bg-accent/10 px-2 py-1.5 text-xs font-semibold text-accent min-h-[36px] w-full disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -2580,132 +2550,6 @@ export function PreviewClient({
       </article>
       </div>{/* mt-6 flex items-start */}
 
-      {showHarmonyDetails ? (
-        <>
-      <div className="print:hidden">
-        <button
-          type="button"
-          onClick={() => setHarmonyDetailOpen(true)}
-          className="mt-4 inline-flex items-center gap-0.5 text-left text-[11px] leading-snug text-muted-foreground/65 transition hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-        >
-          Meraklısına daha fazla detay
-          <ChevronRight
-            className="size-3 shrink-0 opacity-80"
-            strokeWidth={1.5}
-            aria-hidden
-          />
-        </button>
-      </div>
-
-      {harmonyDetailOpen ? (
-        <div
-          className="fixed inset-0 z-[83] bg-black/50 p-4 print:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="harmony-detail-title"
-          onMouseDown={() => setHarmonyDetailOpen(false)}
-        >
-          <div
-            className="mx-auto mt-2 max-h-[min(85dvh,36rem)] w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface shadow-xl sm:mt-8"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-1.5 border-b border-border bg-surface/90 px-2.5 py-1.5">
-              <p id="harmony-detail-title" className="text-sm font-medium leading-tight tracking-tight text-foreground">
-                Armoni özeti
-              </p>
-              <PanelCloseButton onClick={() => setHarmonyDetailOpen(false)} />
-            </div>
-            <div className="max-h-[min(75dvh,32rem)] space-y-3 overflow-y-auto p-4 text-sm text-foreground">
-              {harmonyDetailsNotes.trim() ? (
-                <div className="rounded-lg border border-border bg-bg/80 p-3">
-                  <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Not
-                  </p>
-                  <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground">{harmonyDetailsNotes}</p>
-                </div>
-              ) : null}
-              <dl className="space-y-1.5 text-xs leading-relaxed">
-                <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                  <dt className="text-muted-foreground">Ton</dt>
-                  <dd>
-                    {transposedTonicPc !== null ? PC_TO_NAME[transposedTonicPc] : "—"} ·{" "}
-                    {gamlarWidgetScaleId}
-                  </dd>
-                </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                  <dt className="text-muted-foreground">Gam</dt>
-                  <dd>{gamlarScaleById(gamlarWidgetScaleId)?.name?.trim() ?? "—"}</dd>
-                </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                  <dt className="text-muted-foreground">Transpoze</dt>
-                  <dd>
-                    {semitones > 0 ? "+" : ""}
-                    {semitones} yarım ton
-                  </dd>
-                </div>
-                {initialBpm !== undefined ? (
-                  <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                    <dt className="text-muted-foreground">Tempo</dt>
-                    <dd>{initialBpm} BPM</dd>
-                  </div>
-                ) : null}
-                {initialTimeSignature ? (
-                  <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                    <dt className="text-muted-foreground">Ölçü</dt>
-                    <dd>{initialTimeSignature}</dd>
-                  </div>
-                ) : null}
-              </dl>
-
-              <div>
-                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Parçadaki akorlar (tekil)</p>
-                {harmonyRomanRows.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Akor bulunamadı.</p>
-                ) : (
-                  <ul className="divide-y divide-border rounded-lg border border-border">
-                    {harmonyRomanRows.map((row) => (
-                      <li
-                        key={row.symbol}
-                        className="flex items-center justify-between gap-3 px-2.5 py-1.5 text-xs font-mono"
-                      >
-                        <span>{row.symbol}</span>
-                        <span className="text-muted-foreground">
-                          {row.roman ?? "diyatonik dışı"}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Akor akışı (sırayla)</p>
-                {chordProgressionTokens.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Akor bulunamadı.</p>
-                ) : (
-                  <p className="break-words font-mono text-xs leading-relaxed text-foreground">
-                    {chordProgressionTokens.join(" → ")}
-                  </p>
-                )}
-              </div>
-
-              <p className="text-[11px] leading-snug text-muted-foreground">
-                Roma rakamları, seçilen ton ve moda göre diyatonik derecelerden türetilir; kromatik / geçiş rengi
-                akorlar &quot;diyatonik dışı&quot; olarak işaretlenir.
-              </p>
-
-              <p
-                className="border-t border-border pt-3 text-[10px] leading-snug text-muted-foreground/90"
-                role="note"
-              >
-                {HARMONY_DETAIL_DEFAULT_DISCLAIMER}
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-        </>
-      ) : null}
 
       <div className="print:hidden">
         <MetronomeEngine
