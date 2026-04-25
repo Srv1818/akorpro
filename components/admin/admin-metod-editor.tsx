@@ -1,10 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getClientStorage } from "@/lib/firebase/client";
 import { ChevronDown, ChevronRight, ChevronUp, ImageUp, Plus, Trash2, X } from "lucide-react";
 import type { BolumDoc, DersDoc, IcerikBlok, IcerikBlokTip } from "@/lib/types/firestore";
+import { videoEmbedUrl } from "@/lib/video";
+
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+const MAX_FILE_BYTES = 8_000_000; // 8 MB
+const IZIN_VERILEN_FORMATLAR = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+async function cloudinaryYukle(file: File): Promise<string> {
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error("Cloudinary yapılandırması eksik (.env.local).");
+  }
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: "POST", body: fd },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Cloudinary yükleme başarısız (${res.status}): ${text}`);
+  }
+  const data = (await res.json()) as { secure_url?: string };
+  if (!data.secure_url) throw new Error("Cloudinary yanıtı geçersiz.");
+  return data.secure_url;
+}
 
 let _id = 0;
 const uid = () => `local-${++_id}-${Date.now()}`;
@@ -125,17 +150,22 @@ export function AdminMetodEditor({
   }
 
   async function resimYukle(idx: number, file: File) {
+    if (!IZIN_VERILEN_FORMATLAR.includes(file.type)) {
+      alert("Sadece JPG, PNG, WEBP veya GIF dosyaları yüklenebilir.");
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      const mb = Math.round((file.size / 1024 / 1024) * 10) / 10;
+      alert(`Dosya çok büyük (${mb} MB). Maksimum 8 MB.`);
+      return;
+    }
     setYuklenenler((p) => ({ ...p, [idx]: true }));
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const path = `metod-uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const storage = getClientStorage();
-      const fileRef = ref(storage, path);
-      await uploadBytes(fileRef, file, { contentType: file.type });
-      const url = await getDownloadURL(fileRef);
+      const url = await cloudinaryYukle(file);
       blokGuncelle(idx, url);
     } catch (e) {
-      alert("Yükleme hatası: " + (e instanceof Error ? e.message : String(e)));
+      console.error("[resimYukle]", e);
+      alert("Resim yüklenemedi: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setYuklenenler((p) => ({ ...p, [idx]: false }));
     }
@@ -340,7 +370,7 @@ export function AdminMetodEditor({
                       {blok.icerik && (
                         <div className="mt-3 overflow-hidden rounded-lg border border-border">
                           <iframe
-                            src={blok.icerik.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")}
+                            src={videoEmbedUrl(blok.icerik)}
                             className="aspect-video w-full"
                             allowFullScreen
                           />

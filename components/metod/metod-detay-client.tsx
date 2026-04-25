@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { BolumDoc, DersDoc } from "@/lib/types/firestore";
+import { videoEmbedUrl } from "@/lib/video";
 
 type Secim = { bolumId: string; dersId: string } | null;
 
@@ -115,7 +116,7 @@ export function MetodDetayClient({
                   {blok.tip === "video" && blok.icerik && (
                     <div className="overflow-hidden rounded-xl border border-border">
                       <iframe
-                        src={blok.icerik.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")}
+                        src={videoEmbedUrl(blok.icerik)}
                         className="aspect-video w-full"
                         allowFullScreen
                       />
