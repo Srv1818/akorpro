@@ -44,6 +44,7 @@ export const TAGS = {
   SONGS_FACETS: "songs:facets",
   ARTISTS_ALL: "artists:all",
   CHORD_LIBRARY: "chord_library:all",
+  METODLAR_ALL: "metodlar:all",
   DISCOVER_POPULAR: "discover:popular",
   DISCOVER_NEW: "discover:new",
   DISCOVER_FEATURED: "discover:featured",

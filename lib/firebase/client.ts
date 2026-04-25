@@ -1,5 +1,6 @@
 import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { activateAppCheck } from "@/lib/security/app-check";
@@ -52,4 +53,9 @@ export function getClientFirestore(): Firestore {
 export function getClientAuth(): Auth {
   const app = getFirebaseApp();
   return getAuth(app);
+}
+
+export function getClientStorage(): FirebaseStorage {
+  const app = getFirebaseApp();
+  return getStorage(app);
 }

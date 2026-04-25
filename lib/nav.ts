@@ -7,6 +7,7 @@ export const mainNav = [
   { href: "/gamlar", label: "Gamlar", icon: "BookOpen" },
   { href: "/besli-cember", label: "5'li Çember", icon: "Circle" },
   { href: "/calma-listeleri", label: "Listeler", icon: "ListMusic" },
+  { href: "/metod", label: "Metod", icon: "GraduationCap" },
 ] as const;
 
 export const footerNav = [

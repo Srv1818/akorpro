@@ -6,6 +6,7 @@ import { getServerSessionUser } from "@/lib/auth/server-session";
 const adminNav = [
   { href: "/admin", label: "Pano" },
   { href: "/admin/akor-kutuphanesi", label: "Akorlar" },
+  { href: "/admin/metod", label: "Metodlar" },
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

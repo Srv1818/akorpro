@@ -91,3 +91,39 @@ export interface DiscoverSectionDoc {
   /** Epoch milisaniye */
   updatedAt: number;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Firestore: metodlar/{metodId}                                      */
+/* ------------------------------------------------------------------ */
+
+export type IcerikBlokTip = "metin" | "video" | "resim" | "alphatab";
+
+export interface IcerikBlok {
+  tip: IcerikBlokTip;
+  icerik: string;
+}
+
+export interface DersDoc {
+  id: string;
+  baslik: string;
+  altBaslik: string;
+  sira: number;
+  icerikBloklar: IcerikBlok[];
+}
+
+export interface BolumDoc {
+  id: string;
+  baslik: string;
+  sira: number;
+  dersler: DersDoc[];
+}
+
+export interface MetodDoc {
+  title: string;
+  slug: string;
+  description: string;
+  bolumler: BolumDoc[];
+  schemaVersion: number;
+  createdAt: number;
+  updatedAt: number;
+}

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Circle, Compass, Guitar, ListMusic, Music, type LucideIcon } from "lucide-react";
+import { BookOpen, Circle, Compass, GraduationCap, Guitar, ListMusic, Music, type LucideIcon } from "lucide-react";
 import { mainNav } from "@/lib/nav";
 
 const iconMap: Record<string, LucideIcon> = {
-  Compass, Music, Guitar, BookOpen, Circle, ListMusic,
+  Compass, Music, Guitar, BookOpen, Circle, ListMusic, GraduationCap,
 };
 
 export function NavTabs() {

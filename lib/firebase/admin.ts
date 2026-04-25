@@ -33,6 +33,7 @@ export function getFirebaseAdminApp(): admin.app.App | null {
   }
   return admin.initializeApp({
     credential: admin.credential.cert(cred),
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 }
 
@@ -44,4 +45,9 @@ export function getAdminAuth(): admin.auth.Auth | null {
 export function getAdminFirestore(): admin.firestore.Firestore | null {
   const app = getFirebaseAdminApp();
   return app ? app.firestore() : null;
+}
+
+export function getAdminStorage(): admin.storage.Storage | null {
+  const app = getFirebaseAdminApp();
+  return app ? admin.storage(app) : null;
 }
