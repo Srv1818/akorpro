@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Keşfet",
     description:
-      "Doğru Gitar Akorları, Orjinal Ton, Gam, Solo Gitar, Scale, BPM, Ölçü, Mod, Analiz, 5'li Çember ve Armoni Çalma Listesi",,
+      "Doğru Gitar Akorları, Orjinal Ton, Gam, Solo Gitar, Scale, BPM, Ölçü, Mod, Analiz, 5'li Çember ve Armoni Çalma Listesi",
     url: "/",
   },
 };
