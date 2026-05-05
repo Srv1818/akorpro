@@ -11,12 +11,12 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Keşfet",
   description:
-    "Doğru Gitar Akorları, Orjinal Ton, Gam, Solo Gitar, Scale, BPM, Ölçü, Mod, Analiz, 5'li Çember ve Armoni Çalma Listesi",
+    "Doğru Gitar Akorları, Orjinal Ton, Gam, Solo Gitar, Scale, BPM, Ölçü, Mod, Analiz, 5'li Çember ve Armoni, Çalma Listesi",
   alternates: { canonical: "/" },
   openGraph: {
     title: "Keşfet",
     description:
-      "Doğru Gitar Akorları, Orjinal Ton, Gam, Solo Gitar, Scale, BPM, Ölçü, Mod, Analiz, 5'li Çember ve Armoni Çalma Listesi",
+      "Doğru Gitar Akorları, Orjinal Ton, Gam, Solo Gitar, Scale, BPM, Ölçü, Mod, Analiz, 5'li Çember ve Armoni, Çalma Listesi",
     url: "/",
   },
 };
