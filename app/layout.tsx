@@ -16,12 +16,16 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
+  preload: true,
+  fallback: ["system-ui", "Arial", "sans-serif"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap",
+  preload: true,
+  fallback: ["ui-monospace", "Consolas", "monospace"],
 });
 
 const siteName = "AkorPro";
@@ -72,7 +76,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="tr" className={`${inter.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -85,7 +89,7 @@ export default function RootLayout({
         ) : null}
       </head>
       <body
-        className={`${inter.variable} ${geistMono.variable} neu-theme flex min-h-full flex-col font-sans antialiased`}
+        className="neu-theme flex min-h-full flex-col font-sans antialiased"
       >
         <Analytics />
         <GoogleAnalytics />
