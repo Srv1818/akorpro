@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { signOut } from "firebase/auth";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
-import { getClientAuth } from "@/lib/firebase/client";
 import { MessageCircle, PenLine, User, LogOut } from "lucide-react";
 
 type MeResponse = { user: SessionUser | null };
@@ -181,8 +179,11 @@ export function AuthHeaderActions() {
   async function onSignOut() {
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
     try {
-      const auth = getClientAuth();
-      await signOut(auth);
+      const [{ signOut }, { getClientAuth }] = await Promise.all([
+        import("firebase/auth"),
+        import("@/lib/firebase/client"),
+      ]);
+      await signOut(getClientAuth());
     } catch {
       /* İstemci yapılandırması yoksa yalnızca çerez silinir. */
     }
@@ -242,8 +243,11 @@ export function MobileNavUserSection({ onClose }: { onClose: () => void }) {
   async function handleSignOut() {
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
     try {
-      const auth = getClientAuth();
-      await signOut(auth);
+      const [{ signOut }, { getClientAuth }] = await Promise.all([
+        import("firebase/auth"),
+        import("@/lib/firebase/client"),
+      ]);
+      await signOut(getClientAuth());
     } catch { /* İstemci yapılandırması yoksa yalnızca çerez silinir. */ }
     startTransition(() => publishSession(null));
     window.dispatchEvent(new Event("akorpro:auth-change"));
