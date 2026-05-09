@@ -68,24 +68,22 @@ export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
         })}
       </div>
 
-      <div className="overflow-hidden lg:overflow-visible">
-        <div
-          className="flex translate-x-[var(--discover-slide)] transition-transform duration-300 ease-out lg:grid lg:grid-cols-3 lg:gap-6 lg:translate-x-0"
-          style={{ "--discover-slide": `-${activeIndex * 100}%` } as CSSProperties}
-        >
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              role="tabpanel"
-              id={`discover-panel-${tab.id}`}
-              aria-labelledby={`discover-tab-${tab.id}`}
-              aria-hidden={active !== tab.id ? true : undefined}
-              className="w-full shrink-0 lg:w-auto lg:shrink"
-            >
-              {tab.panel}
-            </div>
-          ))}
-        </div>
+      <div
+        className="flex translate-x-[var(--discover-slide)] transition-transform duration-300 ease-out lg:grid lg:grid-cols-3 lg:gap-6 lg:translate-x-0"
+        style={{ "--discover-slide": `-${activeIndex * 100}%` } as CSSProperties}
+      >
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            role="tabpanel"
+            id={`discover-panel-${tab.id}`}
+            aria-labelledby={`discover-tab-${tab.id}`}
+            aria-hidden={active !== tab.id ? true : undefined}
+            className="w-full shrink-0 lg:w-auto lg:shrink"
+          >
+            {tab.panel}
+          </div>
+        ))}
       </div>
     </div>
   );

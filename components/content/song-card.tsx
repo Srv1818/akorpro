@@ -3,12 +3,12 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { chordPath } from "@/lib/paths";
+import type { SongSummary } from "@/lib/types/content";
 
 const SongCardPlaylistAdd = dynamic(
   () => import("@/components/content/song-card-playlist-add").then((m) => m.SongCardPlaylistAdd),
   { ssr: false },
 );
-import type { SongSummary } from "@/lib/types/content";
 
 export function SongCard({
   song,
