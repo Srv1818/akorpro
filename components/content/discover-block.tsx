@@ -7,28 +7,25 @@ export type DiscoverAccent = "rose" | "emerald" | "amber";
 
 const ACCENT_STYLES: Record<
   DiscoverAccent,
-  { icon: string; ring: string; rank: string; header: string; dot: string }
+  { icon: string; ring: string; rank: string; header: string }
 > = {
   rose: {
     icon: "text-rose-500",
     ring: "bg-rose-500/10 ring-1 ring-rose-500/20",
     rank: "bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-sm shadow-rose-500/30",
     header: "from-rose-500/10 via-rose-500/5 to-transparent",
-    dot: "bg-rose-500",
   },
   emerald: {
     icon: "text-emerald-500",
     ring: "bg-emerald-500/10 ring-1 ring-emerald-500/20",
     rank: "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-sm shadow-emerald-500/30",
     header: "from-emerald-500/10 via-emerald-500/5 to-transparent",
-    dot: "bg-emerald-500",
   },
   amber: {
     icon: "text-amber-500",
     ring: "bg-amber-500/10 ring-1 ring-amber-500/20",
     rank: "bg-gradient-to-br from-amber-500 to-orange-400 text-white shadow-sm shadow-amber-500/30",
     header: "from-amber-500/10 via-amber-500/5 to-transparent",
-    dot: "bg-amber-500",
   },
 };
 
@@ -64,10 +61,7 @@ function SongRow({
         <span className="line-clamp-1 text-sm font-semibold text-display transition-colors group-hover:text-accent">
           {song.title}
         </span>
-        <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
-          <span className={`h-1 w-1 shrink-0 rounded-full ${styles.dot} opacity-60`} aria-hidden="true" />
-          <span className="line-clamp-1">{song.artistName}</span>
-        </span>
+        <span className="mt-0.5 line-clamp-1 text-xs text-muted">{song.artistName}</span>
       </span>
       <svg
         aria-hidden="true"

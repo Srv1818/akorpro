@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { SongCardPlaylistAdd } from "@/components/content/song-card-playlist-add";
+import dynamic from "next/dynamic";
 import { chordPath } from "@/lib/paths";
 import type { SongSummary } from "@/lib/types/content";
+
+const SongCardPlaylistAdd = dynamic(
+  () => import("@/components/content/song-card-playlist-add").then((m) => m.SongCardPlaylistAdd),
+  { ssr: false },
+);
 
 export function SongCard({
   song,

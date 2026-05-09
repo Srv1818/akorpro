@@ -135,10 +135,12 @@ export function MobileSearchButton() {
                       onKeyDown={handleKeyDown}
                       placeholder="Şarkı veya sanatçı ara..."
                       className="min-w-0 w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent"
+                      role="combobox"
                       aria-label="Arama"
                       aria-expanded={allItems.length > 0}
                       aria-haspopup="listbox"
                       aria-autocomplete="list"
+                      aria-controls="mobile-search-listbox"
                     />
                   </div>
                   <button
@@ -151,7 +153,7 @@ export function MobileSearchButton() {
                 </form>
 
                 {results && allItems.length > 0 && (
-                  <div role="listbox" aria-label="Arama önerileri" className="overflow-hidden border-t border-border">
+                  <div id="mobile-search-listbox" role="listbox" aria-label="Arama önerileri" className="overflow-hidden border-t border-border">
                     {hasArtists && (
                       <>
                         <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Sanatçılar</p>

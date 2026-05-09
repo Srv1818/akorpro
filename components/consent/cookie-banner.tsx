@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type ConsentValue, CONSENT_COOKIE, setConsentCookie } from "@/lib/consent";
 
 function getCookieValue(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return match?.[1];
 }
@@ -36,12 +37,19 @@ function applyConsent(value: ConsentValue) {
 }
 
 export function CookieBanner() {
-  const [visible, setVisible] = useState(false);
+  const [needsConsent, setNeedsConsent] = useState(false);
+  // Separate from needsConsent so the element is in the DOM but not painted
+  // until after the first browser frame — prevents banner from becoming the LCP candidate.
+  const [painted, setPainted] = useState(false);
 
   useEffect(() => {
     const stored = getCookieValue(CONSENT_COOKIE);
     if (!stored) {
-      queueMicrotask(() => setVisible(true));
+      setNeedsConsent(true);
+      // Double rAF: first frame commits layout, second frame is after first paint.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setPainted(true));
+      });
     } else {
       applyConsent(stored as ConsentValue);
     }
@@ -50,28 +58,29 @@ export function CookieBanner() {
   const accept = useCallback(() => {
     setConsentCookie("all");
     applyConsent("all");
-    setVisible(false);
+    setNeedsConsent(false);
   }, []);
 
   const reject = useCallback(() => {
     setConsentCookie("essential");
     applyConsent("essential");
-    setVisible(false);
+    setNeedsConsent(false);
   }, []);
 
-  if (!visible) return null;
+  if (!needsConsent) return null;
 
   return (
     <div
       role="dialog"
       aria-label="Çerez bildirimi"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 p-4 backdrop-blur-sm sm:p-5"
+      aria-hidden={!painted}
+      className={`fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 p-4 backdrop-blur-sm sm:p-5${painted ? "" : " invisible"}`}
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-muted">
           Deneyiminizi iyileştirmek için zorunlu çerezler ve anonim analitik
           çerezleri kullanıyoruz.{" "}
-          <Link href="/cerez-politikasi" className="text-accent underline-offset-2 hover:underline">
+          <Link href="/cerez-politikasi" className="font-medium text-foreground underline underline-offset-2 hover:text-accent">
             Çerez Politikası
           </Link>
         </p>

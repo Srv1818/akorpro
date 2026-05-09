@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BesliCemberTools } from "@/components/besli-cember/besli-cember-tools";
+import { BesliCemberToolsLazy } from "@/components/besli-cember/besli-cember-tools-lazy";
 import { PageHeader } from "@/components/content/page-header";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -46,7 +46,7 @@ export default function BesliCemberPage() {
         description="Majör, doğal / harmonik / melodik minör ailelerinden mod seçin, kök notayı belirleyin — diyatonik üçlüler panellerde ve çemberde gösterilir (dış: majör, orta: minör, iç: dim)."
       />
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <BesliCemberTools />
+        <BesliCemberToolsLazy />
       </div>
 
       <section className="mx-auto max-w-6xl px-4 pb-16 pt-4 sm:px-6 lg:px-8">

@@ -68,7 +68,7 @@ export function SiteNavbar() {
             <span aria-hidden>AkorPro</span>
           </Link>
 
-          <div className="min-w-0 flex-1 px-4">
+          <div className="min-w-[200px] flex-1 px-4">
             <div className="mx-auto max-w-2xl">
               <SearchDialog />
             </div>
