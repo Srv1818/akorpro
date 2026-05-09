@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GamlarTools } from "@/components/gamlar/gamlar-tools";
+import { GamlarToolsLazy } from "@/components/gamlar/gamlar-tools-lazy";
 import { PageHeader } from "@/components/content/page-header";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -45,7 +45,7 @@ export default function GamlarPage() {
         description="Gam seçin, tonal merkezi belirleyin — fretboard ve 5'li çember otomatik güncellenir."
       />
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <GamlarTools />
+        <GamlarToolsLazy />
       </div>
 
       <section className="mx-auto max-w-6xl px-4 pb-16 pt-4 sm:px-6 lg:px-8">

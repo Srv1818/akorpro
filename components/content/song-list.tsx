@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { SongCardPlaylistAdd } from "@/components/content/song-card-playlist-add";
+import dynamic from "next/dynamic";
+import { memo, useMemo } from "react";
 import { chordPath } from "@/lib/paths";
 import type { SongSummary } from "@/lib/types/content";
 
-function SongListRow({
+const SongCardPlaylistAdd = dynamic(
+  () => import("@/components/content/song-card-playlist-add").then((m) => m.SongCardPlaylistAdd),
+  { ssr: false },
+);
+
+const SongListRow = memo(function SongListRow({
   song,
   index,
   showArtist,
@@ -16,12 +22,10 @@ function SongListRow({
 }) {
   const chordHref = chordPath(song.artistSlug, song.slug);
   const label = `${song.title}${showArtist ? ` — ${song.artistName}` : ""} akoru`;
-  const playlistSong = {
-    id: song.id,
-    title: song.title,
-    artistSlug: song.artistSlug,
-    slug: song.slug,
-  };
+  const playlistSong = useMemo(
+    () => ({ id: song.id, title: song.title, artistSlug: song.artistSlug, slug: song.slug }),
+    [song.id, song.title, song.artistSlug, song.slug],
+  );
 
   return (
     <div className="group relative flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/5">
@@ -62,7 +66,7 @@ function SongListRow({
       </div>
     </div>
   );
-}
+});
 
 export function SongList({
   songs,

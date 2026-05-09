@@ -9,6 +9,11 @@ const iconMap: Record<string, LucideIcon> = {
   Compass, Music, Guitar, BookOpen, Circle, ListMusic,
 };
 
+const NAV_ITEMS = mainNav.map((item) => ({
+  ...item,
+  Icon: iconMap[item.icon] as LucideIcon | undefined,
+}));
+
 export function NavTabs() {
   const pathname = usePathname();
 
@@ -21,21 +26,20 @@ export function NavTabs() {
         shadow-[0_4px_24px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]"
       aria-label="Ana menü"
     >
-      {mainNav.map((item) => {
-        const active =
-          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+      {NAV_ITEMS.map(({ href, label, Icon }) => {
+        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
 
         return (
           <Link
-            key={item.href}
-            href={item.href}
+            key={href}
+            href={href}
             className={[
               "relative inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-sm font-medium",
               "transition-all duration-200 ease-out",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent",
               active
                 ? [
-                    "text-accent",
+                    "text-accent-muted dark:text-foreground",
                     "bg-white/70 dark:bg-white/[0.14]",
                     "border border-white/80 dark:border-white/[0.22]",
                     "shadow-[0_1px_8px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.12)]",
@@ -43,8 +47,8 @@ export function NavTabs() {
                 : "text-muted hover:text-foreground hover:bg-white/25 dark:hover:bg-white/[0.08] active:scale-95",
             ].join(" ")}
           >
-            {(() => { const Icon = iconMap[item.icon]; return Icon ? <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden /> : null; })()}
-            {item.label}
+            {Icon ? <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden /> : null}
+            {label}
           </Link>
         );
       })}
