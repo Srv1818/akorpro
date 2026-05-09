@@ -248,7 +248,7 @@ function ChordDiagram({
               return (
                 <div
                   key={s}
-                  className="relative flex h-6 border-b border-border/50 last:border-b-0 sm:h-7"
+                  className="relative flex h-6 sm:h-7"
                 >
                   {Array.from({ length: FRET_COUNT }, (_, f) => (
                     <div
