@@ -25,6 +25,7 @@ import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
 import { firstParam } from "@/lib/search-params";
 import type { SongSummary } from "@/lib/types/content";
+import { AutoScrollWidget } from "@/components/song/AutoScrollWidget";
 
 /** ISR: 1 hour (see lib/cache/tags.ts TTL.SONG_DETAIL) */
 export const revalidate = 3600;
@@ -141,6 +142,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
 
   return (
     <>
+      <AutoScrollWidget />
       <JsonLd data={songJsonLd(song, gamScaleName)} />
       <Breadcrumbs
         visuallyHidden
@@ -268,6 +270,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
             </PreviewShell>
           </ClientErrorBoundary>
         </Suspense>
+        <div id="lyrics-end" aria-hidden="true" />
 
         {song.copyrightSource ? <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p> : null}
         {song.harmonyDetailsNotes?.trim() ? (

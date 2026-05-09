@@ -2367,7 +2367,6 @@ export function PreviewClient({
                 className={`snap-start lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${openWidgets.gamlar ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
                 <Music2 className="size-3 shrink-0" strokeWidth={1.75} /> Solo/Gam
               </button>
-              <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} compact className="snap-start" />
               <button type="button" onClick={() => setChordStripOpen((o) => !o)} aria-expanded={chordStripOpen}
                 className={`snap-start lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${chordStripOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
                 <ListMusic className="size-3 shrink-0" strokeWidth={1.75} /> Akorlar
@@ -2496,7 +2495,6 @@ export function PreviewClient({
           <Timer className="size-3.5 shrink-0" strokeWidth={1.75} />
           Metronom
         </button>
-        <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} />
         <button
           type="button"
           id="chord-strip-trigger"
