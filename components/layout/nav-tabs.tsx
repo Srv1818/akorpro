@@ -44,7 +44,7 @@ export function NavTabs() {
                     "border border-white/80 dark:border-white/[0.22]",
                     "shadow-[0_1px_8px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.9)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.12)]",
                   ].join(" ")
-                : "text-muted hover:text-foreground hover:bg-white/25 dark:hover:bg-white/[0.08] active:scale-95",
+                : "text-foreground dark:text-muted hover:text-foreground hover:bg-white/25 dark:hover:bg-white/[0.08] active:scale-95",
             ].join(" ")}
           >
             {Icon ? <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden /> : null}
