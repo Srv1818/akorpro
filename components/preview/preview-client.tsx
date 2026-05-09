@@ -10,6 +10,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -620,6 +621,15 @@ export function PreviewClient({
   const [metronomeActive, setMetronomeActive] = useState(false);
   const [metronomeBpm, setMetronomeBpm] = useState(initialBpmNumber);
   const [metronomeTimeSignature, setMetronomeTimeSignature] = useState(initialTimeSignatureValue);
+
+  const isMobileView = useSyncExternalStore(
+    (cb) => {
+      window.addEventListener("resize", cb, { passive: true });
+      return () => window.removeEventListener("resize", cb);
+    },
+    () => window.innerWidth < WIDGET_MOBILE_MAX,
+    () => false,
+  );
 
   useEffect(() => {
     // Yeni şarkıya geçildiğinde metronomu "orijinal" tempo/ölçüyle sıfırla.
@@ -2208,7 +2218,7 @@ export function PreviewClient({
             const widgetTitle = widgetTitleById[widget];
             const offset = widgetOffsets[widget];
             const size = widgetSizes[widget];
-            const isMobileFullscreen = typeof window !== "undefined" && window.innerWidth < WIDGET_MOBILE_MAX;
+            const isMobileFullscreen = isMobileView;
             return (
               <div
                 key={widget}

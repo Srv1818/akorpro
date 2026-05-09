@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { type ConsentValue, CONSENT_COOKIE, setConsentCookie } from "@/lib/consent";
 
 function getCookieValue(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return match?.[1];
 }

@@ -21,7 +21,7 @@ export function SiteFooter() {
               AkorPro
             </span>
             <span className="text-border/50">|</span>
-            <p className="text-[10px] text-muted/50">
+            <p className="text-[10px] text-muted/50" suppressHydrationWarning>
               &copy; {new Date().getFullYear()} Tüm hakları saklıdır.
             </p>
           </div>
