@@ -38,7 +38,6 @@ export const viewport: Viewport = {
 };
 
 const blockSearchIndexing = process.env.BLOCK_SEARCH_INDEXING === "true";
-const firebaseAuthHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -81,12 +80,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        {firebaseAuthHost ? (
-          <>
-            <link rel="preconnect" href={`https://${firebaseAuthHost}`} crossOrigin="" />
-            <link rel="dns-prefetch" href="https://www.googleapis.com" />
-          </>
-        ) : null}
+        <link rel="dns-prefetch" href="https://www.googleapis.com" />
       </head>
       <body
         className="neu-theme flex min-h-full flex-col font-sans antialiased"
