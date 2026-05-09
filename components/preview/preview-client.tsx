@@ -707,6 +707,7 @@ export function PreviewClient({
 
   const sceneParam = searchParams.get("scene");
   const sceneParamActive = sceneParam === "1" || sceneParam === "true";
+  const returnToParam = searchParams.get("returnTo");
 
   const replaceSceneParam = useCallback(
     (next: boolean) => {
@@ -752,7 +753,7 @@ export function PreviewClient({
 
   useEffect(() => {
     // If opened from a playlist (returnTo includes playlistId), pick next by playlist order.
-    const rawReturnTo = searchParams.get("returnTo");
+    const rawReturnTo = returnToParam;
     const decodedReturnTo = rawReturnTo ? (() => {
       try {
         return decodeURIComponent(rawReturnTo);
@@ -834,7 +835,7 @@ export function PreviewClient({
     return () => {
       cancelled = true;
     };
-  }, [firebaseUid, searchParams, songId, hasTransposeParam, setTransposeSemitones]);
+  }, [firebaseUid, returnToParam, songId, hasTransposeParam, setTransposeSemitones]);
 
   useEffect(() => {
     if (!openWidgets.gamlar && !openWidgets.metronome) return;
@@ -849,7 +850,7 @@ export function PreviewClient({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [openWidgets]);
+  }, [openWidgets.gamlar, openWidgets.metronome]);
 
   useEffect(() => {
     if (!chordStripOpen) return;
