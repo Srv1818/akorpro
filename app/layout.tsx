@@ -14,7 +14,7 @@ import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   display: "swap",
   preload: true,
   fallback: ["system-ui", "Arial", "sans-serif"],

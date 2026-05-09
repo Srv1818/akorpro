@@ -24,16 +24,38 @@ if (process.env.NODE_ENV === "production") {
 const nextConfig: NextConfig = {
   experimental: {
     inlineCss: true,
+    optimizePackageImports: ["lucide-react"],
   },
   turbopack: {
     root: turbopackRoot,
+    // Replace Next.js's hardcoded polyfill-module with a minimal build.
+    // polyfill-module is imported unconditionally by next/dist/client/app-globals.js
+    // and contains feature-detected polyfills that Lighthouse flags even though they
+    // never execute on our targets (chrome 96+, firefox 94+, safari 15.4+, edge 96+).
+    // The only polyfill still needed is URL.canParse (added in Safari 17).
+    resolveAlias: {
+      "next/dist/build/polyfills/polyfill-module": "./lib/polyfill-module-minimal.js",
+      "next/dist/esm/build/polyfills/polyfill-module": "./lib/polyfill-module-minimal.js",
+    },
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.ignoreWarnings = config.ignoreWarnings ?? [];
     config.ignoreWarnings.push({
       module: /@opentelemetry\/instrumentation/,
       message: /Critical dependency: the request of a dependency is an expression/,
     });
+
+    if (!isServer) {
+      // Same replacement for webpack (production builds).
+      // resolve.alias keyed by the absolute resolved path intercepts the relative
+      // require("../build/polyfills/polyfill-module") inside app-globals.js.
+      const polyfillModulePath = require.resolve("next/dist/build/polyfills/polyfill-module");
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        [polyfillModulePath]: path.resolve(turbopackRoot, "lib/polyfill-module-minimal.js"),
+      };
+    }
+
     return config;
   },
   images: {

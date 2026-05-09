@@ -50,7 +50,7 @@ export function DiscoverTabs({ tabs }: { tabs: DiscoverTab[] }) {
               tabIndex={isActive ? 0 : -1}
               onClick={() => setActive(tab.id)}
               className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 py-3 text-xs font-semibold transition-colors ${
-                isActive ? TAB_ACTIVE_TEXT[tab.accent] : "text-muted hover:text-display"
+                isActive ? TAB_ACTIVE_TEXT[tab.accent] : "text-foreground hover:text-display"
               }`}
             >
               <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
