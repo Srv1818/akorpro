@@ -164,10 +164,12 @@ export function SearchDialog({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             autoComplete="off"
+            role="combobox"
             aria-label="Arama"
             aria-expanded={open}
             aria-haspopup="listbox"
             aria-autocomplete="list"
+            aria-controls="search-dialog-listbox"
             className="min-w-0 w-full rounded-xl border border-border bg-surface py-2.5 pl-10 pr-3 text-sm text-foreground outline-none transition placeholder:text-muted focus:border-accent focus:ring-1 focus:ring-accent md:pl-12"
           />
         </div>
@@ -176,6 +178,7 @@ export function SearchDialog({
       {open && allItems.length > 0 && (
         <div
           ref={dropdownRef}
+          id="search-dialog-listbox"
           role="listbox"
           aria-label="Arama önerileri"
           className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-border bg-surface shadow-lg"

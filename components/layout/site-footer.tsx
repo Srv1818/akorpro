@@ -17,11 +17,11 @@ export function SiteFooter() {
               className="size-[18px] shrink-0 opacity-80"
               decoding="async"
             />
-            <span className="text-[10px] font-semibold text-display/40 uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">
               AkorPro
             </span>
             <span className="text-border/50">|</span>
-            <p className="text-[10px] text-muted/50" suppressHydrationWarning>
+            <p className="text-[10px] text-muted" suppressHydrationWarning>
               &copy; {new Date().getFullYear()} Tüm hakları saklıdır.
             </p>
           </div>
@@ -32,7 +32,7 @@ export function SiteFooter() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-[10px] text-muted/40 transition hover:text-accent hover:text-muted/80"
+                className="text-[10px] text-muted transition hover:text-accent"
               >
                 {l.label}
               </Link>

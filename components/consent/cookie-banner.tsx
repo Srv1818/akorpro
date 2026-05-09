@@ -80,7 +80,7 @@ export function CookieBanner() {
         <p className="text-sm leading-relaxed text-muted">
           Deneyiminizi iyileştirmek için zorunlu çerezler ve anonim analitik
           çerezleri kullanıyoruz.{" "}
-          <Link href="/cerez-politikasi" className="text-accent underline-offset-2 hover:underline">
+          <Link href="/cerez-politikasi" className="font-medium text-foreground underline underline-offset-2 hover:text-accent">
             Çerez Politikası
           </Link>
         </p>
