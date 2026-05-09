@@ -192,10 +192,10 @@ export function AuthHeaderActions() {
     router.refresh();
   }
 
-  // Yükleniyor durumu
+  // Yükleniyor durumu — butonla tam aynı genişlikte skeleton, CLS'i önler.
   if (user === undefined) {
     return (
-      <span className="inline-flex h-9 min-w-[4.5rem] items-center justify-center rounded-lg border border-border bg-surface px-3 text-xs text-muted">
+      <span className="inline-flex h-9 w-[5.5rem] items-center justify-center rounded-lg border border-border bg-surface text-xs text-muted">
         <span className="animate-pulse">…</span>
       </span>
     );
@@ -206,7 +206,7 @@ export function AuthHeaderActions() {
     return (
       <Link
         href="/giris"
-        className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted sm:px-4"
+        className="inline-flex h-9 w-[5.5rem] items-center justify-center rounded-lg bg-accent text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted"
       >
         Giriş Yap
       </Link>
@@ -221,18 +221,21 @@ export function AuthHeaderActions() {
 export function MobileNavLoginButton() {
   const user = useSessionUser();
 
-  if (user === null) {
-    return (
-      <Link
-        href="/giris"
-        className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted sm:px-4"
-      >
-        Giriş Yap
-      </Link>
-    );
-  }
+  // Giriş yapmış kullanıcı için hiçbir şey render edilmez.
+  if (user !== null && user !== undefined) return null;
 
-  return null;
+  // Oturum durumu bilinmiyorsa (undefined) butonla aynı boyutlu ama görünmez yer tutucu
+  // göster — layout alanı sabit kalır, CLS olmaz.
+  return (
+    <Link
+      href="/giris"
+      className={`inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted sm:px-4${user === undefined ? " invisible" : ""}`}
+      aria-hidden={user === undefined || undefined}
+      tabIndex={user === undefined ? -1 : undefined}
+    >
+      Giriş Yap
+    </Link>
+  );
 }
 
 /** Hamburger menü içinde giriş yapılmış kullanıcı bölümünü gösterir. */

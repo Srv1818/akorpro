@@ -1496,42 +1496,48 @@ export function PreviewClient({
 
     const base = lyricsFontSizePx;
     const isLandscape = window.innerWidth > window.innerHeight;
-    const fitMin = sceneMode
-      ? (isLandscape ? 8 : LYRICS_AUTO_FIT_MIN)
-      : LYRICS_AUTO_FIT_MIN;
-
-    let low = fitMin;
-    let high = base;
-    let best = fitMin;
-
+    const fitMin = sceneMode ? (isLandscape ? 8 : LYRICS_AUTO_FIT_MIN) : LYRICS_AUTO_FIT_MIN;
     const scrollContainer = sceneLyricsScrollRef.current;
+
+    // ── READ #1: availableHeight before any write (clean read, no reflow) ──
     const availableHeight = sceneMode
       ? (scrollContainer?.clientHeight ?? window.innerHeight)
       : null;
 
-    const fitsNow = () => {
-      for (const pre of pres) {
-        const sw = pre.scrollWidth;
-        const cw = pre.clientWidth;
-        if (cw > 0 && sw > cw + 1) return false;
-      }
-      if (!sceneMode) return true;
-      if (!availableHeight) return true;
-      for (const pre of pres) {
-        if (pre.scrollHeight > availableHeight + 2) return false;
-      }
-      return true;
-    };
+    // ── WRITE: set all elements to the desired base size ───────────────────
+    for (const pre of pres) pre.style.fontSize = `${base}px`;
 
-    for (let i = 0; i < 12; i += 1) {
-      if (low > high) break;
-      const mid = Math.floor((low + high + 1) / 2);
-      for (const pre of pres) pre.style.fontSize = `${mid}px`;
-      if (fitsNow()) {
-        best = mid;
-        low = mid + 1;
-      } else {
-        high = mid - 1;
+    // ── READ #2: measure at base (one forced reflow) ────────────────────────
+    let maxWidthRatio = 1;
+    let maxHeightRatio = 1;
+    for (const pre of pres) {
+      const cw = pre.clientWidth;
+      if (cw > 0) maxWidthRatio = Math.max(maxWidthRatio, pre.scrollWidth / cw);
+      if (availableHeight) maxHeightRatio = Math.max(maxHeightRatio, pre.scrollHeight / availableHeight);
+    }
+
+    const constraintRatio = Math.max(maxWidthRatio, maxHeightRatio);
+    if (constraintRatio <= 1) {
+      // Already fits at base — no further writes needed.
+      setEffectiveLyricsFontSizePx((prev) => (prev === base ? prev : base));
+      return;
+    }
+
+    // O(1) target derived from overflow ratio (linear scaling approximation).
+    const approxPx = Math.max(fitMin, Math.min(base - 1, Math.floor(base / constraintRatio)));
+
+    // ── WRITE: apply computed target ────────────────────────────────────────
+    for (const pre of pres) pre.style.fontSize = `${approxPx}px`;
+
+    // ── READ #3: verify fit (one more forced reflow, then done) ────────────
+    let best = approxPx;
+    for (const pre of pres) {
+      const wOk = pre.clientWidth <= 0 || pre.scrollWidth <= pre.clientWidth + 1;
+      const hOk = !availableHeight || pre.scrollHeight <= availableHeight + 2;
+      if (!wOk || !hOk) {
+        best = Math.max(fitMin, approxPx - 1);
+        for (const pre2 of pres) pre2.style.fontSize = `${best}px`;
+        break;
       }
     }
 
