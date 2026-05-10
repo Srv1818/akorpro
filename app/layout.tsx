@@ -5,10 +5,21 @@ import { SiteNavbar } from "@/components/layout/site-navbar";
 import { ThemeProvider } from "@/components/theme/providers";
 import { SITE_URL } from "@/lib/paths";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
-import { WebVitalsReporter } from "@/components/analytics/web-vitals";
+import dynamic from "next/dynamic";
 import { GoogleAnalytics } from "@/components/analytics/ga4";
-import { CookieBanner } from "@/components/consent/cookie-banner";
-import { SwRegister } from "@/components/pwa/sw-register";
+
+const CookieBanner = dynamic(
+  () => import("@/components/consent/cookie-banner").then((m) => m.CookieBanner),
+  { ssr: false },
+);
+const WebVitalsReporter = dynamic(
+  () => import("@/components/analytics/web-vitals").then((m) => m.WebVitalsReporter),
+  { ssr: false },
+);
+const SwRegister = dynamic(
+  () => import("@/components/pwa/sw-register").then((m) => m.SwRegister),
+  { ssr: false },
+);
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 

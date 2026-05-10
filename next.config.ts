@@ -2,6 +2,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import withBundleAnalyzerFactory from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = withBundleAnalyzerFactory({
+  enabled: process.env.ANALYZE === "true",
+});
 
 /** Üst dizinde başka lockfile varken Turbopack’in yanlış kök seçmesini engeller (dev/build). */
 const turbopackRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -124,7 +129,7 @@ const hasSentryEnv =
   Boolean(process.env.SENTRY_PROJECT);
 
 export default hasSentryEnv
-  ? withSentryConfig(nextConfig, {
+  ? withBundleAnalyzer(withSentryConfig(nextConfig, {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
       silent: !process.env.CI,
@@ -134,5 +139,5 @@ export default hasSentryEnv
       sourcemaps: {
         deleteSourcemapsAfterUpload: true,
       },
-    })
-  : nextConfig;
+    }))
+  : withBundleAnalyzer(nextConfig);
