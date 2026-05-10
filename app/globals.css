@@ -11,16 +11,11 @@
   display: inline-flex;
   max-width: 100%;
 }
-.tools-strip-wrapper::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 40px;
-  height: 100%;
-  background: linear-gradient(to right, transparent, rgb(var(--color-surface)) 90%);
-  pointer-events: none;
-  z-index: 1;
+@media (max-width: 639px) {
+  .tools-strip {
+    -webkit-mask-image: linear-gradient(to right, black 0%, black 65%, transparent 100%);
+    mask-image: linear-gradient(to right, black 0%, black 65%, transparent 100%);
+  }
 }
 
 /* Mobil araç şeridi: scroll-snap + scrollbar gizleme */

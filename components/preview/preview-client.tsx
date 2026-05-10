@@ -381,12 +381,23 @@ function renderChordBodyWithHighlights(
     const nextNext = lines[i + 2];
 
     if (line.trim() === "") {
-      rows.push(
-        <Fragment key={`line-${i}`}>
-          <span className="block h-4" aria-hidden />
-        </Fragment>,
-      );
-      i += 1;
+      if (next !== undefined && next.trim() === "") {
+        rows.push(
+          <Fragment key={`line-${i}`}>
+            <span className="block h-2" aria-hidden />
+            <hr className="border-border/50" aria-hidden />
+            <span className="block h-2" aria-hidden />
+          </Fragment>,
+        );
+        i += 2;
+      } else {
+        rows.push(
+          <Fragment key={`line-${i}`}>
+            <span className="block h-4" aria-hidden />
+          </Fragment>,
+        );
+        i += 1;
+      }
       continue;
     }
 
@@ -462,16 +473,30 @@ function splitChordBodyInTwo(text: string): [left: string, right: string] {
   if (lines.length <= 1) return [normalized, ""];
 
   const midpoint = Math.ceil(lines.length / 2);
-  let splitIndex = midpoint;
+  let splitIndex = -1;
   let bestDistance = Number.POSITIVE_INFINITY;
 
-  // Prefer splitting on an empty line close to center.
-  for (let i = 1; i < lines.length; i += 1) {
-    if (lines[i]?.trim() !== "") continue;
+  // Prefer splitting on a double empty line (section divider).
+  for (let i = 1; i < lines.length - 1; i += 1) {
+    if (lines[i]?.trim() !== "" || lines[i + 1]?.trim() !== "") continue;
     const distance = Math.abs(i - midpoint);
     if (distance < bestDistance) {
       bestDistance = distance;
       splitIndex = i;
+    }
+  }
+
+  // Fall back to any empty line if no section dividers exist.
+  if (splitIndex === -1) {
+    splitIndex = midpoint;
+    bestDistance = Number.POSITIVE_INFINITY;
+    for (let i = 1; i < lines.length; i += 1) {
+      if (lines[i]?.trim() !== "") continue;
+      const distance = Math.abs(i - midpoint);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        splitIndex = i;
+      }
     }
   }
 
@@ -2381,10 +2406,6 @@ export function PreviewClient({
             <button type="button" onClick={() => setOpenWidgets((w) => { const o = !w.gamlar; if (o) tryLockGamlarLandscape(); return { ...w, gamlar: o }; })} aria-pressed={openWidgets.gamlar}
               className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${openWidgets.gamlar ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
               <Music2 className="size-3.5 shrink-0" strokeWidth={1.75} /> Solo/Gam
-            </button>
-            <button type="button" onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))} aria-pressed={openWidgets.metronome}
-              className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${openWidgets.metronome ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
-              <Timer className="size-3.5 shrink-0" strokeWidth={1.75} /> Metronom
             </button>
             <button type="button" id="chord-strip-trigger" onClick={() => setChordStripOpen((o) => !o)} aria-expanded={chordStripOpen} aria-controls="chord-strip-panel"
               className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${chordStripOpen ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
