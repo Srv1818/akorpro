@@ -4,30 +4,27 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
-import { UkuleleChordDiagram } from "@/components/chords/ukulele-chord-diagram";
 import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
-import { resolveUkuleleChord } from "@/lib/chords-db/ukulele";
-
-type Instrument = "guitar" | "ukulele";
 
 type Props = {
   token: string;
   anchor: DOMRect | null;
   onClose: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 };
 
 const GAP = 8;
 const POPUP_W = 210;
 
-export function ChordPopup({ token, anchor, onClose }: Props) {
-  const [instrument, setInstrument] = useState<Instrument>("guitar");
+export function ChordPopup({ token, anchor, onClose, onMouseEnter, onMouseLeave }: Props) {
   const [posIdx, setPosIdx] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [style, setStyle] = useState<React.CSSProperties>({ visibility: "hidden" });
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
-  useEffect(() => { setPosIdx(0); }, [token, instrument]);
+  useEffect(() => { setPosIdx(0); }, [token]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -65,17 +62,14 @@ export function ChordPopup({ token, anchor, onClose }: Props) {
     }
 
     setStyle({ position: "fixed", top, left, width: POPUP_W });
-  }, [mounted, anchor, instrument, posIdx]);
+  }, [mounted, anchor, posIdx]);
 
   const guitarResolved = resolveChordTokenToFingering(token);
   const guitarPositions = guitarResolved.chord?.positions ?? [];
-  const ukuleleResolved = resolveUkuleleChord(token);
-  const ukulelePositions = ukuleleResolved.chord?.positions ?? [];
 
   const guitarPos = guitarPositions[posIdx] ?? guitarPositions[0] ?? null;
-  const ukulelePos = ukulelePositions[posIdx] ?? ukulelePositions[0] ?? null;
 
-  const positions = instrument === "guitar" ? guitarPositions : ukulelePositions;
+  const positions = guitarPositions;
   const total = positions.length;
 
   const navBtn = useCallback((dir: "prev" | "next") => {
@@ -102,19 +96,16 @@ export function ChordPopup({ token, anchor, onClose }: Props) {
   ) : null;
 
   return createPortal(
-    <>
-      {/* Invisible backdrop — closes on click outside */}
-      <div className="fixed inset-0 z-[199]" onPointerDown={onClose} aria-hidden />
-
-      <div
-        ref={popupRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${token} akoru`}
-        style={style}
-        className="z-[200] rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
+    <div
+      ref={popupRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${token} akoru`}
+      style={style}
+      className="z-[200] rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
         {/* Header */}
         <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
           <span className="text-sm font-bold text-foreground">{token}</span>
@@ -124,33 +115,14 @@ export function ChordPopup({ token, anchor, onClose }: Props) {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-border/60">
-          {(["guitar", "ukulele"] as const).map((inst) => (
-            <button key={inst} type="button" onClick={() => setInstrument(inst)}
-              className={`flex-1 py-1.5 text-xs font-semibold tracking-wide transition ${
-                instrument === inst ? "border-b-2 border-accent text-accent" : "text-muted hover:text-foreground"
-              }`}
-            >
-              {inst === "guitar" ? "Gitar" : "Ukulele"}
-            </button>
-          ))}
-        </div>
-
         {/* Diagram */}
         <div className="flex items-center justify-center p-3">
-          {instrument === "guitar" ? (
-            guitarPos
-              ? <GuitarChordDiagramClassic position={guitarPos} title={token} headerStart={navStart} headerEnd={navEnd} />
-              : <p className="py-6 text-center text-xs text-muted">Akor bulunamadı</p>
-          ) : (
-            ukulelePos
-              ? <UkuleleChordDiagram position={ukulelePos} title={token} headerStart={navStart} headerEnd={navEnd} />
-              : <p className="py-6 text-center text-xs text-muted">Akor bulunamadı</p>
-          )}
+          {guitarPos
+            ? <GuitarChordDiagramClassic position={guitarPos} title={token} headerStart={navStart} headerEnd={navEnd} />
+            : <p className="py-6 text-center text-xs text-muted">Akor bulunamadı</p>
+          }
         </div>
-      </div>
-    </>,
+    </div>,
     document.body,
   );
 }

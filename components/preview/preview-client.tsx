@@ -198,7 +198,12 @@ function displayChordForPreview(token: string, semitones: number, preferFlatsFor
     : transposeChordToken(token, semitones, { preferFlatsForNaturalRoots });
 }
 
-function renderChordTokenNode(token: string, key: string, onClick: (t: string, rect: DOMRect) => void): ReactNode {
+function renderChordTokenNode(
+  token: string,
+  key: string,
+  onClick: (t: string, rect: DOMRect) => void,
+  onLeave?: () => void,
+): ReactNode {
   function getRect(e: React.SyntheticEvent<HTMLButtonElement>) {
     return (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
   }
@@ -207,7 +212,7 @@ function renderChordTokenNode(token: string, key: string, onClick: (t: string, r
       key={key}
       type="button"
       onMouseEnter={(e) => onClick(token, getRect(e))}
-      onClick={(e) => onClick(token, getRect(e))}
+      onMouseLeave={onLeave}
       className="song-chord-token m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 align-baseline [font-family:inherit] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
       aria-label={`${token} akor diyagramını göster`}
     >
@@ -222,6 +227,7 @@ function renderChordLine(
   preferFlatsForNaturalRoots: boolean,
   onChordClick: (token: string, rect: DOMRect) => void,
   keyPrefix = "",
+  onChordLeave?: () => void,
 ): ReactNode[] {
   const out: ReactNode[] = [];
   let lastIndex = 0;
@@ -241,7 +247,7 @@ function renderChordLine(
         );
       }
     }
-    out.push(renderChordTokenNode(displayed, `${keyPrefix}${displayed}-${index}`, onChordClick));
+    out.push(renderChordTokenNode(displayed, `${keyPrefix}${displayed}-${index}`, onChordClick, onChordLeave));
     lastIndex = index + full.length;
   }
   if (lastIndex < line.length) {
@@ -264,10 +270,11 @@ function renderAlignedBracketLine(
   lineIndex: number,
   onChordClick: (token: string, rect: DOMRect) => void,
   isLastSourceLine: boolean,
+  onChordLeave?: () => void,
 ): ReactNode {
   const matches = Array.from(line.matchAll(BRACKET_CHORD_REGEX));
   if (matches.length === 0)
-    return renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${lineIndex}-`);
+    return renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${lineIndex}-`, onChordLeave);
 
   const chordAtPos: Array<{ pos: number; token: string }> = [];
   let lyrics = "";
@@ -291,7 +298,7 @@ function renderAlignedBracketLine(
   chordAtPos.forEach((item, i) => {
     if (item.pos > caret) nodes.push(" ".repeat(item.pos - caret));
     else if (i > 0) nodes.push(" ");
-    nodes.push(renderChordTokenNode(item.token, `bchord-${lineIndex}-${i}-${item.pos}`, onChordClick));
+    nodes.push(renderChordTokenNode(item.token, `bchord-${lineIndex}-${i}-${item.pos}`, onChordClick, onChordLeave));
     caret = Math.max(caret, item.pos + item.token.length);
   });
 
@@ -362,6 +369,7 @@ function renderChordBodyWithHighlights(
   semitones: number,
   preferFlatsForNaturalRoots: boolean,
   onChordClick: (token: string, rect: DOMRect) => void,
+  onChordLeave?: () => void,
 ): ReactNode {
   const lines = normalizeChordBodyText(text).split("\n");
   const rows: ReactNode[] = [];
@@ -385,7 +393,7 @@ function renderChordBodyWithHighlights(
     if (lineHasBracketChords(line)) {
       rows.push(
         <Fragment key={`line-${i}`}>
-          {renderAlignedBracketLine(line, semitones, preferFlatsForNaturalRoots, i, onChordClick, isLast)}
+          {renderAlignedBracketLine(line, semitones, preferFlatsForNaturalRoots, i, onChordClick, isLast, onChordLeave)}
         </Fragment>,
       );
       i += 1;
@@ -404,10 +412,10 @@ function renderChordBodyWithHighlights(
         <Fragment key={`line-${i}`}>
           <span className={pairEndsSong ? "song-chord-pair flex flex-col gap-0" : "song-chord-pair flex flex-col gap-0 mb-2.5"}>
             <span className="song-chord-row-stacked block leading-snug [&_button]:align-baseline">
-              {renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i}-`)}
+              {renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i}-`, onChordLeave)}
             </span>
             <span className="mt-0.5 block leading-snug">
-              {renderChordLine(next, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i + 1}-`)}
+              {renderChordLine(next, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i + 1}-`, onChordLeave)}
             </span>
           </span>
         </Fragment>,
@@ -428,7 +436,7 @@ function renderChordBodyWithHighlights(
       rows.push(
         <Fragment key={`line-${i}`}>
           <span className="mb-2 block leading-snug">
-            {renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i}-`)}
+            {renderChordLine(line, semitones, preferFlatsForNaturalRoots, onChordClick, `L${i}-`, onChordLeave)}
           </span>
         </Fragment>,
       );
@@ -439,7 +447,7 @@ function renderChordBodyWithHighlights(
     const sep = isLast ? null : "\n";
     rows.push(
       <Fragment key={`line-${i}`}>
-        {renderAlignedBracketLine(line, semitones, preferFlatsForNaturalRoots, i, onChordClick, isLast)}
+        {renderAlignedBracketLine(line, semitones, preferFlatsForNaturalRoots, i, onChordClick, isLast, onChordLeave)}
         {sep}
       </Fragment>,
     );
@@ -681,6 +689,24 @@ export function PreviewClient({
   const [chordStripOpen, setChordStripOpen] = useState(false);
   const [chordPopupToken, setChordPopupToken] = useState<string | null>(null);
   const [chordPopupAnchor, setChordPopupAnchor] = useState<DOMRect | null>(null);
+  const chordPopupCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openChordPopup = useCallback((token: string, rect: DOMRect) => {
+    if (chordPopupCloseTimer.current) { clearTimeout(chordPopupCloseTimer.current); chordPopupCloseTimer.current = null; }
+    setChordPopupToken(token);
+    setChordPopupAnchor(rect);
+  }, []);
+
+  const scheduleCloseChordPopup = useCallback(() => {
+    chordPopupCloseTimer.current = setTimeout(() => {
+      setChordPopupToken(null);
+      setChordPopupAnchor(null);
+    }, 80);
+  }, []);
+
+  const cancelCloseChordPopup = useCallback(() => {
+    if (chordPopupCloseTimer.current) { clearTimeout(chordPopupCloseTimer.current); chordPopupCloseTimer.current = null; }
+  }, []);
   const [chordPosIndices, setChordPosIndices] = useState<Record<string, number>>({});
 
   const [playlistNextSong, setPlaylistNextSong] = useState<{ title: string; href: string } | null>(null);
@@ -1622,7 +1648,13 @@ export function PreviewClient({
     <div className="py-2 sm:py-3">
       <AutoScrollWidget scrollContainerRef={sceneMode ? sceneLyricsScrollRef : undefined} />
       {chordPopupToken ? (
-        <ChordPopup token={chordPopupToken} anchor={chordPopupAnchor} onClose={() => { setChordPopupToken(null); setChordPopupAnchor(null); }} />
+        <ChordPopup
+          token={chordPopupToken}
+          anchor={chordPopupAnchor}
+          onClose={() => { setChordPopupToken(null); setChordPopupAnchor(null); }}
+          onMouseEnter={cancelCloseChordPopup}
+          onMouseLeave={scheduleCloseChordPopup}
+        />
       ) : null}
       {sceneMode ? (
         <div
@@ -1850,7 +1882,8 @@ export function PreviewClient({
                       splitLyricsEnabled ? leftChordBody : chordBody,
                       semitones,
                       preferFlatsForNaturalRoots,
-                      (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
+                      openChordPopup,
+                      scheduleCloseChordPopup,
                     )}
                   </pre>
                   {splitLyricsEnabled ? (
@@ -1863,7 +1896,8 @@ export function PreviewClient({
                         rightChordBody,
                         semitones,
                         preferFlatsForNaturalRoots,
-                        (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
+                        openChordPopup,
+                      scheduleCloseChordPopup,
                       )}
                     </pre>
                   ) : null}
@@ -2417,7 +2451,8 @@ export function PreviewClient({
                 splitLyricsEnabled ? leftChordBody : chordBody,
                 semitones,
                 preferFlatsForNaturalRoots,
-                (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
+                openChordPopup,
+                      scheduleCloseChordPopup,
               )}
             </pre>
             {splitLyricsEnabled ? (
@@ -2430,7 +2465,8 @@ export function PreviewClient({
                   rightChordBody,
                   semitones,
                   preferFlatsForNaturalRoots,
-                  (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
+                  openChordPopup,
+                      scheduleCloseChordPopup,
                 )}
               </pre>
             ) : null}
