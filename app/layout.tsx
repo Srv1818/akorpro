@@ -5,21 +5,8 @@ import { SiteNavbar } from "@/components/layout/site-navbar";
 import { ThemeProvider } from "@/components/theme/providers";
 import { SITE_URL } from "@/lib/paths";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
-import dynamic from "next/dynamic";
 import { GoogleAnalytics } from "@/components/analytics/ga4";
-
-const CookieBanner = dynamic(
-  () => import("@/components/consent/cookie-banner").then((m) => m.CookieBanner),
-  { ssr: false },
-);
-const WebVitalsReporter = dynamic(
-  () => import("@/components/analytics/web-vitals").then((m) => m.WebVitalsReporter),
-  { ssr: false },
-);
-const SwRegister = dynamic(
-  () => import("@/components/pwa/sw-register").then((m) => m.SwRegister),
-  { ssr: false },
-);
+import { ClientOnlyProviders } from "@/components/layout/client-only-providers";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
@@ -99,8 +86,7 @@ export default function RootLayout({
         <Analytics />
         <GoogleAnalytics />
         <SiteJsonLd />
-        <WebVitalsReporter />
-        <SwRegister />
+        <ClientOnlyProviders />
         <ThemeProvider>
           <nav aria-label="Erişim kısayolları" className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:left-4 focus-within:top-4 focus-within:z-[100] focus-within:flex focus-within:gap-2">
             <a
@@ -121,7 +107,6 @@ export default function RootLayout({
             {children}
           </main>
           <SiteFooter />
-          <CookieBanner />
         </ThemeProvider>
       </body>
     </html>
