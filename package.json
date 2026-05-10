@@ -25,6 +25,7 @@
     "@sentry/nextjs": "^10.46.0",
     "@tombatossals/chords-db": "^0.5.1",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "firebase": "^12.11.0",
     "firebase-admin": "^13.7.0",
     "genius-lyrics": "^4.4.7",

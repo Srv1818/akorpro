@@ -8,6 +8,7 @@ import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { GoogleAnalytics } from "@/components/analytics/ga4";
 import { ClientOnlyProviders } from "@/components/layout/client-only-providers";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const inter = Inter({
@@ -84,6 +85,7 @@ export default function RootLayout({
         className="neu-theme flex min-h-full flex-col font-sans antialiased"
       >
         <Analytics />
+        <SpeedInsights />
         <GoogleAnalytics />
         <SiteJsonLd />
         <ClientOnlyProviders />
