@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { memo, useMemo } from "react";
-import { chordPath } from "@/lib/paths";
+import { artistPath, chordPath } from "@/lib/paths";
 import type { SongSummary } from "@/lib/types/content";
 
 const SongCardPlaylistAdd = dynamic(
@@ -29,23 +29,30 @@ const SongListRow = memo(function SongListRow({
 
   return (
     <div className="group relative flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/5">
-      <Link
-        href={chordHref}
-        prefetch={false}
-        className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
-        aria-label={label}
-      />
       <span className="relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-bg text-xs font-bold tabular-nums text-muted">
         {index + 1}
       </span>
-      <div className="relative z-10 min-w-0 flex-1 pointer-events-none">
+      <div className="min-w-0 flex-1">
         <p className="line-clamp-1 text-sm font-semibold text-display transition-colors group-hover:text-accent">
-          {song.title}
+          <Link
+            href={chordHref}
+            prefetch={false}
+            aria-label={label}
+            className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-[-2px] rounded-sm"
+          >
+            {song.title}
+          </Link>
         </p>
         {showArtist ? (
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
             <span className="h-1 w-1 shrink-0 rounded-full bg-accent/50" aria-hidden="true" />
-            <span className="line-clamp-1">{song.artistName}</span>
+            <Link
+              href={artistPath(song.artistSlug)}
+              prefetch={false}
+              className="relative z-10 line-clamp-1 hover:text-foreground hover:underline underline-offset-2 transition-colors"
+            >
+              {song.artistName}
+            </Link>
           </p>
         ) : null}
       </div>

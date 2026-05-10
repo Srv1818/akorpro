@@ -22,6 +22,46 @@ export default function GamlarPage() {
       <JsonLd
         data={{
           "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            {
+              "@type": "Question",
+              name: "Gam nedir?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Gam, belirli bir kurallar dizisine göre seçilmiş notalar topluluğudur. Gitarda bir gamı öğrenmek; hangi perdelerin birlikte uyumlu çalındığını, solo çalarken hangi notaların güvenli olduğunu ve bir şarkının hangi ton duygusunu taşıdığını anlamak demektir.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Majör ve minör gamlar arasındaki fark nedir?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Majör gam neşeli ve parlak bir tını verir; pop, rock ve folk müziğinin temelini oluşturur. Minör gamlar ise hüzünlü ve dramatik bir his yaratır. Doğal minör (Aeolian), harmonik minör ve melodik minör olmak üzere üç temel minör aile vardır. Harmonik minörün yükseltilmiş 7. derecesi, Orta Doğu ve flamenco müziğindeki egzotik karakteri verir.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Müzikal modlar nedir?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Modlar, majör dizinin farklı derecelerinden başlatılmış gamlardır. Dorian modu hafifçe minör ama enerjik bir his verirken, Phrygian İspanyol flamencosunu çağrıştırır. Mixolydian ise blues ve rock gitaristlerinin sıkça başvurduğu, dominant-seventh akorlarıyla uyumlu bir moddur.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Pentatonik ve blues gamları nedir?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Minör pentatonik gam, gitaristlerin en popüler başlangıç noktasıdır; yalnızca 5 nota içerir ve çoğu müzikal bağlamda yanlış nota yoktur. Blues gamı, pentatoniğe blue note (b5) eklenerek elde edilir ve karakteristik kirli blues tınısını yaratır. Majör pentatonik ise country ve soul melodilerinin temelidir.",
+              },
+            },
+          ],
+        }}
+      />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
           "@type": "SoftwareApplication",
           name: "Gamlar — İnteraktif Gam Keşif Aracı",
           applicationCategory: "MultimediaApplication",

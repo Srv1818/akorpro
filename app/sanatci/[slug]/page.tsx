@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/content/page-header";
 import { CoverImage } from "@/components/content/cover-image";
 import { SongList } from "@/components/content/song-list";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -34,25 +33,31 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   let artist: Awaited<ReturnType<typeof getArtistBySlug>> = null;
+  let songs: Awaited<ReturnType<typeof getSongsByArtist>> = [];
   try {
-    artist = await getArtistBySlug(slug);
+    [artist, songs] = await Promise.all([getArtistBySlug(slug), getSongsByArtist(slug)]);
   } catch {
     artist = null;
   }
   if (!artist) return { title: "Sanatçı bulunamadı" };
+
+  const songCount = songs.length || artist.songCount || 0;
+  const topSongs = songs.slice(0, 3).map((s) => s.title);
+  const parts = [`${artist.name} gitar akorları`];
+  if (artist.genre) parts.push(artist.genre);
+  parts.push(`${songCount} şarkı`);
+  const description =
+    topSongs.length > 0
+      ? `${parts.join(" · ")}. ${topSongs.join(", ")} ve daha fazlası.`
+      : `${parts.join(" · ")}.`;
+
   const title = artist.name;
-  const description = `${artist.name} gitar akorları ve şarkı sözleri.`;
   const url = artistPath(slug);
   return {
     title,
     description,
     alternates: { canonical: url },
-    openGraph: {
-      title,
-      description,
-      url,
-      type: "profile",
-    },
+    openGraph: { title, description, url, type: "profile" },
   };
 }
 
@@ -107,24 +112,32 @@ export default async function SanatciPage({ params }: Props) {
           { label: artistForPage.name, href: artistPath(slug) },
         ]}
       />
-      <PageHeader
-        title={artistForPage.name}
-        description={
-          artistForPage.genre
-            ? `${artistForPage.genre} · ${artistForPage.songCount} şarkı`
-            : `${artistForPage.songCount} şarkı`
-        }
-        leading={
-          <CoverImage
-            src={artistForPage.imageUrl}
-            alt={`${artistForPage.name} profil`}
-            priority
-            className="h-20 w-20 rounded-full sm:h-24 sm:w-24"
-            width={384}
-            height={384}
-          />
-        }
-      />
+      <div className="border-b border-border bg-surface">
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <CoverImage
+              src={artistForPage.imageUrl}
+              alt={`${artistForPage.name} profil`}
+              priority
+              className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24"
+              width={384}
+              height={384}
+            />
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-display sm:text-3xl">{artistForPage.name}</h1>
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                {artistForPage.genre ? (
+                  <>
+                    <span>{artistForPage.genre}</span>
+                    <span className="opacity-30" aria-hidden="true">·</span>
+                  </>
+                ) : null}
+                <span>{songs.length} şarkı</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         <SongList songs={songSummaries} showArtist={false} />
         {songs.length === 0 ? (
