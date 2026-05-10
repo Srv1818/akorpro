@@ -268,6 +268,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
             </PreviewShell>
           </ClientErrorBoundary>
         </Suspense>
+        <div id="lyrics-end" aria-hidden="true" />
 
         {song.copyrightSource ? <p className="mt-4 text-xs text-muted">Kaynak: {song.copyrightSource}</p> : null}
         {song.harmonyDetailsNotes?.trim() ? (
