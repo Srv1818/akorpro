@@ -46,10 +46,14 @@ export function CookieBanner() {
     const stored = getCookieValue(CONSENT_COOKIE);
     if (!stored) {
       setNeedsConsent(true);
-      // Double rAF: first frame commits layout, second frame is after first paint.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setPainted(true));
-      });
+      // Defer visibility until browser is idle — keeps the banner out of the
+      // LCP window so it doesn't become the largest contentful paint element.
+      const show = () => setPainted(true);
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(show, { timeout: 3000 });
+      } else {
+        setTimeout(show, 1000);
+      }
     } else {
       applyConsent(stored as ConsentValue);
     }
