@@ -31,6 +31,7 @@ import {
 import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
 import { MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
 import { AutoScrollWidget } from "@/components/song/AutoScrollWidget";
+import { ChordPopup } from "@/components/chords/chord-popup";
 import { PreviewGamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
 import { PreviewGamlarScaleFormulaPanel } from "@/components/gamlar/gamlar-scale-controls";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
@@ -197,14 +198,18 @@ function displayChordForPreview(token: string, semitones: number, preferFlatsFor
     : transposeChordToken(token, semitones, { preferFlatsForNaturalRoots });
 }
 
-function renderChordTokenNode(token: string, key: string, onClick: () => void): ReactNode {
+function renderChordTokenNode(token: string, key: string, onClick: (t: string, rect: DOMRect) => void): ReactNode {
+  function getRect(e: React.SyntheticEvent<HTMLButtonElement>) {
+    return (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+  }
   return (
     <button
       key={key}
       type="button"
-      onClick={onClick}
+      onMouseEnter={(e) => onClick(token, getRect(e))}
+      onClick={(e) => onClick(token, getRect(e))}
       className="song-chord-token m-0 inline-block cursor-pointer appearance-none border-0 bg-transparent p-0 align-baseline [font-family:inherit] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
-      aria-label={`${token} akoru, Akorlar panelini aç`}
+      aria-label={`${token} akor diyagramını göster`}
     >
       {token}
     </button>
@@ -215,7 +220,7 @@ function renderChordLine(
   line: string,
   semitones: number,
   preferFlatsForNaturalRoots: boolean,
-  onChordClick: () => void,
+  onChordClick: (token: string, rect: DOMRect) => void,
   keyPrefix = "",
 ): ReactNode[] {
   const out: ReactNode[] = [];
@@ -257,7 +262,7 @@ function renderAlignedBracketLine(
   semitones: number,
   preferFlatsForNaturalRoots: boolean,
   lineIndex: number,
-  onChordClick: () => void,
+  onChordClick: (token: string, rect: DOMRect) => void,
   isLastSourceLine: boolean,
 ): ReactNode {
   const matches = Array.from(line.matchAll(BRACKET_CHORD_REGEX));
@@ -356,7 +361,7 @@ function renderChordBodyWithHighlights(
   text: string,
   semitones: number,
   preferFlatsForNaturalRoots: boolean,
-  onChordClick: () => void,
+  onChordClick: (token: string, rect: DOMRect) => void,
 ): ReactNode {
   const lines = normalizeChordBodyText(text).split("\n");
   const rows: ReactNode[] = [];
@@ -674,6 +679,8 @@ export function PreviewClient({
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveAndAddOpen, setSaveAndAddOpen] = useState(false);
   const [chordStripOpen, setChordStripOpen] = useState(false);
+  const [chordPopupToken, setChordPopupToken] = useState<string | null>(null);
+  const [chordPopupAnchor, setChordPopupAnchor] = useState<DOMRect | null>(null);
   const [chordPosIndices, setChordPosIndices] = useState<Record<string, number>>({});
 
   const [playlistNextSong, setPlaylistNextSong] = useState<{ title: string; href: string } | null>(null);
@@ -1614,6 +1621,9 @@ export function PreviewClient({
   return (
     <div className="py-2 sm:py-3">
       <AutoScrollWidget scrollContainerRef={sceneMode ? sceneLyricsScrollRef : undefined} />
+      {chordPopupToken ? (
+        <ChordPopup token={chordPopupToken} anchor={chordPopupAnchor} onClose={() => { setChordPopupToken(null); setChordPopupAnchor(null); }} />
+      ) : null}
       {sceneMode ? (
         <div
           className="dark scene-overlay-root fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black"
@@ -1840,7 +1850,7 @@ export function PreviewClient({
                       splitLyricsEnabled ? leftChordBody : chordBody,
                       semitones,
                       preferFlatsForNaturalRoots,
-                      () => setChordStripOpen(true),
+                      (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
                     )}
                   </pre>
                   {splitLyricsEnabled ? (
@@ -1853,7 +1863,7 @@ export function PreviewClient({
                         rightChordBody,
                         semitones,
                         preferFlatsForNaturalRoots,
-                        () => setChordStripOpen(true),
+                        (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
                       )}
                     </pre>
                   ) : null}
@@ -2407,7 +2417,7 @@ export function PreviewClient({
                 splitLyricsEnabled ? leftChordBody : chordBody,
                 semitones,
                 preferFlatsForNaturalRoots,
-                () => setChordStripOpen(true),
+                (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
               )}
             </pre>
             {splitLyricsEnabled ? (
@@ -2420,7 +2430,7 @@ export function PreviewClient({
                   rightChordBody,
                   semitones,
                   preferFlatsForNaturalRoots,
-                  () => setChordStripOpen(true),
+                  (t: string, rect: DOMRect) => { setChordPopupToken(t); setChordPopupAnchor(rect); },
                 )}
               </pre>
             ) : null}
