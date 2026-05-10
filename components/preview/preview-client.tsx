@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -28,7 +29,8 @@ import {
   limit,
 } from "firebase/firestore";
 import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
-import { AutoScrollButton, MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
+import { MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
+import { AutoScrollWidget } from "@/components/song/AutoScrollWidget";
 import { PreviewGamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
 import { PreviewGamlarScaleFormulaPanel } from "@/components/gamlar/gamlar-scale-controls";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
@@ -39,7 +41,7 @@ import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
 import { getClientFirestore } from "@/lib/firebase/client";
 import { keyModeToGamlarCatalogScaleId } from "@/lib/music/key-mode-gamlar";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
-import { PC_TO_NAME, noteNameToPitchClass } from "@/lib/music/note-utils";
+import { PC_TO_NAME, PC_TO_NAME_FLAT, noteNameToPitchClass } from "@/lib/music/note-utils";
 import { resolveChordTokenToFingering } from "@/lib/music/chord-fingering";
 import {
   chordBodyUsesFlatRootNotation,
@@ -49,7 +51,7 @@ import {
   signedSemitoneDelta,
   transposeChordToken,
 } from "@/lib/music/transpose";
-import { ChevronLeft, ChevronRight, Columns2, Info, ListMusic, Maximize2, Mic, MoreHorizontal, Music2, RotateCcw, Sparkles, Timer, X } from "lucide-react";
+import { BookmarkCheck, BookmarkPlus, ChevronDown, ChevronLeft, ChevronRight, Columns2, Info, KeyRound, ListMusic, Mic, Minus, MoreHorizontal, Music2, Plus, RotateCcw, Sparkles, Timer, X } from "lucide-react";
 
 const PLAYLIST_SCHEMA_VERSION = 1;
 
@@ -525,11 +527,13 @@ export function PreviewClient({
   const pathname = usePathname();
   const [sceneMode, setSceneMode] = useState(false);
   const [sceneMoreOpen, setSceneMoreOpen] = useState(false);
+
   const [lyricsFontSizePx, setLyricsFontSizePx] = useState(LYRICS_FONT_SIZE_DEFAULT);
   const [effectiveLyricsFontSizePx, setEffectiveLyricsFontSizePx] = useState(LYRICS_FONT_SIZE_DEFAULT);
   const [lyricsAutoFitEnabled, setLyricsAutoFitEnabled] = useState(true);
   const [lyricsFitResizeTick, setLyricsFitResizeTick] = useState(0);
   const [splitLyricsEnabled, setSplitLyricsEnabled] = useState(false);
+  const [transposeDropdownOpen, setTransposeDropdownOpen] = useState(false);
 
   const semitones = usePreviewToolsStore((s) => s.transposeSemitones);
   const setTransposeSemitones = usePreviewToolsStore((s) => s.setTransposeSemitones);
@@ -687,8 +691,30 @@ export function PreviewClient({
   const transposeLockRef = useRef(false);
   /** URL güncellenene kadar eski `?transpose` ile store'un ezilmesini engeller. `0` yarım ton da geçerli; parametre kalkışı `"cleared"`. */
   const pendingTransposeRef = useRef<number | "cleared" | null>(null);
+  const transposeContainerRef = useRef<HTMLDivElement>(null);
+  const transposeTriggerRef = useRef<HTMLButtonElement>(null);
+  const sceneTransposeContainerRef = useRef<HTMLDivElement>(null);
+  const transposeDropdownPanelRef = useRef<HTMLDivElement>(null);
+  const [transposeDropdownPos, setTransposeDropdownPos] = useState<{ top: number; left: number } | null>(null);
 
   const preferFlatsForNaturalRoots = useMemo(() => chordBodyUsesFlatRootNotation(chordBody), [chordBody]);
+
+  const transposeNoteTable = preferFlatsForNaturalRoots ? PC_TO_NAME_FLAT : PC_TO_NAME;
+  const originalTonic = parseTonicFromOriginalKey(originalKey);
+  const modeSuffix = originalKey.trim().slice(originalTonic.length).trim();
+  const currentKeyDisplay =
+    transposedTonicPc !== null
+      ? (transposeNoteTable[transposedTonicPc] ?? originalTonic) + modeSuffix
+      : originalTonic + modeSuffix;
+  const transposeNoteItems = Array.from({ length: 12 }, (_, pc) => ({
+    label: (transposeNoteTable[pc] ?? "?") + modeSuffix,
+    pc,
+    delta: originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc),
+  }));
+  const originalNoteItem = transposeNoteItems.find((n) => n.delta === 0) ?? transposeNoteItems[0]!;
+  const otherNoteItems = transposeNoteItems
+    .filter((n) => n !== originalNoteItem)
+    .sort((a, b) => a.delta - b.delta);
 
   const chordStripTokens = useMemo(() => {
     const raw = extractUniqueChordTokensAsRendered(chordBody);
@@ -698,6 +724,34 @@ export function PreviewClient({
     () => chordStripTokens.map((token) => resolveChordTokenToFingering(token)),
     [chordStripTokens],
   );
+
+  useEffect(() => {
+    if (!transposeDropdownOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      const inTrigger = transposeContainerRef.current?.contains(target) || sceneTransposeContainerRef.current?.contains(target);
+      const inPanel = transposeDropdownPanelRef.current?.contains(target);
+      if (!inTrigger && !inPanel) setTransposeDropdownOpen(false);
+    }
+    function updatePos() {
+      const rect = transposeTriggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setTransposeDropdownPos((prev) => {
+        const top = rect.bottom + 6;
+        const left = rect.left;
+        if (prev && prev.top === top && prev.left === left) return prev;
+        return { top, left };
+      });
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [transposeDropdownOpen]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset positions when chords change
   useEffect(() => {
@@ -1235,6 +1289,18 @@ export function PreviewClient({
     if (!saveAndAddOpen) setSaveModalNewListName("");
   }, [saveAndAddOpen]);
 
+  useEffect(() => {
+    if (!addNotice || addNotice.variant === "error") return;
+    const t = setTimeout(() => setAddNotice(null), 3000);
+    return () => clearTimeout(t);
+  }, [addNotice]);
+
+  useEffect(() => {
+    if (!saveMessage || saveState === "error") return;
+    const t = setTimeout(() => { setSaveMessage(null); setSaveState("idle"); }, 3000);
+    return () => clearTimeout(t);
+  }, [saveMessage, saveState]);
+
   const replaceTranspose = useCallback(
     (n: number) => {
       transposeLockRef.current = true;
@@ -1547,6 +1613,7 @@ export function PreviewClient({
 
   return (
     <div className="py-2 sm:py-3">
+      <AutoScrollWidget scrollContainerRef={sceneMode ? sceneLyricsScrollRef : undefined} />
       {sceneMode ? (
         <div
           className="dark scene-overlay-root fixed inset-0 z-[70] box-border flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-black"
@@ -1591,219 +1658,72 @@ export function PreviewClient({
               </div>
               {/* Mobile: compact toolbar */}
               <div className="flex items-center gap-1.5 sm:hidden">
-                <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} variant="scene" />
-                <button
-                  type="button"
-                  aria-pressed={splitLyricsEnabled}
-                  onClick={() => setSplitLyricsEnabled((prev) => !prev)}
-                  className={`inline-flex shrink-0 min-h-[36px] items-center justify-center rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                    splitLyricsEnabled
-                      ? "border-teal-400/60 bg-teal-500/25 text-white"
-                      : "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                  }`}
-                  aria-label="Sözleri iki sütuna böl"
-                  title="Sözleri iki sütuna böl"
-                >
-                  Böl
-                </button>
-                <button
-                  type="button"
-                  disabled={!prevSongHref || playlistNextLoading}
-                  onClick={() => {
-                    if (!prevSongHref) return;
-                    router.push(prevSongHref);
-                  }}
+                <button type="button" disabled={!prevSongHref || playlistNextLoading} onClick={() => { if (!prevSongHref) return; router.push(prevSongHref); }}
                   className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  title={
-                    playlistNextLoading
-                      ? "Liste sırası yükleniyor…"
-                      : prevSongHref
-                        ? `Önceki: ${(playlistPrevSong ?? prevSong)?.title ?? ""}`
-                        : "Önceki şarkı yok"
-                  }
-                  aria-label="Önceki şarkı"
-                >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  disabled={!nextSongHref || playlistNextLoading}
-                  onClick={() => {
-                    if (!nextSongHref) return;
-                    router.push(nextSongHref);
-                  }}
+                  aria-label="Önceki şarkı">←</button>
+                <button type="button" disabled={!nextSongHref || playlistNextLoading} onClick={() => { if (!nextSongHref) return; router.push(nextSongHref); }}
                   className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  title={
-                    playlistNextLoading
-                      ? "Liste sırası yükleniyor…"
-                      : nextSongHref
-                        ? `Sıradaki: ${(playlistNextSong ?? nextSong)?.title ?? ""}`
-                        : "Sıradaki şarkı yok"
-                  }
-                  aria-label="Sıradaki şarkı"
-                >
-                  →
-                </button>
-                <button
-                  type="button"
-                  aria-haspopup="dialog"
-                  aria-expanded={sceneMoreOpen}
-                  onClick={() => setSceneMoreOpen(true)}
+                  aria-label="Sıradaki şarkı">→</button>
+                <button type="button" aria-haspopup="dialog" aria-expanded={sceneMoreOpen} onClick={() => setSceneMoreOpen(true)}
                   className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-white transition hover:bg-white/10"
-                  aria-label="Diğer sahne ayarları"
-                  title="Diğer ayarlar"
-                >
+                  aria-label="Diğer sahne ayarları">
                   <MoreHorizontal className="size-4" aria-hidden />
                 </button>
               </div>
 
               {/* Desktop: full toolbar */}
               <div className="hidden sm:flex items-center gap-2 overflow-x-auto pb-0">
-                <button
-                  type="button"
-                  onClick={() => setChordStripOpen(true)}
-                  aria-expanded={chordStripOpen}
-                  aria-controls="chord-strip-panel"
-                  className="shrink-0 rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 min-h-[36px]"
-                >
-                  Akorlar
-                </button>
-                <AutoScrollButton scrollContainerRef={sceneLyricsScrollRef} variant="scene" />
-                <button
-                  type="button"
-                  disabled={!canDecreaseLyricsFont}
-                  onClick={() => {
-                    setLyricsAutoFitEnabled(false);
-                    setLyricsFontSizePx((size) => Math.max(LYRICS_FONT_SIZE_MIN, size - LYRICS_FONT_SIZE_STEP));
-                  }}
-                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Söz yazısını küçült"
-                  title="Söz yazısını küçült"
-                >
-                  A-
-                </button>
-                <button
-                  type="button"
-                  disabled={!canIncreaseLyricsFont}
-                  onClick={() => {
-                    setLyricsAutoFitEnabled(false);
-                    setLyricsFontSizePx((size) => Math.min(LYRICS_FONT_SIZE_MAX, size + LYRICS_FONT_SIZE_STEP));
-                  }}
-                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label="Söz yazısını büyüt"
-                  title="Söz yazısını büyüt"
-                >
-                  A+
-                </button>
-                <div className="flex shrink-0 items-stretch overflow-hidden rounded-lg border border-white/15">
+                <div ref={sceneTransposeContainerRef} className="flex shrink-0 items-stretch overflow-hidden rounded-lg border border-white/15">
+                  <button type="button" disabled={!canDecreaseTranspose} onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
+                    className="inline-flex min-h-[36px] min-w-[32px] items-center justify-center border-r border-white/15 bg-white/5 px-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Yarım ton düşür">−</button>
                   <button
                     type="button"
-                    disabled={!canDecreaseTranspose}
-                    onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
-                    className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center border-r border-white/15 bg-white/5 px-2.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Transpoze: yarım ton düşür"
-                    title="Transpoze: yarım ton düşür"
+                    onClick={() => {
+                      if (transposeDropdownOpen) {
+                        setTransposeDropdownOpen(false);
+                      } else {
+                        const rect = sceneTransposeContainerRef.current?.querySelector("button:nth-child(2)")?.getBoundingClientRect();
+                        if (rect) setTransposeDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                        setTransposeDropdownOpen(true);
+                      }
+                    }}
+                    aria-expanded={transposeDropdownOpen}
+                    aria-haspopup="listbox"
+                    className="inline-flex min-h-[36px] items-center gap-1.5 bg-white/5 px-2.5 text-left transition hover:bg-white/10"
                   >
-                    T-
+                    <KeyRound className="size-3.5 shrink-0 text-accent" strokeWidth={2} />
+                    <span className="text-[10px] font-medium text-white/60">Ton</span>
+                    <span className="inline-block min-w-[2ch] text-sm font-bold text-white">{currentKeyDisplay}</span>
+                    <ChevronDown className={`size-3 shrink-0 text-white/60 transition-transform duration-200 ${transposeDropdownOpen ? "rotate-180" : ""}`} strokeWidth={2.5} />
                   </button>
-                  <span className={`flex min-w-[2.5rem] items-center justify-center px-2 text-xs font-bold tabular-nums ${semitones === 0 ? "bg-white/5 text-white/40" : "bg-accent/20 text-accent"}`}>
-                    {semitones > 0 ? `+${semitones}` : semitones}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={!canIncreaseTranspose}
-                    onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
-                    className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center border-l border-white/15 bg-white/5 px-2.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Transpoze: yarım ton yükselt"
-                    title="Transpoze: yarım ton yükselt"
-                  >
-                    T+
-                  </button>
+                  <button type="button" disabled={!canIncreaseTranspose} onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
+                    className="inline-flex min-h-[36px] min-w-[32px] items-center justify-center border-l border-white/15 bg-white/5 px-2 text-xs font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Yarım ton yükselt">+</button>
                 </div>
-                <button
-                  type="button"
-                  aria-pressed={splitLyricsEnabled}
-                  onClick={() => setSplitLyricsEnabled((prev) => !prev)}
-                  className={`inline-flex shrink-0 min-h-[36px] items-center justify-center rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${
-                    splitLyricsEnabled
-                      ? "border-teal-400/60 bg-teal-500/25 text-white"
-                      : "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                  }`}
-                  aria-label="Sözleri iki sütuna böl"
-                  title="Sözleri iki sütuna böl"
-                >
-                  Böl
+                <button type="button" disabled={!canDecreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.max(LYRICS_FONT_SIZE_MIN, s - LYRICS_FONT_SIZE_STEP)); }}
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Söz yazısını küçült">A-</button>
+                <button type="button" disabled={!canIncreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.min(LYRICS_FONT_SIZE_MAX, s + LYRICS_FONT_SIZE_STEP)); }}
+                  className="inline-flex shrink-0 min-h-[36px] min-w-[36px] items-center justify-center rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Söz yazısını büyüt">A+</button>
+                <button type="button" aria-pressed={splitLyricsEnabled} onClick={() => setSplitLyricsEnabled((prev) => !prev)}
+                  className={`inline-flex shrink-0 min-h-[36px] items-center gap-1 justify-center rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${splitLyricsEnabled ? "border-teal-400/60 bg-teal-500/25 text-white" : "border-white/15 bg-white/5 text-white hover:bg-white/10"}`}
+                  aria-label="Sözleri iki sütuna böl">
+                  <Columns2 className="size-3.5 shrink-0" strokeWidth={1.75} />Böl
                 </button>
-                <button
-                  type="button"
-                  disabled={!prevSongHref || playlistNextLoading}
-                  onClick={() => {
-                    if (!prevSongHref) return;
-                    router.push(prevSongHref);
-                  }}
+                <button type="button" disabled={!prevSongHref || playlistNextLoading} onClick={() => { if (!prevSongHref) return; router.push(prevSongHref); }}
                   className="shrink-0 rounded-lg border border-white/10 bg-gradient-to-r from-amber-700 via-amber-500 to-yellow-400 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-amber-600 hover:via-amber-400 hover:to-yellow-300 disabled:cursor-not-allowed disabled:opacity-40 min-h-[36px]"
-                  title={
-                    playlistNextLoading
-                      ? "Liste sırası yükleniyor…"
-                      : prevSongHref
-                        ? `Önceki: ${(playlistPrevSong ?? prevSong)?.title ?? ""}`
-                        : "Önceki şarkı yok"
-                  }
-                >
-                  {playlistNextLoading ? (
-                    "…"
-                  ) : prevSongHref ? (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="shrink-0">←</span>
-                      <span className="hidden sm:inline shrink-0">Önceki:</span>
-                      <span className="hidden sm:inline min-w-0 max-w-[8rem] truncate text-white/90">
-                        {(playlistPrevSong ?? prevSong)?.title ?? ""}
-                      </span>
-                    </span>
-                  ) : (
-                    "←"
-                  )}
+                  title={prevSongHref ? `Önceki: ${(playlistPrevSong ?? prevSong)?.title ?? ""}` : "Önceki şarkı yok"}>
+                  {prevSongHref ? <span className="inline-flex items-center gap-1"><span>←</span><span className="hidden sm:inline max-w-[8rem] truncate text-white/90">{(playlistPrevSong ?? prevSong)?.title ?? ""}</span></span> : "←"}
                 </button>
-                <button
-                  type="button"
-                  disabled={!nextSongHref || playlistNextLoading}
-                  onClick={() => {
-                    if (!nextSongHref) return;
-                    router.push(nextSongHref);
-                  }}
+                <button type="button" disabled={!nextSongHref || playlistNextLoading} onClick={() => { if (!nextSongHref) return; router.push(nextSongHref); }}
                   className="shrink-0 rounded-lg border border-white/10 bg-gradient-to-r from-yellow-400 via-amber-500 to-amber-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-amber-500/35 transition hover:from-yellow-300 hover:via-amber-400 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-40 min-h-[36px]"
-                  title={
-                    playlistNextLoading
-                      ? "Liste sırası yükleniyor…"
-                      : nextSongHref
-                        ? `Sıradaki: ${(playlistNextSong ?? nextSong)?.title ?? ""}`
-                        : "Sıradaki şarkı yok"
-                  }
-                >
-                  {playlistNextLoading ? (
-                    "…"
-                  ) : nextSongHref ? (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="hidden sm:inline shrink-0">Sıradaki:</span>
-                      <span className="hidden sm:inline min-w-0 max-w-[8rem] truncate text-white/90">
-                        {(playlistNextSong ?? nextSong)?.title ?? ""}
-                      </span>
-                      <span className="shrink-0">→</span>
-                    </span>
-                  ) : (
-                    "→"
-                  )}
+                  title={nextSongHref ? `Sıradaki: ${(playlistNextSong ?? nextSong)?.title ?? ""}` : "Sıradaki şarkı yok"}>
+                  {nextSongHref ? <span className="inline-flex items-center gap-1"><span className="hidden sm:inline max-w-[8rem] truncate text-white/90">{(playlistNextSong ?? nextSong)?.title ?? ""}</span><span>→</span></span> : "→"}
                 </button>
-                <PanelCloseButton
-                  variant="scene"
-                  className="hidden sm:inline-flex"
-                  title="Esc ile de çıkabilirsiniz"
-                  onClick={() => {
-                    setSceneMode(false);
-                    replaceSceneParam(false);
-                    setSceneMoreOpen(false);
-                  }}
-                />
+                <PanelCloseButton variant="scene" className="hidden sm:inline-flex" title="Esc ile de çıkabilirsiniz"
+                  onClick={() => { setSceneMode(false); replaceSceneParam(false); setSceneMoreOpen(false); }} />
               </div>
             </div>
 
@@ -1881,14 +1801,23 @@ export function PreviewClient({
                           </div>
                         </div>
 
-                        <div className="mt-3">
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            aria-pressed={splitLyricsEnabled}
+                            onClick={() => setSplitLyricsEnabled((prev) => !prev)}
+                            className={`inline-flex flex-1 min-h-[40px] items-center justify-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition ${splitLyricsEnabled ? "border-teal-400/60 bg-teal-500/25 text-white" : "border-white/15 bg-white/5 text-white hover:bg-white/10"}`}
+                            aria-label="Sözleri iki sütuna böl"
+                          >
+                            <Columns2 className="size-4 shrink-0" strokeWidth={1.75} />Böl
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
                               resetOriginal();
                               setSceneMoreOpen(false);
                             }}
-                            className="inline-flex min-h-[40px] w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                            className="inline-flex flex-1 min-h-[40px] items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-semibold text-white transition hover:bg-white/10"
                           >
                             Orijinale dön
                           </button>
@@ -1899,7 +1828,7 @@ export function PreviewClient({
                 </>
               ) : null}
 
-            <div ref={sceneLyricsScrollRef} className="scene-lyrics-area flex-1 overflow-auto p-3 sm:p-6">
+            <div ref={sceneLyricsScrollRef} className="scene-lyrics-area min-h-0 flex-1 overflow-auto p-3 sm:p-6">
               <div className={splitLyricsEnabled ? "overflow-x-auto" : ""}>
                 <div className={splitLyricsEnabled ? "grid grid-cols-2 gap-4 max-sm:min-w-[42rem]" : ""}>
                   <pre
@@ -2179,7 +2108,7 @@ export function PreviewClient({
         </>
       ) : null}
 
-      <div className="mb-2 flex flex-col gap-2 sm:mb-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+      <div className="mb-2 sm:mb-2.5">
         <div className="min-w-0">
           <h1 className="text-balance text-xl font-semibold leading-snug tracking-tight sm:text-2xl [font-synthesis:none]">
             <span className="text-display">{songTitle}</span>
@@ -2196,24 +2125,6 @@ export function PreviewClient({
             <span className="shrink-0 opacity-20">·</span>
             <span className="inline-flex min-w-0 items-center gap-1"><span className="opacity-60">✦</span><span className="truncate font-semibold text-foreground tracking-normal"><ModScaleLabel scaleId={gamlarWidgetScaleId} /></span></span>
           </p>
-        </div>
-        <div className="flex items-center gap-1.5 sm:shrink-0">
-          {showHarmonyDetails && (
-            <button type="button" onClick={() => document.getElementById("sarki-analizi")?.scrollIntoView({ behavior: "smooth" })}
-              className="lyrics-size-btn sm:hidden inline-flex items-center gap-1 rounded-full border border-accent/50 bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
-              <Sparkles className="size-3 shrink-0" strokeWidth={1.75} />
-              Analiz
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={saveState === "saving" || (firebaseUid !== null && !canSave)}
-            onClick={() => void onSave()}
-            title={!firebaseConfigured && firebaseUid !== null ? "NEXT_PUBLIC_FIREBASE_* tanımlayın" : undefined}
-            className="lyrics-size-btn rounded-lg bg-accent px-2.5 py-0.5 sm:py-1.5 text-xs font-medium text-accent-foreground transition hover:bg-accent-muted disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-[36px]"
-          >
-            {saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
-          </button>
         </div>
       </div>
 
@@ -2302,99 +2213,149 @@ export function PreviewClient({
         </div>
       ) : null}
 
-      <div className="preview-toolbar-row mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3 overflow-x-hidden">
-        <div className="min-w-0 flex-1" role="group" aria-label="Transpoze kontrolleri (ok tuşları)">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1 min-w-0">
-            <div className="transpose-grid w-full min-w-0 sm:w-auto">
-              {([
-                { label: "C",  pc: 0  },
-                { label: "C#", pc: 1  },
-                { label: "Db", pc: 1  },
-                { label: "D",  pc: 2  },
-                { label: "D#", pc: 3  },
-                { label: "Eb", pc: 3  },
-                { label: "E",  pc: 4  },
-                { label: "F",  pc: 5  },
-                { label: "F#", pc: 6  },
-                { label: "Gb", pc: 6  },
-                { label: "G",  pc: 7  },
-                { label: "G#", pc: 8  },
-                { label: "Ab", pc: 8  },
-                { label: "A",  pc: 9  },
-                { label: "A#", pc: 10 },
-                { label: "Bb", pc: 10 },
-                { label: "B",  pc: 11 },
-              ] as const).map(({ label, pc }) => {
-                const delta = originalTonicPc === null ? 0 : signedSemitoneDelta(originalTonicPc, pc);
-                const isActive = semitones === delta;
-                return (
+      <div className="preview-toolbar-row mt-3 sm:mt-4 overflow-x-hidden">
+        <div className="tools-strip-wrapper rounded-2xl border border-border/50 bg-surface px-1.5 py-1.5">
+          <div className="tools-strip" role="group" aria-label="Araçlar">
+            <div className="flex items-center gap-1 shrink-0" ref={transposeContainerRef}>
+              {/* Yarım ton düşür */}
+              <button
+                type="button"
+                disabled={!canDecreaseTranspose}
+                onClick={() => replaceTranspose(clampTransposeSemitones(semitones - 1))}
+                aria-label="Yarım ton düşür"
+                className="lyrics-size-btn inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-foreground transition hover:bg-white/10 disabled:opacity-40"
+              >
+                <Minus className="size-3.5" strokeWidth={2.5} />
+              </button>
+
+              <div className="relative">
+              {/* Transpoze dropdown trigger */}
+              <button
+                ref={transposeTriggerRef}
+                type="button"
+                onClick={() => {
+                  if (transposeDropdownOpen) {
+                    setTransposeDropdownOpen(false);
+                  } else {
+                    const rect = transposeTriggerRef.current?.getBoundingClientRect();
+                    if (rect) setTransposeDropdownPos({ top: rect.bottom + 6, left: rect.left });
+                    setTransposeDropdownOpen(true);
+                  }
+                }}
+                aria-expanded={transposeDropdownOpen}
+                aria-haspopup="listbox"
+                className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-white/5 px-2.5 text-left transition hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                <KeyRound className="size-3.5 shrink-0 text-accent" strokeWidth={2} />
+                <span className="text-[10px] font-medium text-muted">Ton</span>
+                <span className="inline-block min-w-[2ch] text-sm font-bold text-foreground">{currentKeyDisplay}</span>
+                <ChevronDown
+                  className={`size-3 shrink-0 text-muted transition-transform duration-200 ${transposeDropdownOpen ? "rotate-180" : ""}`}
+                  strokeWidth={2.5}
+                />
+              </button>
+
+              {/* Transpoze dropdown panel — portal ile overflow kısıtlamalarından kaçınır */}
+              {transposeDropdownOpen && transposeDropdownPos && typeof document !== "undefined" && createPortal(
+                <div
+                  ref={transposeDropdownPanelRef}
+                  role="listbox"
+                  aria-label="Transpoze tonu seç"
+                  style={{ position: "fixed", top: transposeDropdownPos.top, left: transposeDropdownPos.left }}
+                  className="z-[9999] min-w-[10rem] rounded-xl border border-border bg-surface shadow-2xl overflow-y-auto max-h-72"
+                >
+                  {/* Orijinal ton */}
                   <button
-                    key={label}
                     type="button"
-                    aria-pressed={isActive}
-                    onClick={() => replaceTranspose(delta)}
-                    className={`select-none inline-flex w-full items-center justify-center rounded border px-0.5 py-1 font-medium transition sm:h-[36px] sm:min-w-[36px] sm:rounded-md sm:px-1.5 sm:py-1 sm:text-xs sm:w-auto ${
-                      isActive
-                        ? "border-accent bg-accent text-accent-foreground"
-                        : "border-white/10 bg-bg text-muted hover:border-white/30 hover:text-foreground"
-                    }`}
+                    role="option"
+                    aria-selected={semitones === 0}
+                    onClick={() => { replaceTranspose(0); setTransposeDropdownOpen(false); }}
+                    className={`flex w-full items-center justify-between gap-4 px-3.5 py-2.5 transition hover:bg-white/5 ${semitones === 0 ? "text-accent" : "text-foreground"}`}
                   >
-                    {label}
+                    <span className="text-sm font-semibold">{originalNoteItem.label}</span>
+                    <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted uppercase">Orijinal</span>
                   </button>
-                );
-              })}
-              {/* Orijinale dön — mobilde grid'in 18. hücresi */}
-              <button type="button" onClick={resetOriginal} aria-label="Orijinale dön"
-                className="lyrics-size-btn sm:hidden select-none inline-flex w-full items-center justify-center rounded border border-border bg-bg transition hover:bg-surface">
-                <span className="flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <RotateCcw className="size-4" strokeWidth={2.5} />
-                </span>
-              </button>
-            </div>
-            {/* Mobil: Tam ekran + A-/A+ + araçlar tek yatay şerit */}
-            <div className="tools-strip-wrapper sm:hidden mt-1.5 w-full min-w-0">
-            <div className="tools-strip pb-0.5">
-              <button type="button" onClick={() => { const n = !sceneMode; setSceneMode(n); replaceSceneParam(n); }} aria-pressed={sceneMode}
-                className={`snap-start lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${sceneMode ? "border-accent bg-accent text-accent-foreground" : "border-border bg-surface text-foreground"}`}>
-                <Mic className="size-3 shrink-0" strokeWidth={2.25} aria-hidden /> Tam ekran
-              </button>
-              <button type="button" disabled={!canDecreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.max(LYRICS_FONT_SIZE_MIN, s - LYRICS_FONT_SIZE_STEP)); }}
-                className="snap-start lyrics-size-btn inline-flex shrink-0 h-7 w-8 items-center justify-center rounded-lg border border-border bg-bg text-xs font-semibold text-foreground disabled:opacity-50">A-</button>
-              <button type="button" disabled={!canIncreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.min(LYRICS_FONT_SIZE_MAX, s + LYRICS_FONT_SIZE_STEP)); }}
-                className="snap-start lyrics-size-btn inline-flex shrink-0 h-7 w-8 items-center justify-center rounded-lg border border-border bg-bg text-xs font-semibold text-foreground disabled:opacity-50">A+</button>
-              <div className="w-px shrink-0 self-stretch bg-border/50 mx-0.5" />
-              <button type="button" onClick={() => setOpenWidgets((w) => { const o = !w.gamlar; if (o) tryLockGamlarLandscape(); return { ...w, gamlar: o }; })} aria-pressed={openWidgets.gamlar}
-                className={`snap-start lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${openWidgets.gamlar ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
-                <Music2 className="size-3 shrink-0" strokeWidth={1.75} /> Solo/Gam
-              </button>
-              <button type="button" onClick={() => setChordStripOpen((o) => !o)} aria-expanded={chordStripOpen}
-                className={`snap-start lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${chordStripOpen ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
-                <ListMusic className="size-3 shrink-0" strokeWidth={1.75} /> Akorlar
-              </button>
-              <button type="button" aria-pressed={splitLyricsEnabled} onClick={() => setSplitLyricsEnabled((p) => !p)}
-                className={`snap-start lyrics-size-btn inline-flex shrink-0 h-7 items-center gap-1 rounded-lg border px-2 text-xs font-medium transition ${splitLyricsEnabled ? "border-accent bg-accent text-accent-foreground" : "border-border bg-bg text-foreground"}`}>
-                <Columns2 className="size-3 shrink-0" strokeWidth={1.75} /> Böl
-              </button>
-            </div>
-            </div>
 
-            {/* Masaüstü: Orijinale dön + A-/A+ */}
-            <div className="hidden sm:flex items-center gap-1 mt-0 ml-4">
-              <button type="button" onClick={resetOriginal} aria-label="Orijinale dön"
-                className="lyrics-size-btn inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-bg transition hover:bg-surface">
-                <span className="flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                  <RotateCcw className="size-3.5" strokeWidth={2.5} />
-                </span>
+                  <div className="h-px mx-3 bg-border/40" />
+
+                  {/* Diğer tonlar */}
+                  {otherNoteItems.map(({ label, delta }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      role="option"
+                      aria-selected={semitones === delta}
+                      onClick={() => { replaceTranspose(delta); setTransposeDropdownOpen(false); }}
+                      className={`flex w-full items-center justify-between gap-4 px-3.5 py-2.5 text-sm transition hover:bg-white/5 ${semitones === delta ? "text-accent font-semibold" : "text-foreground font-medium"}`}
+                    >
+                      <span>{label}</span>
+                      <span className="text-xs text-muted tabular-nums">{delta > 0 ? `+${delta}` : delta}</span>
+                    </button>
+                  ))}
+                </div>,
+                document.body
+              )}
+              </div>
+
+              {/* Yarım ton yükselt */}
+              <button
+                type="button"
+                disabled={!canIncreaseTranspose}
+                onClick={() => replaceTranspose(clampTransposeSemitones(semitones + 1))}
+                aria-label="Yarım ton yükselt"
+                className="lyrics-size-btn inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-foreground transition hover:bg-white/10 disabled:opacity-40"
+              >
+                <Plus className="size-3.5" strokeWidth={2.5} />
               </button>
-              <button type="button" disabled={!canDecreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.max(LYRICS_FONT_SIZE_MIN, s - LYRICS_FONT_SIZE_STEP)); }}
-                className="lyrics-size-btn inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-bg px-1.5 text-xs font-semibold text-foreground disabled:opacity-50">A-</button>
-              <button type="button" disabled={!canIncreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.min(LYRICS_FONT_SIZE_MAX, s + LYRICS_FONT_SIZE_STEP)); }}
-                className="lyrics-size-btn inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-bg px-1.5 text-xs font-semibold text-foreground disabled:opacity-50">A+</button>
+
+              {/* Kaydet */}
+              <button
+                type="button"
+                disabled={saveState === "saving" || (firebaseUid !== null && !canSave)}
+                onClick={() => void onSave()}
+                title={saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
+                aria-label={saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
+                className={`lyrics-size-btn inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition disabled:opacity-40 ${saveState === "saved" ? "border-accent/60 bg-accent/15 hover:bg-accent/25" : "border-border/60 bg-white/5 hover:bg-white/10"}`}
+              >
+                {saveState === "saved"
+                  ? <BookmarkCheck className="size-3.5 text-accent" strokeWidth={2} />
+                  : <BookmarkPlus className="size-3.5 text-foreground/80" strokeWidth={2} />}
+              </button>
             </div>
+            <div className="w-px shrink-0 self-stretch bg-border/50 mx-0.5" />
+            {showHarmonyDetails && (
+              <button type="button"
+                onClick={() => document.getElementById("sarki-analizi")?.scrollIntoView({ behavior: "smooth" })}
+                className="snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg border border-accent/60 bg-accent/10 px-2.5 text-xs font-semibold text-accent transition">
+                <Sparkles className="size-3.5 shrink-0" strokeWidth={1.75} /> Analiz
+              </button>
+            )}
+            <button type="button" onClick={() => { const n = !sceneMode; setSceneMode(n); replaceSceneParam(n); }} aria-pressed={sceneMode}
+              className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${sceneMode ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
+              <Mic className="size-3.5 shrink-0" strokeWidth={2} aria-hidden /> Tam ekran
+            </button>
+            <button type="button" onClick={() => setOpenWidgets((w) => { const o = !w.gamlar; if (o) tryLockGamlarLandscape(); return { ...w, gamlar: o }; })} aria-pressed={openWidgets.gamlar}
+              className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${openWidgets.gamlar ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
+              <Music2 className="size-3.5 shrink-0" strokeWidth={1.75} /> Solo/Gam
+            </button>
+            <button type="button" onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))} aria-pressed={openWidgets.metronome}
+              className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${openWidgets.metronome ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
+              <Timer className="size-3.5 shrink-0" strokeWidth={1.75} /> Metronom
+            </button>
+            <button type="button" id="chord-strip-trigger" onClick={() => setChordStripOpen((o) => !o)} aria-expanded={chordStripOpen} aria-controls="chord-strip-panel"
+              className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${chordStripOpen ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
+              <ListMusic className="size-3.5 shrink-0" strokeWidth={1.75} /> Akorlar
+            </button>
+            <button type="button" aria-pressed={splitLyricsEnabled} onClick={() => setSplitLyricsEnabled((p) => !p)}
+              className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${splitLyricsEnabled ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
+              <Columns2 className="size-3.5 shrink-0" strokeWidth={1.75} /> Böl
+            </button>
+            <div className="w-px shrink-0 self-stretch bg-border/50 mx-0.5" />
+            <button type="button" disabled={!canDecreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.max(LYRICS_FONT_SIZE_MIN, s - LYRICS_FONT_SIZE_STEP)); }}
+              className="snap-start lyrics-size-btn inline-flex shrink-0 h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold text-foreground transition hover:bg-white/10 disabled:opacity-50">A-</button>
+            <button type="button" disabled={!canIncreaseLyricsFont} onClick={() => { setLyricsAutoFitEnabled(false); setLyricsFontSizePx((s) => Math.min(LYRICS_FONT_SIZE_MAX, s + LYRICS_FONT_SIZE_STEP)); }}
+              className="snap-start lyrics-size-btn inline-flex shrink-0 h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold text-foreground transition hover:bg-white/10 disabled:opacity-50">A+</button>
           </div>
-        </div>
-
-        <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:items-end sm:gap-2">
         </div>
       </div>
 
@@ -2429,106 +2390,9 @@ export function PreviewClient({
 
       {/* Çalma araçları: (Kopyala/Yazdır kaldırıldı) */}
 
-      <div className="mt-6 flex flex-col sm:flex-row sm:items-start gap-2 sm:mt-8 sm:gap-3">
-      {/* Sağ kenar buton sütunu — mobilde yatay satır, masaüstünde dikey sütun */}
-      <div className="hidden sm:flex order-last sm:w-auto sm:flex-col gap-1.5 sm:sticky sm:top-4 sm:shrink-0 sm:self-start print:hidden">
-        <button
-          type="button"
-          onClick={() => document.getElementById("sarki-analizi")?.scrollIntoView({ behavior: "smooth" })}
-          disabled={!showHarmonyDetails}
-          className="preview-tool-btn hidden sm:inline-flex items-center justify-center gap-1.5 rounded-lg border border-accent/60 bg-accent/10 px-2 py-1.5 text-xs font-semibold text-accent min-h-[36px] w-full disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <Sparkles className="size-3.5 shrink-0" strokeWidth={1.75} />
-          Şarkı Analizi
-        </button>
-        <hr className="hidden sm:block border-border opacity-50 my-0.5" />
-        <button
-          type="button"
-          onClick={() => {
-            const next = !sceneMode;
-            setSceneMode(next);
-            replaceSceneParam(next);
-          }}
-          aria-pressed={sceneMode}
-          aria-label="Tam ekran"
-          title="Tam ekran"
-          className={`preview-tool-btn hidden sm:inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
-            sceneMode
-              ? "border-accent bg-accent text-accent-foreground"
-              : "border-border bg-bg text-foreground"
-          }`}
-        >
-          <Maximize2 className="size-3.5 shrink-0" strokeWidth={1.75} />
-          Tam ekran
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setOpenWidgets((w) => {
-              const opening = !w.gamlar;
-              if (opening) tryLockGamlarLandscape();
-              return { ...w, gamlar: opening };
-            })
-          }
-          aria-pressed={openWidgets.gamlar}
-          title="Solo/Gam"
-          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
-            openWidgets.gamlar
-              ? "border-accent bg-accent text-accent-foreground"
-              : "border-border bg-bg text-foreground"
-          }`}
-        >
-          <Music2 className="size-3.5 shrink-0" strokeWidth={1.75} />
-          Solo/Gam
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpenWidgets((w) => ({ ...w, metronome: !w.metronome }))}
-          aria-pressed={openWidgets.metronome}
-          title="Metronom"
-          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
-            openWidgets.metronome
-              ? "border-accent bg-accent text-accent-foreground"
-              : "border-border bg-bg text-foreground"
-          }`}
-        >
-          <Timer className="size-3.5 shrink-0" strokeWidth={1.75} />
-          Metronom
-        </button>
-        <button
-          type="button"
-          id="chord-strip-trigger"
-          onClick={() => setChordStripOpen((o) => !o)}
-          aria-expanded={chordStripOpen}
-          aria-controls="chord-strip-panel"
-          title="Akorlar"
-          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
-            chordStripOpen
-              ? "border-accent bg-accent text-accent-foreground"
-              : "border-border bg-bg text-foreground"
-          }`}
-        >
-          <ListMusic className="size-3.5 shrink-0" strokeWidth={1.75} />
-          Akorlar
-        </button>
-        <button
-          type="button"
-          aria-pressed={splitLyricsEnabled}
-          onClick={() => setSplitLyricsEnabled((prev) => !prev)}
-          title="Sözleri iki sütuna böl"
-          className={`preview-tool-btn inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium min-h-[36px] ${
-            splitLyricsEnabled
-              ? "border-accent bg-accent text-accent-foreground"
-              : "border-border bg-bg text-foreground"
-          }`}
-        >
-          <Columns2 className="size-3.5 shrink-0" strokeWidth={1.75} />
-          Böl
-        </button>
-      </div>
-
+      <div className="mt-6 sm:mt-8">
       <article
-        className="min-w-0 flex-1 bg-transparent pb-4 sm:pb-6 print:border-0 print:p-0"
+        className="min-w-0 bg-transparent pb-4 sm:pb-6 print:border-0 print:p-0"
         id="chord-body"
         data-split={splitLyricsEnabled ? "true" : "false"}
       >
@@ -2563,7 +2427,7 @@ export function PreviewClient({
           </div>
         </div>
       </article>
-      </div>{/* mt-6 flex items-start */}
+      </div>
 
 
       <div className="print:hidden">

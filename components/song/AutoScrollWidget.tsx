@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Pause, Play } from "lucide-react";
 
-export function AutoScrollWidget() {
+export function AutoScrollWidget({
+  scrollContainerRef,
+}: {
+  scrollContainerRef?: RefObject<HTMLElement | null>;
+} = {}) {
+  const containerMode = !!scrollContainerRef;
   const [speed, setSpeed] = useState(50);
   const [active, setActive] = useState(false);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(containerMode);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -18,6 +23,7 @@ export function AutoScrollWidget() {
   const shrinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (containerMode) return;
     const sentinel = document.getElementById("lyrics-end");
     if (!sentinel) return;
     const observer = new IntersectionObserver(
@@ -29,9 +35,10 @@ export function AutoScrollWidget() {
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, []);
+  }, [containerMode]);
 
   useEffect(() => {
+    if (containerMode) return;
     const onScroll = () => {
       const current = window.scrollY;
       if (current > lastScrollY.current && current > 80) {
@@ -48,7 +55,7 @@ export function AutoScrollWidget() {
       window.removeEventListener("scroll", onScroll);
       if (shrinkTimer.current) clearTimeout(shrinkTimer.current);
     };
-  }, []);
+  }, [containerMode]);
 
   useEffect(() => {
     if (!active) {
@@ -61,14 +68,21 @@ export function AutoScrollWidget() {
       accRef.current += speed / 60;
       const px = Math.floor(accRef.current);
       if (px > 0) {
-        window.scrollBy(0, px);
+        const el = scrollContainerRef?.current;
+        if (el) {
+          el.scrollTop += px;
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
+            setActive(false);
+            return;
+          }
+        } else {
+          window.scrollBy(0, px);
+          if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 10) {
+            setActive(false);
+            return;
+          }
+        }
         accRef.current -= px;
-      }
-      const atBottom =
-        window.innerHeight + window.scrollY >= document.body.scrollHeight - 10;
-      if (atBottom) {
-        setActive(false);
-        return;
       }
       rafRef.current = requestAnimationFrame(step);
     };
@@ -77,7 +91,7 @@ export function AutoScrollWidget() {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [active, speed]);
+  }, [active, speed, scrollContainerRef]);
 
   const hidden = !visible;
   const miniMode = shrunk && !active && visible;

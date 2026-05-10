@@ -36,7 +36,7 @@ export function AutoScrollButton({
         const el = scrollContainerRef?.current;
         if (el) {
           el.scrollTop += delta;
-        } else {
+        } else if (!scrollContainerRef) {
           window.scrollBy({ top: delta, left: 0, behavior: "auto" });
         }
         accRef.current -= delta;
@@ -92,6 +92,45 @@ export function AutoScrollButton({
       ) : null}
     </div>
   );
+}
+
+export function AutoScrollEngine({
+  active,
+  speed = 1,
+  scrollContainerRef,
+}: {
+  active: boolean;
+  speed?: number;
+  scrollContainerRef?: RefObject<HTMLElement | null>;
+}) {
+  const rafRef = useRef(0);
+  const accRef = useRef(0);
+
+  useEffect(() => {
+    if (!active) return;
+    accRef.current = 0;
+    let last = performance.now();
+    function tick(now: number) {
+      const dt = now - last;
+      last = now;
+      accRef.current += (speed * dt) / 60;
+      const delta = Math.trunc(accRef.current);
+      if (delta !== 0) {
+        const el = scrollContainerRef?.current;
+        if (el) {
+          el.scrollTop += delta;
+        } else if (!scrollContainerRef) {
+          window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+        }
+        accRef.current -= delta;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [active, speed, scrollContainerRef]);
+
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
