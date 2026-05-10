@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { chordPath } from "@/lib/paths";
+import { artistPath, chordPath } from "@/lib/paths";
 import type { SongSummary } from "@/lib/types/content";
 
 export type DiscoverAccent = "rose" | "emerald" | "amber";
@@ -43,14 +43,9 @@ function SongRow({
   const isTop = rank <= 3;
 
   return (
-    <Link
-      href={chordPath(song.artistSlug, song.slug)}
-      prefetch={false}
-      className="group relative flex items-center gap-3 rounded-lg px-2 py-2 transition-all hover:bg-accent/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
-      aria-label={`${song.title} — ${song.artistName} akoru`}
-    >
+    <div className="group relative flex items-center gap-3 rounded-lg px-2 py-2 transition-all hover:bg-accent/5">
       <span
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold tabular-nums ${
+        className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold tabular-nums ${
           isTop ? styles.rank : "bg-bg text-muted"
         }`}
         aria-hidden="true"
@@ -59,14 +54,27 @@ function SongRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="line-clamp-1 text-sm font-semibold text-display transition-colors group-hover:text-accent">
-          {song.title}
+          <Link
+            href={chordPath(song.artistSlug, song.slug)}
+            prefetch={false}
+            aria-label={`${song.title} — ${song.artistName} akoru`}
+            className="after:absolute after:inset-0 after:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-[-2px] rounded-sm"
+          >
+            {song.title}
+          </Link>
         </span>
-        <span className="mt-0.5 line-clamp-1 text-xs text-muted">{song.artistName}</span>
+        <Link
+          href={artistPath(song.artistSlug)}
+          prefetch={false}
+          className="relative z-10 mt-0.5 line-clamp-1 text-xs text-muted hover:text-foreground hover:underline underline-offset-2 transition-colors"
+        >
+          {song.artistName}
+        </Link>
       </span>
       <svg
         aria-hidden="true"
         viewBox="0 0 20 20"
-        className="h-4 w-4 shrink-0 text-muted/40 transition-all group-hover:translate-x-0.5 group-hover:text-accent"
+        className="relative z-10 h-4 w-4 shrink-0 pointer-events-none text-muted/40 transition-all group-hover:translate-x-0.5 group-hover:text-accent"
         fill="none"
         stroke="currentColor"
         strokeWidth="2"
@@ -75,7 +83,7 @@ function SongRow({
       >
         <path d="M7 5l6 5-6 5" />
       </svg>
-    </Link>
+    </div>
   );
 }
 

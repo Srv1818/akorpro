@@ -2183,7 +2183,7 @@ export function PreviewClient({
             <span className="text-display">{songTitle}</span>
             <span className="font-medium text-muted"> Akorları </span>
             <span className="text-muted">- </span>
-            <span className="text-foreground">{artistName}</span>
+            <Link href={`/sanatci/${artistSlug}`} className="text-foreground hover:text-accent hover:underline underline-offset-2 transition-colors">{artistName}</Link>
           </h1>
           <p className="mt-1 flex items-center gap-x-2 overflow-hidden text-xs font-light text-muted/70 tracking-wide">
             <span className="inline-flex shrink-0 items-center gap-1"><span className="opacity-60">🎵</span><span className="font-semibold text-foreground tracking-normal">{originalKey}</span></span>

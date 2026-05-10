@@ -23,6 +23,46 @@ export default function BesliCemberPage() {
       <JsonLd
         data={{
           "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: [
+            {
+              "@type": "Question",
+              name: "5'li çember nedir?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "5'li çember (circle of fifths), müzikteki 12 tonu aralarındaki tonal ilişkiye göre dairesel olarak düzenleyen bir referans aracıdır. Komşu tonlar arasında yalnızca bir diyez ya da bemol farkı vardır; bu yüzden birbirine yakın tonlar uyumlu akor geçişleri ve modülasyonlar için idealdir.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "5'li çember gitaristlerin ne işine yarar?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Bir şarkının hangi akorlarının doğal hissettiğini anlamak için 5'li çember kullanılır. Örneğin C majör tonunda çalarken çembere bakarak Dm, Em, F, G, Am ve Bdim akorlarının diyatonik — yani o tona ait — olduğunu görebilirsiniz. Bu akorlar arasındaki geçişler kulağa doğal gelir çünkü aynı gam ailesinden gelirler.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Diyatonik üçlüler ve yedili akorlar nedir?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Her tonun 7 derecesi, birer diyatonik üçlü akor üretir. Majör tonlarda bu akorların sırası her zaman aynıdır: majör, minör, minör, majör, majör, minör, azalmış (dim). Yedili akorlar ise caz ve pop armonisinde renk katmak için kullanılır.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "5'li çember modlar için nasıl kullanılır?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "5'li çember yalnızca majör tonlarla sınırlı değildir. Dorian, Phrygian veya Mixolydian gibi bir mod seçildiğinde çember, o modun diyatonik akor yapısına göre yeniden düzenlenir. Bu sayede blues, rock ve caz gibi farklı türlerdeki armoni ilişkilerini de görselleştirebilirsiniz.",
+              },
+            },
+          ],
+        }}
+      />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
           "@type": "SoftwareApplication",
           name: "5'li Çember — İnteraktif Armoni Aracı",
           applicationCategory: "MultimediaApplication",

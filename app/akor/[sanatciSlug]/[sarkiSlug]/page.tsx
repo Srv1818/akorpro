@@ -16,6 +16,7 @@ import {
   getSongBySlugsUncached,
   getSongsByArtist,
   getAllApprovedSongs,
+  getFilteredSongs,
 } from "@/lib/firestore/songs";
 import { chordPath } from "@/lib/paths";
 import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
@@ -138,6 +139,29 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
     difficulty: r.difficulty,
     coverImageUrl: r.coverImageUrl,
   }));
+
+  let crossArtistSongs: SongSummary[] = [];
+  if (song.genre) {
+    try {
+      const byGenre = await getFilteredSongs({ tur: song.genre });
+      crossArtistSongs = byGenre
+        .filter((s) => s.artistSlug !== sanatciSlug)
+        .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+        .slice(0, 4)
+        .map((s) => ({
+          id: s.id,
+          title: s.title,
+          slug: s.slug,
+          artistSlug: s.artistSlug,
+          artistName: s.artistName,
+          originalKey: s.originalKey,
+          difficulty: s.difficulty,
+          coverImageUrl: s.coverImageUrl,
+        }));
+    } catch {
+      // silent
+    }
+  }
 
   return (
     <>
@@ -281,13 +305,29 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
         {related.length > 0 && (
           <section className="mt-12">
             <h2 className="text-lg font-semibold">
-              <span className="text-foreground">{song.artistName}</span>
+              <Link href={`/sanatci/${song.artistSlug}`} className="text-foreground hover:text-accent hover:underline underline-offset-2 transition-colors">{song.artistName}</Link>
               <span className="text-display"> — diğer şarkılar</span>
             </h2>
             <ul className="mt-4 grid gap-4 sm:grid-cols-2">
               {relatedSummaries.map((r) => (
                 <li key={r.id}>
                   <SongCard song={r} showArtist={false} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {crossArtistSongs.length >= 2 && (
+          <section className="mt-12">
+            <h2 className="text-lg font-semibold">
+              <span className="text-display">{song.genre}</span>
+              <span className="text-muted"> — benzer şarkılar</span>
+            </h2>
+            <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+              {crossArtistSongs.map((r) => (
+                <li key={r.id}>
+                  <SongCard song={r} showArtist={true} />
                 </li>
               ))}
             </ul>
