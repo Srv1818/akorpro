@@ -12,9 +12,9 @@ type DiscoverTab = {
 };
 
 const TAB_ACTIVE_TEXT: Record<DiscoverAccent, string> = {
-  rose: "text-rose-500",
-  emerald: "text-emerald-500",
-  amber: "text-amber-500",
+  rose: "text-rose-800 dark:text-rose-400",
+  emerald: "text-emerald-900 dark:text-emerald-400",
+  amber: "text-amber-900 dark:text-amber-400",
 };
 
 const TAB_INDICATOR: Record<DiscoverAccent, string> = {

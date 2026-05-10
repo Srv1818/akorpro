@@ -76,8 +76,8 @@ export function AutoScrollWidget({
             return;
           }
         } else {
-          window.scrollBy(0, px);
-          if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 10) {
+          window.scrollBy({ top: px, behavior: "instant" });
+          if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 10) {
             setActive(false);
             return;
           }
