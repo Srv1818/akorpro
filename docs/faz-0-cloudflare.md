@@ -56,9 +56,28 @@ Registrar: **METUnic** (`.com.tr` ile aynı sağlayıcı — Blok E'de aynı pan
 ## Blok B — R2 + Turnstile (bağımsız, Tunnel'dan önce yapılabilir)
 
 - [ ] **R2**: bucket oluştur (ör. `akorpro-media`).
-- [ ] R2 → **S3 API token** üret. Kaydet: `access key id`, `secret access key`,
-      `endpoint` (`https://<account-id>.r2.cloudflarestorage.com`), bucket adı.
-      Bunlar Directus storage adapter'ına girecek (Faz 0.4).
+- [ ] R2 → **S3 API token** üret (izin: Object Read & Write, yalnız bu bucket'a scope'lu).
+
+> 🔐 **Secret'lar nereye gider:** Doğrudan **Coolify → Environment Variables** + bir kopya
+> **şifre yöneticisine**. Repoya, plana, dokümana veya sohbete **yazılmaz**.
+> Secret Access Key R2'de yalnız bir kez gösterilir; kaçırılırsa token yeniden üretilir.
+> Bir secret sohbete/ekran görüntüsüne düşerse **rotasyon** en ucuz çözümdür — özellikle
+> henüz hiçbir servis onu kullanmıyorken.
+
+Directus S3 storage adapter'ının beklediği değişkenler (Faz 0.4'te Coolify'a girilecek):
+
+```
+STORAGE_LOCATIONS=r2
+STORAGE_R2_DRIVER=s3
+STORAGE_R2_KEY=<access key id>
+STORAGE_R2_SECRET=<secret access key>
+STORAGE_R2_BUCKET=akorpro-media
+STORAGE_R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+STORAGE_R2_REGION=auto
+STORAGE_R2_FORCE_PATH_STYLE=true
+```
+
+> `REGION=auto` ve `FORCE_PATH_STYLE=true` R2 için gereklidir — S3 varsayılanlarıyla çalışmaz.
 - [ ] **Turnstile**: yeni site oluştur. Hostname olarak hem `akorpro.com` hem
       `akorpro.com.tr` ekle (kesimden sonra ikincisi kullanılacak).
       Kaydet: `site key` (public), `secret key`.
