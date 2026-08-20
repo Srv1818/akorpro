@@ -228,26 +228,28 @@ concat("https://akorpro.com", http.request.uri.path,
 GSC'de bu eski URL'ler hiç gösterim almıyor, yani düşük riskli; ama maliyeti sıfır olduğu için taşınır.
 Faz 6'daki `next.config.ts` düzenlemesi bu bloğa dokunmaz.
 
-**Soft 404 — kesim için EN KRİTİK bulgu.** Mevcut sitede eksik içerik `404` değil, **`200` + "bulunamadı"
-gövdesi + `noindex`** döndürüyor. Doğrulandı:
+**Soft 404 — ölçüldü, Next'in belgelenmiş davranışı; SEO kaybı DEĞİL.** Eksik içerik `404` değil,
+`200` + "bulunamadı" gövdesi + `noindex` döndürüyor (`/akor/olmayan/olmayan`, `/sanatci/olmayan`).
 
-| İstek | Beklenen | Gerçek |
-|---|---|---|
-| `/akor/olmayan-sanatci/olmayan-sarki` | 404 | **200** (soft 404) |
-| `/sanatci/olmayan-sanatci` | 404 | **200** (soft 404) |
-| `/asdfghjkl` (route eşleşmiyor) | 404 | 404 ✓ |
+Kök neden: root `app/loading.tsx` her route için bir Suspense sınırı kuruyor → şarkı sorgusu
+çözülmeden yanıt stream'lenmeye başlıyor → header'lar gönderildiği için status artık değiştirilemiyor.
+Sayfa kodu `notFound()`'u doğru çağırıyor (`app/akor/[sanatciSlug]/[sarkiSlug]/page.tsx:104`).
+Next dokümanı (`next/dist/docs/01-app/03-api-reference/03-file-conventions/loading.md` → Status Codes)
+bunu açıkça tarif ediyor:
 
-Sayfa kodu `notFound()` çağırıyor (`app/akor/[sanatciSlug]/[sarkiSlug]/page.tsx:104`,
-sanatçı sayfası `:103`) ama yanıt 200 geliyor. Kök neden teşhis edilmedi — `node_modules` kurulu
-olmadığı için `node_modules/next/dist/docs/` okunamadı; **fix'ten önce AGENTS.md gereği doküman okunmalı.**
+> "When streaming, a `200` status code will be returned… Some crawlers may label these responses as
+> 'soft 404s'. **In the streaming case, this does not lead to indexation because the page is
+> explicitly marked `noindex`** in the HTML."
 
-Kesim açısından iki sonucu var:
-1. **Yeni yığında düzeltilmesi zorunlu.** Directus'a girilmemiş bir şarkı 200 dönerse Google URL'i
-   soft 404 olarak dizinde tutar — temiz 404'ten daha kötü.
-2. **Doğrulama sadece durum koduna bakamaz.** `scripts/verify-urls.mjs` bu yüzden gövde denetimi de
-   yapıyor: `noindex` meta, "bulunamadı" başlığı ve canonical/path uyuşmazlığı. Aksi halde eksik
-   içerik için **sahte yeşil** üretirdi. Detektör canlıda iki yönde test edildi
-   (35/35 gerçek içerik geçti, uydurma URL yakalandı).
+**Sonuç: aksiyon gerekmiyor.** İndekslenmeyi `noindex` zaten engelliyor. Gerçek 404 status'u yalnızca
+uyumluluk/analitik için gerekir; dokümanın önerdiği çözüm (`proxy.ts`'te stream öncesi slug varlık
+kontrolü) her `/akor/*` ve `/sanatci/*` isteğine bir veri sorgusu ekler — bu sitenin trafiğinde
+maliyeti faydasından büyük. Yeni yığında da aynı durum kabul edilir.
+
+**Tek gerçek etkisi doğrulamada:** Eksik içerik 200 döndüğü için kesim kontrolü durum koduna
+güvenemez. `scripts/verify-urls.mjs` bu yüzden gövde denetimi yapıyor (`noindex` meta, "bulunamadı"
+başlığı, canonical/path uyuşmazlığı) — Directus'a girilmemiş bir şarkı için sahte yeşil üretmesin diye.
+Detektör canlıda iki yönde test edildi: 35/35 gerçek içerik geçti, uydurma URL yakalandı.
 
 **Diğer kör noktalar:**
 - `/akor-kutuphanesi` ve `/sanatci/ayten-alpman` — dizinde ama trafik yok; yine de 200 dönmeli.
@@ -314,6 +316,19 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 - **Kesim (cutover)**: Yeni yığın `akorpro.com` üzerinde bağımsız kurulur; mevcut `akorpro.com.tr` (Vercel + Firebase) paralel çalışmaya devam eder. Yeni yığın tam test edilip stabil olunca `akorpro.com.tr → akorpro.com` yönlendirmesi (301) yapılır. İki taraf ayrı domain/altyapı olduğu için kesim anına kadar canlı site hiç etkilenmez; sorunda yönlendirme geri alınır. Greenfield olduğu için veri senkron riski yok (içerik yeni yığında yeniden girilir/seed edilir — **canlı içerik varsa `com`'a taşınması teyit edilmeli**).
   - SEO notu: `com.tr` → `com` kalıcı yönlendirme + `com`'da canonical; Search Console'da adres değişikliği bildirimi.
     Somut URL envanteri, öncelik listesi ve doğrulama adımları **Faz 5.1**'de (GSC verisiyle ölçüldü: 36 trafik alan path, 6 sayfa tıklamaların %80'i, kesim öncesi 29 şarkı + 27 sanatçı girilmiş olmalı).
+- **ccTLD → gTLD geotargeting kaybı (AÇIK RİSK — karar bekliyor)**: `.com.tr` bir ülke kodu TLD'si ve
+  Google için **otomatik, güçlü bir Türkiye hedefleme sinyali**. `.com` jenerik ve coğrafi olarak nötr;
+  bu sinyal 301 ile taşınmaz. GSC verisi kitlenin **%98 Türkiye** olduğunu gösteriyor
+  (1.348 tıklamanın 1.319'u). Search Console'un uluslararası hedefleme aracı da kaldırıldığı için
+  `.com`'da bunu elle telafi etmek mümkün değil; yalnız içerik dili, hreflang ve link profili kalır.
+  Buna ek olarak her domain taşımasında geçici sıralama dalgalanması beklenir.
+  **Alternatif:** altyapı göçü ile domain değişimi **bağımsız kararlar**. Yeni yığın planlandığı gibi
+  `akorpro.com` üzerinde paralel kurulur (staging/prova), ancak kesimde `akorpro.com.tr`'nin DNS'i yeni
+  yığına çevrilir ve **`.com.tr` birincil domain olarak kalır**. Böylece Contabo/Directus göçü yapılır
+  ama domain kaynaklı SEO riski **sıfırlanır**: ccTLD sinyali korunur, 301 zinciri yok, adres değişikliği
+  bildirimi yok, geçiş dalgalanması yok. `.com` ileride marka/uluslararası ihtiyaç doğarsa `.com.tr`'ye
+  yönlendirilir. Bu seçilirse Faz 5.1'deki yönlendirme kuralları gereksizleşir; URL envanteri ve
+  `verify-urls.mjs` doğrulaması (içerik girildi mi?) **aynen geçerli kalır**.
 - **App Check kaybı**: bot/abuse koruması Cloudflare WAF + Turnstile'a devreder — yazma uçlarında Turnstile şart.
 - **Real-time davranış farkı**: Firestore `onSnapshot` → Directus subscription; UX eşdeğerliği test edilir.
 - **ISR önbellek**: tek VPS'te on-demand revalidate sorunsuz; ileride çok-instance olursa paylaşımlı cache gerekir.
@@ -336,6 +351,10 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 - [x] ~~Trafik alan sayfalar ne olacak?~~ → **Faz 5.1**. GSC ile ölçüldü; `data/gsc/CUTOVER-CHECKLIST.md` kesim ön koşulu.
 - [x] ~~`/akor/kenan-dogulu/kursun-adres-sormaz-ki`~~ → **Kapsam dışı**; gerçek içerik değil, taşınmaz.
 - [x] ~~`www` yinelenmesi~~ → Canlıda zaten 301 + doğru canonical; eski sitede aksiyon yok. Yeni yığında aynı davranış kurulacak.
-- [ ] **Soft 404 fix'i nerede yapılsın?** Eksik içerik 200 dönüyor (bkz. Faz 5.1). Yeni yığında zorunlu; **mevcut `com.tr` sitesinde de ayrıca düzeltilsin mi**, yoksa geçişle mi kapansın? (Ayrı iş; `next/dist/docs` okunmadan fix yazılmamalı.)
+- [x] ~~Soft 404 fix'i nerede yapılsın?~~ → **Hiçbir yerde.** Next'in belgelenmiş streaming davranışı; `noindex` indekslenmeyi zaten engelliyor. Yalnız doğrulama script'i gövde denetimi yapar (Faz 5.1).
 
-**Kalan açık madde yok** — plan uygulamaya hazır. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)
+- [ ] **Domain kararı — planın en büyük açık SEO riski.** Kesimde `.com.tr` → `.com` yönlendirilsin mi
+  (ccTLD geotargeting kaybı + geçiş dalgalanması), yoksa `.com.tr` birincil kalıp yalnız altyapı mı
+  taşınsın (SEO riski ~sıfır)? Ayrıntı: Riskler & rollback bölümü. Bu karar verilmeden kesim planlanamaz.
+
+Diğer maddeler kapalı. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)
