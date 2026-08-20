@@ -206,6 +206,18 @@ Tut / At / Karar kolonları. "At" = Directus'ta oluşturulmaz.
 
 ---
 
+**Mail / hesap yönetimi (karar 2026-08-20):** SMTP **yapılandırılmaz**. Ekip 2 kişi, giriş Google SSO,
+parola yok → davet ve parola sıfırlama akışları gereksiz. İki admin hesabı Directus'ta elle oluşturulur.
+Mail'e dayanan Directus akışları bilinçli olarak devre dışıdır.
+
+⚠️ **Break-glass hesabı — atlanmamalı.** Tüm girişler SSO'ya bağlanırsa, Google OAuth tarafında bir
+sorun (client secret süresi dolar, yanlış redirect URI, Google hesabına erişim kaybı) **Directus'a
+tamamen kilitlenmek** demektir; parola sıfırlama da mail olmadığı için çalışmaz.
+Bu yüzden SSO'ya ek olarak **güçlü parolalı tek bir yerel admin hesabı** oluşturulur ve parola bir
+şifre yöneticisinde saklanır. Kurtarma yolu bu hesap olur; SMTP'ye ihtiyaç doğurmaz.
+(Son çare olarak Directus CLI ile veritabanı üzerinden parola sıfırlanabilir — VPS erişimi gerekir.)
+
+
 ## Faz 3 — Auth yeniden yazımı
 
 Mevcut: `lib/auth/*`, `app/api/auth/*`, `lib/firebase/*`, `components/auth/*`, App Check.
@@ -451,10 +463,10 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
   Sonuç: domain kaynaklı SEO riski sıfır. Bunun getirdiği yeni gereklilik: **staging Cloudflare Access
   ile kapatılmalı** (duplicate content).
 
-- [ ] **Directus giden mail (SMTP) sağlayıcısı.** Cloudflare Email Routing yalnız gelen maili
-  yönlendirir; göndermez. Directus'un kullanıcı daveti ve parola sıfırlama akışları için bir SMTP
-  sağlayıcısı gerekir (Resend / Postmark / SES / Brevo …). Alternatif: SMTP kurulmaz, admin kullanıcıları
-  elle oluşturulur ve parola sıfırlama Directus CLI ile yapılır — tek kişilik ekipte kabul edilebilir.
-  Karar Faz 2'den önce verilmeli. (Mevcut uygulama hiç mail göndermiyor, bu yalnız Directus ihtiyacı.)
+- [x] ~~Directus giden mail (SMTP) sağlayıcısı~~ → **SMTP kurulmaz** (karar 2026-08-20).
+  Ekip en fazla 2 kişi ve **herkes Google SSO ile giriyor** — parola yok, dolayısıyla parola sıfırlama
+  akışı hiç devreye girmiyor. Kullanıcı daveti de gereksiz: iki hesap Directus'ta elle oluşturulur.
+  Son kullanıcılar (playlists) da Google SSO kullandığı için onlarda da parola/mail akışı yok.
+  Uygulama zaten hiç mail göndermiyor (doğrulandı). Bkz. Faz 2 — break-glass hesabı.
 
-Bunun dışında açık madde kalmadı. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)
+Açık madde kalmadı. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)
