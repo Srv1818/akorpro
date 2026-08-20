@@ -70,11 +70,44 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
 1. **Contabo VPS** (8 GB) provizyon, Ubuntu LTS, SSH sertleştirme (key-only, ufw).
 2. **Coolify** kurulumu (tek satır installer). Coolify UI kendisi Tunnel arkasına alınır.
 3. **Cloudflare** (iki zone: `akorpro.com.tr` = production, `akorpro.com` = staging):
-   - **`akorpro.com.tr` nameserver'ları Cloudflare'e taşınır.** Kesimden **önce** yapılır ve
-     kayıtlar Vercel'i göstermeye devam eder — canlıda değişiklik olmaz. Kesim böylece tek bir
-     DNS kaydı düzenlemesine iner. **Kesimden en az 24 saat önce TTL 300 sn'ye düşürülür**
-     (hızlı rollback için).
-   - **`akorpro.com` zone'u = staging.** Arama motorlarına tamamen kapalı tutulur:
+   - **`akorpro.com.tr` nameserver'ları Cloudflare'e taşınır — kesimden ÇOK önce, ayrı bir adım olarak.**
+     Bu, siteyi taşımak değil: Cloudflare *aynı kayıtları* servis etmeye başlar, apex hâlâ Vercel'i
+     (`216.198.79.1`) gösterir. Ziyaretçi açısından hiçbir değişiklik ve kesinti yok.
+
+     **Neden kesimle birleştirilmiyor:** `.com.tr` delegasyonu nic.tr üzerinden, mevcut sağlayıcı
+     (`ns1/ns2.metunic.com.tr` — Güzel Hosting) eliyle değişir. NS değişimi TLD seviyesinde yavaş
+     yayılır, TTL'i bizim kontrolümüzde değildir ve hızlı geri alınamaz. Kesime bindirilirse rollback
+     "NS yayılmasını bekle" (saatler–gün) olur. Ayrı yapılırsa kesim tek bir A kaydı düzenlemesine
+     iner → **rollback dakikalar içinde**.
+
+     ⚠️ **Bu domain canlı e-posta taşıyor — NS taşımasının asıl riski web değil, mail.**
+     Cloudflare'in otomatik kayıt taraması her şeyi güvenilir biçimde yakalamaz. NS değişiminden
+     **önce** aşağıdaki kayıtların Cloudflare'de birebir mevcut olduğu elle doğrulanır
+     (2026-08-20 itibarıyla canlı envanter):
+
+     | Tip | Ad | Değer |
+     |---|---|---|
+     | A | `@` | `216.198.79.1` (Vercel) |
+     | CNAME | `www` | `e3d3d21bd769d68b.vercel-dns-017.com` |
+     | MX 10 | `@` | `mt-spamexperts.guzel.net.tr` |
+     | MX 20 | `@` | `ni-spamexperts.guzel.net.tr` |
+     | MX 30 | `@` | `pmg.guzel.net.tr` |
+     | MX 40 | `@` | `pmg2.guzel.net.tr` |
+     | TXT | `@` | `v=spf1 a mx include:relay.guzelhosting.com ~all` |
+     | TXT | `@` | `google-site-verification=TDDdB2nn7YzUQ0hao3DByhV7ZPQmHumbf7yH0CLIcQQ` |
+
+     Notlar: wildcard kaydı **yok** (doğrulandı), `_dmarc` kaydı **yok**.
+     `google-site-verification` TXT'i kaybedilirse **GSC doğrulaması düşebilir** — bu planın
+     dayandığı Search Console erişimi. MX/SPF kaybedilirse mail sessizce bounce'lamaya başlar.
+     - Tüm kayıtlar başlangıçta **DNS-only (gri bulut)** — proxy açılmaz, davranış aynen korunur.
+     - NS değişiminden önce Cloudflare NS'lerine doğrudan sorgu ile kayıtlar doğrulanır:
+       `dig @<cloudflare-ns> akorpro.com.tr MX` vb.
+     - NS değişiminden sonra: web + **mail gönder/al testi** yapılır, GSC doğrulaması kontrol edilir.
+     - **Kesimden en az 24 saat önce** apex A kaydının TTL'i **300 sn**'ye düşürülür (hızlı rollback).
+       (Şu anki TTL: ~1620 sn.)
+   - **`akorpro.com` zone'u = staging.** ⚠️ Ön koşul: bu domainin gerçekten kayıtlı ve bizde olduğu
+     teyit edilmeli — **şu an hiçbir DNS delegasyonu yok** (NS ve SOA kaydı boş, 2026-08-20).
+     Faz 0 bu domaini staging olarak varsayıyor; teyit edilmezse staging planı değişir. Arama motorlarına tamamen kapalı tutulur:
      **Cloudflare Access** (e-posta/OTP ile giriş) staging hostname'in önüne konur. Bu, robots.txt'e
      güvenmekten daha sağlam — bot hiç içeriğe ulaşamaz.
      ⚠️ **Bu kritik**: staging, production'ın birebir kopyası. Açık bırakılırsa Google
