@@ -3,14 +3,14 @@
 > Uygulama sırası önemli. Her blok sonunda **DUR** ve doğrulama komutlarını çalıştır.
 > Bloklar arası geçmeden önce doğrulamanın yeşil olması gerekir.
 >
-> Durum (2026-08-20): VPS ✅ · Coolify ✅ · Cloudflare ⬜ (hiç dokunulmadı)
+> Durum (2026-08-20): VPS ✅ · Coolify ✅ · Blok A ✅ · Blok B–F ⬜
 >
 > Temel ilke: **önce `akorpro.com` (staging, sıfır risk), sonra `akorpro.com.tr` (canlı).**
 > Böylece Cloudflare'i canlı domainde değil, kaybedecek hiçbir şeyi olmayan domainde öğreniyoruz.
 
 ---
 
-## Blok A — Cloudflare hesabı + `akorpro.com` zone'u
+## Blok A — Cloudflare hesabı + `akorpro.com` zone'u ✅ TAMAM (2026-08-20)
 
 `akorpro.com` şu an hiçbir nameserver'a delege değil (NS/SOA boş, doğrulandı).
 Taşınacak kayıt yok → bu blokta kırılabilecek bir şey yok.
@@ -42,7 +42,14 @@ Taşınacak kayıt yok → bu blokta kırılabilecek bir şey yok.
 ```bash
 dig +short NS akorpro.com @1.1.1.1     # cloudflare.com NS'leri dönmeli
 ```
-Boş dönerse yayılma sürüyor demektir; registrar'a göre birkaç saat alabilir.
+✅ Doğrulandı (2026-08-20): `louis.ns.cloudflare.com` + `maxine.ns.cloudflare.com`,
+SOA Cloudflare'i gösteriyor, `.com` TLD sunucuları da yeni NS'leri veriyor.
+Registrar: **METUnic** (`.com.tr` ile aynı sağlayıcı — Blok E'de aynı panel kullanılacak).
+
+> 📌 **Ölçülen gerçek:** TLD seviyesindeki NS kaydının TTL'i **172800 sn = 48 saat** ve bu
+> bizim kontrolümüzde değil. Planın "NS taşımasını kesimden ayır" kararının somut gerekçesi bu:
+> NS'i kesime bindirseydik rollback 48 saate kadar sürerdi. Ayrı yaptığımız için kesim tek bir
+> A kaydı düzenlemesine iniyor → geri dönüş dakikalar. Aynı 48 saat `.com.tr` için de geçerli.
 
 ---
 
