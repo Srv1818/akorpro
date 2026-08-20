@@ -121,9 +121,10 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
      - NS değişiminden sonra: web + **mail gönder/al testi** yapılır, GSC doğrulaması kontrol edilir.
      - **Kesimden en az 24 saat önce** apex A kaydının TTL'i **300 sn**'ye düşürülür (hızlı rollback).
        (Şu anki TTL: ~1620 sn.)
-   - **`akorpro.com` zone'u = staging.** ⚠️ Ön koşul: bu domainin gerçekten kayıtlı ve bizde olduğu
-     teyit edilmeli — **şu an hiçbir DNS delegasyonu yok** (NS ve SOA kaydı boş, 2026-08-20).
-     Faz 0 bu domaini staging olarak varsayıyor; teyit edilmezse staging planı değişir. Arama motorlarına tamamen kapalı tutulur:
+   - **`akorpro.com` zone'u = staging.** Sahiplik teyit edildi (2026-08-20). Domain şu an hiçbir
+     nameserver'a delege edilmemiş durumda (NS/SOA boş) — yani temiz sayfa: Cloudflare'de zone açılır
+     ve registrar'da nameserver'lar Cloudflare'e yönlendirilir. Taşınacak mevcut kayıt yok,
+     bu adımda kırılacak bir şey de yok. Arama motorlarına tamamen kapalı tutulur:
      **Cloudflare Access** (e-posta/OTP ile giriş) staging hostname'in önüne konur. Bu, robots.txt'e
      güvenmekten daha sağlam — bot hiç içeriğe ulaşamaz.
      ⚠️ **Bu kritik**: staging, production'ın birebir kopyası. Açık bırakılırsa Google
