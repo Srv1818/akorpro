@@ -80,10 +80,14 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
      "NS yayılmasını bekle" (saatler–gün) olur. Ayrı yapılırsa kesim tek bir A kaydı düzenlemesine
      iner → **rollback dakikalar içinde**.
 
-     ⚠️ **Bu domain canlı e-posta taşıyor — NS taşımasının asıl riski web değil, mail.**
-     Cloudflare'in otomatik kayıt taraması her şeyi güvenilir biçimde yakalamaz. NS değişiminden
-     **önce** aşağıdaki kayıtların Cloudflare'de birebir mevcut olduğu elle doğrulanır
-     (2026-08-20 itibarıyla canlı envanter):
+     **Mail durumu (karar 2026-08-20):** posta kutusu **şu an aktif değil**, kapatılmış. Yani MX/SPF
+     kayıtları artık işlevsiz kalıntı ve NS taşımasında mail kesintisi riski **yok**.
+     Yine de NS taşıması "hiçbir şeyi değiştirmeyen" bir adım olarak yapılır: kayıtlar
+     **birebir kopyalanır**, mail düzenlemesi ayrı ve bilinçli bir adım olarak sonra yapılır
+     (aşağıda Email Routing). Aynı anda iki şey değiştirilmez.
+
+     2026-08-20 itibarıyla canlı kayıt envanteri — NS değişiminden **önce** Cloudflare'de
+     birebir mevcut olduğu elle doğrulanır (otomatik tarama her kaydı yakalamayabilir):
 
      | Tip | Ad | Değer |
      |---|---|---|
@@ -97,8 +101,20 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
      | TXT | `@` | `google-site-verification=TDDdB2nn7YzUQ0hao3DByhV7ZPQmHumbf7yH0CLIcQQ` |
 
      Notlar: wildcard kaydı **yok** (doğrulandı), `_dmarc` kaydı **yok**.
-     `google-site-verification` TXT'i kaybedilirse **GSC doğrulaması düşebilir** — bu planın
-     dayandığı Search Console erişimi. MX/SPF kaybedilirse mail sessizce bounce'lamaya başlar.
+     **Bu tablodaki tek kritik kayıt `google-site-verification` TXT'i** — kaybedilirse GSC doğrulaması
+     düşebilir, yani bu planın tamamen dayandığı Search Console erişimi. MX/SPF ise mail kapalı
+     olduğu için düşük riskli.
+
+   - **Cloudflare Email Routing** (mail için, NS taşımasından sonra ayrı adım):
+     `/iletisim` sayfası `info@akorpro.com.tr` adresini herkese açık yayımlıyor
+     (`app/iletisim/page.tsx:19`) — yani **gelen mail** çalışmalı. Email Routing bu adrese geleni
+     kişisel bir kutuya yönlendirir; posta kutusu barındırmaya gerek kalmaz.
+     Devreye alınırken: eski `guzel.net.tr` MX kayıtları **kaldırılır** (Cloudflare kendi MX'lerini
+     yazar) ve eski SPF (`include:relay.guzelhosting.com`) temizlenir.
+
+     ⚠️ **Email Routing yalnız ALIR, göndermez.** Mevcut uygulama hiç mail göndermiyor (doğrulandı:
+     nodemailer/SMTP/SES bağımlılığı yok, iletişim `mailto:` linki). Ama **Directus giden mail ister**
+     — kullanıcı daveti ve parola sıfırlama için. Bkz. Faz 2 / Açık Sorular.
      - Tüm kayıtlar başlangıçta **DNS-only (gri bulut)** — proxy açılmaz, davranış aynen korunur.
      - NS değişiminden önce Cloudflare NS'lerine doğrudan sorgu ile kayıtlar doğrulanır:
        `dig @<cloudflare-ns> akorpro.com.tr MX` vb.
@@ -435,4 +451,10 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
   Sonuç: domain kaynaklı SEO riski sıfır. Bunun getirdiği yeni gereklilik: **staging Cloudflare Access
   ile kapatılmalı** (duplicate content).
 
-Açık madde kalmadı. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)
+- [ ] **Directus giden mail (SMTP) sağlayıcısı.** Cloudflare Email Routing yalnız gelen maili
+  yönlendirir; göndermez. Directus'un kullanıcı daveti ve parola sıfırlama akışları için bir SMTP
+  sağlayıcısı gerekir (Resend / Postmark / SES / Brevo …). Alternatif: SMTP kurulmaz, admin kullanıcıları
+  elle oluşturulur ve parola sıfırlama Directus CLI ile yapılır — tek kişilik ekipte kabul edilebilir.
+  Karar Faz 2'den önce verilmeli. (Mevcut uygulama hiç mail göndermiyor, bu yalnız Directus ihtiyacı.)
+
+Bunun dışında açık madde kalmadı. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)
