@@ -67,8 +67,11 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
 
 ## Faz 0 — Altyap (kod dışı, sırayla)
 
-1. **Contabo VPS** (8 GB) provizyon, Ubuntu LTS, SSH sertleştirme (key-only, ufw).
-2. **Coolify** kurulumu (tek satır installer). Coolify UI kendisi Tunnel arkasına alınır.
+1. ~~**Contabo VPS** (8 GB) provizyon, Ubuntu LTS.~~ ✅ **Tamam** (2026-08-20).
+   Kalan kontrol: SSH sertleştirme (key-only login, ufw) yapıldı mı?
+2. ~~**Coolify** kurulumu.~~ ✅ **Tamam** (2026-08-20).
+   Kalan iş: Coolify UI'ın kendisi Tunnel + Cloudflare Access arkasına alınır (şu an public ise
+   panel dışarıya açık demektir — Faz 0/3 ile birlikte kapatılmalı).
 3. **Cloudflare** (iki zone: `akorpro.com.tr` = production, `akorpro.com` = staging):
    - **`akorpro.com.tr` nameserver'ları Cloudflare'e taşınır — kesimden ÇOK önce, ayrı bir adım olarak.**
      Bu, siteyi taşımak değil: Cloudflare *aynı kayıtları* servis etmeye başlar, apex hâlâ Vercel'i
