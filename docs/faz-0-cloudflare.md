@@ -90,22 +90,43 @@ STORAGE_R2_FORCE_PATH_STYLE=true
 
 VPS'te 80/443 dışarı **açılmaz**; tüm trafik Tunnel üzerinden gelir.
 
-- [ ] Cloudflare → Zero Trust → Networks → Tunnels → yeni tunnel oluştur.
-- [ ] Tunnel token'ını al.
-- [ ] Coolify'da `cloudflared` container'ını bu token ile çalıştır.
-- [ ] Public hostname'leri bağla:
+> ⚠️ **Sıralama:** `next-app` ve `directus` servisleri **henüz yok** (Faz 0.4'te kurulacak).
+> Bu yüzden Blok C iki aşamaya bölündü. C1 şimdi yapılır ve **Coolify panelini public
+> internetten çeker** — hem Tunnel'ın çalıştığını kanıtlar hem gerçek bir açığı kapatır.
+> C2, servisler ayağa kalktıkça hostname eklemekten ibarettir.
 
-| Hostname | Hedef (Coolify iç servis) | Not |
+### C1 — Tunnel + Coolify paneli (şimdi)
+
+- [ ] Cloudflare → Zero Trust → Networks → Tunnels → yeni tunnel oluştur (ad: `akorpro`).
+- [ ] Tunnel token'ını al (secret — Coolify env'e, sohbete değil).
+- [ ] VPS'te `cloudflared` container'ını bu token ile çalıştır.
+      Coolify'ın kendi ağına erişebilmeli.
+- [ ] Tek public hostname bağla:
+
+| Hostname | Hedef | Not |
 |---|---|---|
-| `akorpro.com` | `next-app:3000` | staging uygulama |
-| `directus.akorpro.com` | `directus:8055` | Directus API + admin UI |
-| `coolify.akorpro.com` | Coolify paneli | panel şu an public ise buraya alınır |
+| `coolify.akorpro.com` | `http://localhost:8000` (Coolify panel portu) | şu an tek var olan servis |
 
-- [ ] Tunnel çalıştıktan sonra VPS firewall'da **80/443'ü dışarıya kapat**
-      (ufw: yalnız SSH açık kalsın).
+- [ ] **Blok D'yi bu hostname için hemen uygula** (Access). Panel korumasız kalmamalı.
 
-**DUR — doğrula:** Hostname'ler cevap veriyor mu, ve VPS IP'sine doğrudan
-80/443 erişimi kapalı mı?
+**DUR — doğrula:**
+```bash
+curl -sI https://coolify.akorpro.com | head -1   # Access giriş ekranına yönlenmeli
+curl -sI --max-time 5 http://<VPS-IP>            # panel IP'den erişilebiliyor mu?
+```
+- [ ] Panel Tunnel üzerinden çalıştığı doğrulanınca: VPS firewall'da **80/443'ü dışarıya kapat**
+      (ufw: yalnız SSH). Bu adım C1'in sonunda yapılır — önce değil, yoksa paneli kendine kaparsın.
+
+### C2 — Uygulama hostname'leri (Faz 0.4'te, servisler kurulunca)
+
+Servisler ayağa kalktıkça aynı tunnel'a hostname eklenir:
+
+| Hostname | Hedef | Ne zaman |
+|---|---|---|
+| `directus.akorpro.com` | `directus:8055` | Directus container'ı kurulunca |
+| `akorpro.com` | `next-app:3000` | next-app deploy olunca |
+
+- [ ] Her yeni hostname için **Blok D (Access) politikasını da uygula.**
 
 ---
 
@@ -115,9 +136,10 @@ Staging, production'ın birebir kopyası olacak. Açık bırakılırsa Google in
 ve `.com.tr` ile **duplicate content** çakışması doğar — yani korumak istediğimiz
 sıralamalara zarar verir. `robots.txt` yeterli değil; bot içeriğe hiç ulaşmamalı.
 
-- [ ] Zero Trust → Access → Application ekle: `akorpro.com` (ve `*.akorpro.com`).
+- [ ] Zero Trust → Access → Application ekle: `akorpro.com` **ve** `*.akorpro.com`.
+      Wildcard sayesinde sonradan eklenen her subdomain otomatik korunur — tek tek eklemeyi unutma riski kalkar.
 - [ ] Policy: yalnız iki kişinin e-posta adresi (Allow → Emails).
-- [ ] Aynı korumayı `coolify.akorpro.com` ve `directus.akorpro.com` için de uygula.
+- [ ] Sıra gereği ilk uygulanacağı yer `coolify.akorpro.com` (Blok C1).
 - [ ] **Service token** üret — `scripts/verify-urls.mjs`'in staging'i kontrol
       edebilmesi için gerekecek (Faz 5.1, doğrulama adımı 1).
 
