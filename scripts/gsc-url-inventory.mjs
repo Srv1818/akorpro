@@ -16,8 +16,10 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const DIR = "data/gsc";
-const OLD_HOST = "akorpro.com.tr";
-const NEW_HOST = "akorpro.com";
+// Domain kararı (2026-08-20): `.com.tr` birincil KALIR; yalnız altyapı taşınır.
+// `akorpro.com` staging olarak kullanılır, kesimden sonra `.com.tr`'ye 301'lenir.
+const PROD_HOST = "akorpro.com.tr";
+const BRAND_HOST = "akorpro.com";
 
 /**
  * Kesim kapsamı dışı bırakılan path'ler — gerekçesiyle.
@@ -101,8 +103,9 @@ for (const p of pages) {
   Object.assign(p, classify(p.path));
   p.indexed = indexed.has(p.path);
   p.inSitemap = sitemap.has(p.path);
-  p.newUrl = `https://${NEW_HOST}${p.path}`;
-  p.oldUrl = `https://${OLD_HOST}${p.path}`;
+  p.prodUrl = `https://${PROD_HOST}${p.path}`;
+  // Kesim sonrası marka koruma kuralının hedefi: brandUrl → 301 → prodUrl.
+  p.brandUrl = `https://${BRAND_HOST}${p.path}`;
   if (EXCLUDED[p.path]) {
     p.excluded = true;
     p.excludedReason = EXCLUDED[p.path];
@@ -123,7 +126,7 @@ const indexedNoTraffic = [...indexed].filter((p) => !byPath.has(p)).sort();
 const trafficNotInSitemap = pages.filter((p) => !p.inSitemap).map((p) => p.path);
 
 const inventory = {
-  generatedFrom: { oldHost: OLD_HOST, newHost: NEW_HOST },
+  generatedFrom: { prodHost: PROD_HOST, brandHost: BRAND_HOST },
   totals: {
     uniquePaths: pages.length,
     totalClicks,
@@ -163,7 +166,7 @@ writeFileSync(`${DIR}/url-inventory.json`, JSON.stringify(inventory, null, 2));
 // --- 5. Markdown checklist ---
 const row = (p) =>
   `| ${p.tier} | \`${p.path}\` | ${p.clicks} | ${p.impressions} | ${p.indexed ? "✅" : "—"} | ☐ |`;
-const md = `# Kesim (cutover) URL Checklist — \`${OLD_HOST}\` → \`${NEW_HOST}\`
+const md = `# Kesim (cutover) URL Checklist — \`${PROD_HOST}\` (domain değişmiyor)
 
 > Otomatik üretildi: \`node scripts/gsc-url-inventory.mjs\`. Elle düzenleme.
 > Kaynak: GSC Performance (son 3 ay) + GSC dizine ekleme + canlı sitemap.xml.
@@ -199,9 +202,10 @@ ${[...requiredArtists].sort().map((a) => `- [ ] \`${a}\``).join("\n")}
 
 ## www yinelenmesi (kesimde düzeltilecek)
 
-\`www.${OLD_HOST}\` ayrı dizine alınmış: **${inventory.wwwDuplication.urls} URL**, \
-**${inventory.wwwDuplication.clicks} tıklama**, **${inventory.wwwDuplication.impressions} gösterim** ayrı sayılıyor.
-Yeni yığında \`www.${NEW_HOST}\` → \`${NEW_HOST}\` 301 zorunlu.
+GSC'de \`www.${PROD_HOST}\` ayrı satırlar üretiyor: **${inventory.wwwDuplication.urls} URL**, \
+**${inventory.wwwDuplication.clicks} tıklama**, **${inventory.wwwDuplication.impressions} gösterim**.
+Canlıda \`www\` → apex 301 zaten doğru çalışıyor; bunlar eski dizin kayıtları.
+Yeni yığında aynı davranış (\`www.${PROD_HOST}\` → \`${PROD_HOST}\` 301 + apex canonical) kurulmalı.
 
 ${inventory.wwwDuplication.paths.map((p) => `- \`${p}\``).join("\n")}
 

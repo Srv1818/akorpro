@@ -1,4 +1,4 @@
-# Kesim (cutover) URL Checklist — `akorpro.com.tr` → `akorpro.com`
+# Kesim (cutover) URL Checklist — `akorpro.com.tr` (domain değişmiyor)
 
 > Otomatik üretildi: `node scripts/gsc-url-inventory.mjs`. Elle düzenleme.
 > Kaynak: GSC Performance (son 3 ay) + GSC dizine ekleme + canlı sitemap.xml.
@@ -93,8 +93,9 @@
 
 ## www yinelenmesi (kesimde düzeltilecek)
 
-`www.akorpro.com.tr` ayrı dizine alınmış: **16 URL**, **75 tıklama**, **6760 gösterim** ayrı sayılıyor.
-Yeni yığında `www.akorpro.com` → `akorpro.com` 301 zorunlu.
+GSC'de `www.akorpro.com.tr` ayrı satırlar üretiyor: **16 URL**, **75 tıklama**, **6760 gösterim**.
+Canlıda `www` → apex 301 zaten doğru çalışıyor; bunlar eski dizin kayıtları.
+Yeni yığında aynı davranış (`www.akorpro.com.tr` → `akorpro.com.tr` 301 + apex canonical) kurulmalı.
 
 - `/akor/baris-akarsu/islak-islak`
 - `/akor/blok3/kusura-bakma`

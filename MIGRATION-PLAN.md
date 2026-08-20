@@ -14,16 +14,25 @@ Firebase Admin SDK = sunucu). Amaç: bağımsız, sahip olunan bir yığına ge�
 Kullanıcı kararları (netleşti):
 - **Auth**: Firebase Auth tamamen kalkar → **Directus auth + Google SSO**.
 - **Veri erişimi**: Next.js, **Directus REST/GraphQL API** üzerinden okur/yazar (doğrudan MariaDB değil).
-- **Veri taşıma**: Yok — greenfield. Firestore→MariaDB migration scripti gerekmiyor, temiz şema kurulur. İçerik yeni yığında yeniden girilir; **URL yapısı birebir korunur** ki `com.tr → com` yönlendirmesinde her sayfa 1:1 eşleşsin.
+- **Veri taşıma**: Yok — greenfield. Firestore→MariaDB migration scripti gerekmiyor, temiz şema kurulur. İçerik yeni yığında yeniden girilir; **URL yapısı birebir korunur** ki kesimde her sayfa 1:1 eşleşsin.
 - **Admin paneli**: **Tamamen Directus admin UI**. Mevcut Next.js admin arayüzü (`app/admin/*`) ve admin API route'ları (`app/api/admin/*`) **kaldırılır** — CRUD/moderasyon/import/keşfet düzenleme Directus'ta yapılır.
 - **Cloudflare**: DNS + CDN + proxy/WAF **+ Cloudflare Tunnel** (VPS'te port açılmaz) **+ R2** (Directus dosya storage).
 - **VPS**: 8 GB RAM.
-- **Domain / kesim**: Yeni yığın **`akorpro.com`** (bize ait) üzerinde **sıfırdan paralel** kurulur.
-  Mevcut canlı **`akorpro.com.tr`** (Vercel + Firebase) hiç dokunulmadan çalışmaya devam eder.
-  Yeni yığın hazır + test edilince **`akorpro.com.tr` → `akorpro.com` yönlendirmesi** yapılır (kesim).
-  Bu paralel yaklaşım sayesinde canlı sitede kesinti/DNS rollback riski yok.
+- **Domain / kesim (KARAR 2026-08-20 — güncellendi)**: **`akorpro.com.tr` birincil domain olarak KALIR.**
+  Altyapı göçü ile domain değişimi ayrı kararlar; domain değiştirilmiyor.
+  `.com.tr` bir ccTLD ve Google için otomatik Türkiye hedefleme sinyali — kitlenin %98'i Türkiye
+  (GSC: 1.348 tıklamanın 1.319'u). Bu sinyal 301 ile taşınmadığı için domain taşınmıyor.
+  - Yeni yığın **`akorpro.com`** üzerinde paralel kurulur — ama **staging/prova ortamı olarak**,
+    kalıcı adres olarak değil. Arama motorlarına **tamamen kapalı** tutulur (aşağıya bak).
+  - **Kesim = DNS anahtarı**: yeni yığın test edilip onaylanınca `akorpro.com.tr`'nin DNS'i
+    Vercel'den Cloudflare Tunnel'a çevrilir. URL'ler, canonical'lar, sitemap — hepsi `.com.tr` kalır.
+  - Kesimden sonra **`akorpro.com` → `akorpro.com.tr` 301** (marka koruması; tersi değil).
+  - **SEO sonucu**: adres değişikliği bildirimi yok, 301 zinciri yok, ccTLD sinyali korunur,
+    geçiş dalgalanması yok. Domain kaynaklı SEO riski sıfır.
 - **Çalışma şekli**: Ayrı git branch'inde geliştirilir (Sourcetree), `master`'a birleştirmeden ilerlenir.
-- **Google OAuth**: `akorpro.com` + Directus callback için **yeni** OAuth client (Firebase'inkine dokunulmaz).
+- **Google OAuth**: **yeni** OAuth client; redirect URI'lar hem `akorpro.com` (staging) hem
+  **`akorpro.com.tr` (production)** + Directus callback içerir. Firebase'in mevcut client'ına dokunulmaz —
+  ayrı client ID olduğu için aynı domain iki client'ta yer alabilir.
 - **Playlists**: Realtime yok → **yerel güncelleme (optimistic) + gerektiğinde yeniden çekme**. `onSnapshot` kalkar.
 - **Yedekleme**: MariaDB **günlük** otomatik yedek → R2.
 - **Genius/Spotify**: Tamamen kaldırılır (Directus'a taşınmaz).
@@ -60,9 +69,20 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
 
 1. **Contabo VPS** (8 GB) provizyon, Ubuntu LTS, SSH sertleştirme (key-only, ufw).
 2. **Coolify** kurulumu (tek satır installer). Coolify UI kendisi Tunnel arkasına alınır.
-3. **Cloudflare**:
-   - Domain (`akorpro.com.tr`) nameserver'ları Cloudflare'e taşınır.
-   - **Cloudflare Tunnel**: `cloudflared` container'ı Coolify'da; public hostname → `next-app`, ayrı subdomain → `directus` ve Coolify paneli. VPS'te 80/443 dışa kapalı.
+3. **Cloudflare** (iki zone: `akorpro.com.tr` = production, `akorpro.com` = staging):
+   - **`akorpro.com.tr` nameserver'ları Cloudflare'e taşınır.** Kesimden **önce** yapılır ve
+     kayıtlar Vercel'i göstermeye devam eder — canlıda değişiklik olmaz. Kesim böylece tek bir
+     DNS kaydı düzenlemesine iner. **Kesimden en az 24 saat önce TTL 300 sn'ye düşürülür**
+     (hızlı rollback için).
+   - **`akorpro.com` zone'u = staging.** Arama motorlarına tamamen kapalı tutulur:
+     **Cloudflare Access** (e-posta/OTP ile giriş) staging hostname'in önüne konur. Bu, robots.txt'e
+     güvenmekten daha sağlam — bot hiç içeriğe ulaşamaz.
+     ⚠️ **Bu kritik**: staging, production'ın birebir kopyası. Açık bırakılırsa Google
+     `akorpro.com`'u indeksler ve `.com.tr` ile **duplicate content** çakışması doğar —
+     yani korumak istediğimiz sıralamalara zarar verir.
+   - **Cloudflare Tunnel**: `cloudflared` container'ı Coolify'da. Public hostname'ler:
+     geliştirme boyunca `akorpro.com` → `next-app`; kesimde buna `akorpro.com.tr` eklenir.
+     Ayrı subdomain'ler → `directus` ve Coolify paneli (ikisi de Access arkasında). VPS'te 80/443 dışa kapalı.
    - **WAF + Rate limiting**: yazma uçları (`/api/contributions`, `/api/takedown`) ve `/directus/*` için kurallar.
    - **Turnstile**: App Check yerine bot koruması (contribution/takedown formları). Site+secret key.
    - **R2**: bucket + S3 API token (Directus storage ve gelecekteki görseller için).
@@ -177,7 +197,9 @@ Strateji: `lib/firestore/*` modüllerinin **dışa aktardığı fonksiyon imzala
 - `/api/takedown` — public takedown talebi (+ Turnstile).
 - `/api/auth/*` — Directus SSO/session (Faz 3).
 
-**URL korunumu (kritik — `com.tr → com` eşleşmesi için)**: Tüm public route segmentleri ve slug şeması **aynen korunur** — `app/sanatci/...`, `app/akor/...`, `app/akor-kutuphanesi`, `app/gitar-akorlari`, `app/calma-listeleri`, `app/gamlar`, `app/besli-cember`, `app/katki`, `app/profil`, `app/arama` + legal sayfalar (`gizlilik`, `iletisim`, `telif`, `kullanim-kosullari`, `cerez-politikasi`). `sitemap.ts` / `robots.ts` / `opengraph-image.tsx` korunur; canonical `NEXT_PUBLIC_SITE_URL` → `akorpro.com`. Slug üretim mantığı (`artist_slug`+`slug`) birebir aynı kalır.
+**URL korunumu (kritik — kesimde 1:1 eşleşme için)**: Tüm public route segmentleri ve slug şeması **aynen korunur** — `app/sanatci/...`, `app/akor/...`, `app/akor-kutuphanesi`, `app/gitar-akorlari`, `app/calma-listeleri`, `app/gamlar`, `app/besli-cember`, `app/katki`, `app/profil`, `app/arama` + legal sayfalar (`gizlilik`, `iletisim`, `telif`, `kullanim-kosullari`, `cerez-politikasi`). `sitemap.ts` / `robots.ts` / `opengraph-image.tsx` korunur; canonical `NEXT_PUBLIC_SITE_URL`
+**`https://akorpro.com.tr` olarak KALIR** (domain değişmiyor). Staging deploy'unda da bu değer
+production'ı gösterir — staging Cloudflare Access arkasında olduğu için taranmaz, indekslenmez. Slug üretim mantığı (`artist_slug`+`slug`) birebir aynı kalır.
 
 **Config**:
 - **Build = Nixpacks** (Coolify varsayılanı) — **elle Dockerfile yok**. Nixpacks Next.js'i otomatik algılar: `next build` → `next start` (node 24). `output: "standalone"` **gerekmez**; istenirse ileride küçültme için eklenebilir ama Nixpacks default akışı yeterli.
@@ -215,13 +237,19 @@ aktif bir sızıntı değil — eski sitede yapılacak bir şey yok.
 **Yeni yığında gereklilik:** `www.akorpro.com` → `akorpro.com` 301 + canonical yalnız apex.
 Aynı davranış kurulmazsa problem *yeniden* doğar.
 
-**Yönlendirme mekanizması** — Cloudflare **Redirect Rule** (Bulk Redirects'e gerek yok, path şeması birebir aynı),
-`akorpro.com.tr` zone'unda, tüm istekler için, **301**, path + query korunarak:
+**Kesim mekanizması (domain kararı sonrası güncellendi)** — Domain değişmediği için `.com.tr` tarafında
+**hiçbir yönlendirme kuralı yok**. Kesim tek adım: `akorpro.com.tr` DNS kaydı Vercel'den
+Cloudflare Tunnel'a çevrilir. URL'ler zaten aynı olduğu için kullanıcı ve Google açısından
+sayfa adresleri hiç değişmez.
+
+Kesimden **sonra** `akorpro.com` zone'unda tek bir Redirect Rule (301, path + query korunarak) —
+marka koruması için, ters yönde:
 ```
-concat("https://akorpro.com", http.request.uri.path,
+concat("https://akorpro.com.tr", http.request.uri.path,
        if(http.request.uri.query != "", concat("?", http.request.uri.query), ""))
 ```
-`www.akorpro.com.tr` zone'u da aynı kurala dahil edilir.
+Bu kural **kesimden önce eklenmez** — staging o hostname üzerinde çalışıyor. Sıra: kesim → staging
+Access kapatılır → redirect rule eklenir.
 
 **`next.config.ts` `redirects()` bloğu KORUNUR** — 24 legacy kural (`/songs/:path*`, `/artist/:slug`,
 `/chord/:artist/:song`, `/kesfet`, `/playlists`, `/login`, trailing-slash normalizasyonu…).
@@ -256,13 +284,23 @@ Detektör canlıda iki yönde test edildi: 35/35 gerçek içerik geçti, uydurma
 - Sitemap'teki 143 URL dizine alınmamış — kesimde kaybedilecek bir şey yok, ancak yeni sitemap aynı URL'leri üretmeli.
 - `/akor/kenan-dogulu/kursun-adres-sormaz-ki` — **kapsam dışı** (aşağıda).
 
-**Doğrulama adımları:**
-1. Kesimden önce, staging'de: `node scripts/verify-urls.mjs --base https://<staging>` → P0/P1 tamamı 200.
-2. Kesim anında: `node scripts/verify-urls.mjs --base https://akorpro.com` → tamamı 200.
-3. Kesimden sonra: `node scripts/verify-urls.mjs --redirect` → `com.tr` tarafı 301 + doğru hedef.
-4. GSC'de `akorpro.com` property'si açılır, sitemap gönderilir, **adres değişikliği** bildirilir.
-5. Cloudflare Analytics'te 404 oranı izlenir; ilk 30 gün `com.tr` property'sinde tıklama düşüşü takip edilir.
-6. `com.tr` yönlendirmesi **en az 12 ay** açık kalır (Google sinyal aktarımı için).
+**Doğrulama adımları (domain kararı sonrası güncellendi):**
+1. **Kesimden önce, staging'de** — `node scripts/verify-urls.mjs --base https://akorpro.com`
+   → P0/P1 tamamı geçmeli. Bu, "içerik Directus'a girildi mi" sorusunun cevabı ve **kesim ön koşulu**.
+   (Staging Cloudflare Access arkasındaysa script'e servis token'ı gerekir ya da kontrol geçici olarak
+   Access bypass kuralı ile çalıştırılır.)
+2. **Kesim anında** — DNS çevrildikten sonra `node scripts/verify-urls.mjs --base https://akorpro.com.tr`
+   → tamamı geçmeli. Aynı komut, artık gerçek domain'e karşı.
+3. **Kesimden sonra** — `akorpro.com` → `akorpro.com.tr` 301'i doğrula (marka koruma kuralı).
+4. **GSC'de yeni property AÇILMAZ, adres değişikliği bildirilmez** — domain değişmiyor. Mevcut
+   `akorpro.com.tr` property'si aynen devam eder; sitemap zaten gönderilmiş durumda.
+5. Cloudflare Analytics'te 404 oranı izlenir; ilk 30 gün GSC'de tıklama/gösterim eğrisi takip edilir.
+   Beklenti: **düşüş olmamalı** — URL'ler ve domain değişmediği için sinyal aktarımı gerekmiyor.
+6. Vercel + Firebase, kesimden sonra **en az 2 hafta** ayakta bırakılır (rollback penceresi).
+
+> `verify-urls.mjs --redirect` yeniden amaçlandırıldı: artık `akorpro.com/<path>` → **301** →
+> `akorpro.com.tr/<path>` marka koruma kuralını doğrular (3. adım). Varsayılan `--base` da
+> `https://akorpro.com.tr`.
 
 **Kapsam dışı (karar 2026-08-20):** `/akor/kenan-dogulu/kursun-adres-sormaz-ki` — 0 tıklama / 4 gösterim,
 pozisyon 54.5, sitemap'te yok ve canlıda zaten soft 404, yani gerçek içerik değil. Taşınmayacak;
@@ -313,22 +351,28 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 
 ## Riskler & rollback
 
-- **Kesim (cutover)**: Yeni yığın `akorpro.com` üzerinde bağımsız kurulur; mevcut `akorpro.com.tr` (Vercel + Firebase) paralel çalışmaya devam eder. Yeni yığın tam test edilip stabil olunca `akorpro.com.tr → akorpro.com` yönlendirmesi (301) yapılır. İki taraf ayrı domain/altyapı olduğu için kesim anına kadar canlı site hiç etkilenmez; sorunda yönlendirme geri alınır. Greenfield olduğu için veri senkron riski yok (içerik yeni yığında yeniden girilir/seed edilir — **canlı içerik varsa `com`'a taşınması teyit edilmeli**).
-  - SEO notu: `com.tr` → `com` kalıcı yönlendirme + `com`'da canonical; Search Console'da adres değişikliği bildirimi.
-    Somut URL envanteri, öncelik listesi ve doğrulama adımları **Faz 5.1**'de (GSC verisiyle ölçüldü: 36 trafik alan path, 6 sayfa tıklamaların %80'i, kesim öncesi 29 şarkı + 27 sanatçı girilmiş olmalı).
-- **ccTLD → gTLD geotargeting kaybı (AÇIK RİSK — karar bekliyor)**: `.com.tr` bir ülke kodu TLD'si ve
-  Google için **otomatik, güçlü bir Türkiye hedefleme sinyali**. `.com` jenerik ve coğrafi olarak nötr;
-  bu sinyal 301 ile taşınmaz. GSC verisi kitlenin **%98 Türkiye** olduğunu gösteriyor
-  (1.348 tıklamanın 1.319'u). Search Console'un uluslararası hedefleme aracı da kaldırıldığı için
-  `.com`'da bunu elle telafi etmek mümkün değil; yalnız içerik dili, hreflang ve link profili kalır.
-  Buna ek olarak her domain taşımasında geçici sıralama dalgalanması beklenir.
-  **Alternatif:** altyapı göçü ile domain değişimi **bağımsız kararlar**. Yeni yığın planlandığı gibi
-  `akorpro.com` üzerinde paralel kurulur (staging/prova), ancak kesimde `akorpro.com.tr`'nin DNS'i yeni
-  yığına çevrilir ve **`.com.tr` birincil domain olarak kalır**. Böylece Contabo/Directus göçü yapılır
-  ama domain kaynaklı SEO riski **sıfırlanır**: ccTLD sinyali korunur, 301 zinciri yok, adres değişikliği
-  bildirimi yok, geçiş dalgalanması yok. `.com` ileride marka/uluslararası ihtiyaç doğarsa `.com.tr`'ye
-  yönlendirilir. Bu seçilirse Faz 5.1'deki yönlendirme kuralları gereksizleşir; URL envanteri ve
-  `verify-urls.mjs` doğrulaması (içerik girildi mi?) **aynen geçerli kalır**.
+- **Kesim (cutover) — DNS anahtarı**: Yeni yığın `akorpro.com` (staging, Access arkasında) üzerinde
+  kurulur ve tam test edilir. Mevcut `akorpro.com.tr` (Vercel + Firebase) o ana kadar hiç etkilenmez.
+  Kesim = `akorpro.com.tr` DNS kaydının Cloudflare Tunnel'a çevrilmesi. Domain, URL'ler ve canonical'lar
+  değişmediği için Google açısından **hiçbir şey taşınmıyor** — yalnız origin değişiyor.
+  - **Rollback**: DNS kaydını Vercel'e geri al. Bu yüzden kesimden ≥24 saat önce **TTL 300 sn**'ye
+    düşürülür ve Vercel + Firebase kesimden sonra **≥2 hafta** ayakta bırakılır.
+  - **Önceki plana göre fark**: eski yaklaşımda canlı domain hiç dokunulmadan bırakılıp 301 atılıyordu;
+    şimdi kesim canlı domain üzerinde gerçekleşiyor. Rollback DNS ile hâlâ temiz, ama **anlık** değil
+    (TTL kadar gecikir). Karşılığında domain kaynaklı SEO riski tamamen ortadan kalkıyor — bilinçli takas.
+  - Greenfield olduğu için veri senkron riski yok. Kesim ön koşulu: **29 şarkı + 27 sanatçı** Directus'ta
+    hazır (Faz 5.1, `scripts/verify-urls.mjs` ile denetlenir).
+  - SEO notu: adres değişikliği bildirimi **yok**, yeni GSC property **yok**, 301 zinciri **yok**.
+    Mevcut `akorpro.com.tr` property'si aynen devam eder.
+- **ccTLD geotargeting — KARARLA ÇÖZÜLDÜ (2026-08-20)**: `.com` jenerik olduğu için Google'ın otomatik
+  Türkiye hedefleme sinyalini taşımaz ve bu sinyal 301 ile aktarılmaz. Kitle %98 Türkiye
+  (GSC: 1.348 tıklamanın 1.319'u). **Karar: domain değiştirilmiyor, `.com.tr` birincil kalıyor** →
+  risk gerçekleşmiyor. `akorpro.com` staging olarak kullanılır, kesimden sonra `.com.tr`'ye 301'lenir.
+- **Staging duplicate content (YENİ RİSK — paralel kurulumun getirdiği)**: `akorpro.com` üzerinde
+  production'ın birebir kopyası çalışacak. Açık bırakılırsa Google indeksler ve `.com.tr` ile
+  duplicate content çakışması doğar — yani korunmak istenen sıralamalara zarar verir.
+  **Önlem: Cloudflare Access** (robots.txt'e güvenilmez; bot içeriğe hiç ulaşamamalı).
+  Kesimde Access ancak `.com` → `.com.tr` 301 kuralı eklendikten sonra kaldırılır.
 - **App Check kaybı**: bot/abuse koruması Cloudflare WAF + Turnstile'a devreder — yazma uçlarında Turnstile şart.
 - **Real-time davranış farkı**: Firestore `onSnapshot` → Directus subscription; UX eşdeğerliği test edilir.
 - **ISR önbellek**: tek VPS'te on-demand revalidate sorunsuz; ileride çok-instance olursa paylaşımlı cache gerekir.
@@ -341,8 +385,8 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 ## Açık Sorular / Konuşulacaklar
 
 - [x] ~~Admin: Directus mü, mevcut Next.js admin mi?~~ → **Directus admin UI**. Mevcut admin (`app/admin/*` + `app/api/admin/*`) kaldırılır.
-- [x] ~~İçerik taşınacak mı?~~ → **Hayır**, greenfield. Sadece **URL yapısı korunur** (com.tr → com eşleşmesi). Aynı slug şeması → içerik yeniden girildiğinde URL'ler otomatik eşleşir.
-- [x] ~~Domain nameserver yetkisi~~ → `akorpro.com` bizde; yeni yığın orada kurulur, `com.tr` sonra yönlendirilir.
+- [x] ~~İçerik taşınacak mı?~~ → **Hayır**, greenfield. Sadece **URL yapısı korunur**. Aynı slug şeması → içerik yeniden girildiğinde URL'ler otomatik eşleşir. Zorunlu liste: Faz 5.1.
+- [x] ~~Domain nameserver yetkisi~~ → Her iki domain de bizde. `akorpro.com` = staging; `akorpro.com.tr` nameserver'ları kesimden önce Cloudflare'e taşınır (kayıtlar Vercel'i göstermeye devam eder, canlıda değişiklik olmaz).
 - [x] ~~Şema denetimi~~ → Yapıldı (yukarıdaki bulgular tablosu). `schemaVersion`, `cover_image_url`, elle sayçlar, `frets`/`barre_start`/`barre_end`, `audit_log` budandı; sayçlar otomatik; barre tutuldu.
 - [x] ~~Genius/Spotify yardımcıları~~ → **Tamamen kaldırılır** (Directus'a taşınmaz).
 - [x] ~~Google OAuth~~ → **Yeni** OAuth client (`akorpro.com` + Directus callback; Firebase'e dokunulmaz).
@@ -353,8 +397,9 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 - [x] ~~`www` yinelenmesi~~ → Canlıda zaten 301 + doğru canonical; eski sitede aksiyon yok. Yeni yığında aynı davranış kurulacak.
 - [x] ~~Soft 404 fix'i nerede yapılsın?~~ → **Hiçbir yerde.** Next'in belgelenmiş streaming davranışı; `noindex` indekslenmeyi zaten engelliyor. Yalnız doğrulama script'i gövde denetimi yapar (Faz 5.1).
 
-- [ ] **Domain kararı — planın en büyük açık SEO riski.** Kesimde `.com.tr` → `.com` yönlendirilsin mi
-  (ccTLD geotargeting kaybı + geçiş dalgalanması), yoksa `.com.tr` birincil kalıp yalnız altyapı mı
-  taşınsın (SEO riski ~sıfır)? Ayrıntı: Riskler & rollback bölümü. Bu karar verilmeden kesim planlanamaz.
+- [x] ~~Domain kararı~~ → **`.com.tr` birincil KALIR** (karar 2026-08-20). Domain değiştirilmiyor;
+  yalnız altyapı taşınıyor. `akorpro.com` staging olarak kullanılır, kesimden sonra `.com.tr`'ye 301'lenir.
+  Sonuç: domain kaynaklı SEO riski sıfır. Bunun getirdiği yeni gereklilik: **staging Cloudflare Access
+  ile kapatılmalı** (duplicate content).
 
-Diğer maddeler kapalı. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)
+Açık madde kalmadı. (İlerledikçe: canlı `com.tr`'de gerçek içerik olup olmadığı kesim öncesi teyit edilecek.)

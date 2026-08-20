@@ -3,10 +3,10 @@
  * Kesim (cutover) doğrulaması: envanterdeki her URL yeni yığında gerçekten 200 dönüyor mu?
  *
  * Kullanım:
- *   node scripts/verify-urls.mjs                          # https://akorpro.com (varsayılan)
- *   node scripts/verify-urls.mjs --base https://staging.akorpro.com
- *   node scripts/verify-urls.mjs --redirect               # eski domaini test et:
- *                                                         # akorpro.com.tr/<path> → 301 → akorpro.com/<path>
+ *   node scripts/verify-urls.mjs                          # https://akorpro.com.tr (production)
+ *   node scripts/verify-urls.mjs --base https://akorpro.com   # kesim öncesi staging
+ *   node scripts/verify-urls.mjs --redirect               # marka koruma kuralı:
+ *                                                         # akorpro.com/<path> → 301 → akorpro.com.tr/<path>
  *   node scripts/verify-urls.mjs --tier P0                # yalnız P0
  *
  * Çıkış kodu: P0/P1'de tek bir hata bile varsa 1 → CI/kesim durur.
@@ -18,7 +18,7 @@ const flag = (name, fallback) => {
   const i = args.indexOf(`--${name}`);
   return i === -1 ? fallback : args[i + 1];
 };
-const BASE = (flag("base", "https://akorpro.com")).replace(/\/+$/, "");
+const BASE = (flag("base", "https://akorpro.com.tr")).replace(/\/+$/, "");
 const TIER = flag("tier", null);
 const REDIRECT_MODE = args.includes("--redirect");
 const CONCURRENCY = Number(flag("concurrency", 6));
@@ -58,7 +58,7 @@ function detectSoftNotFound(body, path) {
 }
 
 async function check(page) {
-  const url = REDIRECT_MODE ? page.oldUrl : `${BASE}${page.path}`;
+  const url = REDIRECT_MODE ? page.brandUrl : `${BASE}${page.path}`;
   try {
     const res = await fetch(url, {
       redirect: REDIRECT_MODE ? "manual" : "follow",
@@ -66,7 +66,7 @@ async function check(page) {
     });
     if (REDIRECT_MODE) {
       const location = res.headers.get("location") ?? "";
-      const expected = `${BASE}${page.path}`;
+      const expected = `https://akorpro.com.tr${page.path}`;
       const ok = res.status === 301 && location.replace(/\/+$/, "") === expected.replace(/\/+$/, "");
       return { ...page, url, status: res.status, location, ok };
     }

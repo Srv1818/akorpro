@@ -1,7 +1,7 @@
 {
   "generatedFrom": {
-    "oldHost": "akorpro.com.tr",
-    "newHost": "akorpro.com"
+    "prodHost": "akorpro.com.tr",
+    "brandHost": "akorpro.com"
   },
   "totals": {
     "uniquePaths": 36,
@@ -444,8 +444,8 @@
       "key": "eypio/omrum",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/eypio/omrum",
-      "oldUrl": "https://akorpro.com.tr/akor/eypio/omrum"
+      "prodUrl": "https://akorpro.com.tr/akor/eypio/omrum",
+      "brandUrl": "https://akorpro.com/akor/eypio/omrum"
     },
     {
       "path": "/akor/ferdi-ozbegen/dilek-tasi",
@@ -460,8 +460,8 @@
       "key": "ferdi-ozbegen/dilek-tasi",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/ferdi-ozbegen/dilek-tasi",
-      "oldUrl": "https://akorpro.com.tr/akor/ferdi-ozbegen/dilek-tasi"
+      "prodUrl": "https://akorpro.com.tr/akor/ferdi-ozbegen/dilek-tasi",
+      "brandUrl": "https://akorpro.com/akor/ferdi-ozbegen/dilek-tasi"
     },
     {
       "path": "/akor/karaf/ask-durdukca",
@@ -476,8 +476,8 @@
       "key": "karaf/ask-durdukca",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/karaf/ask-durdukca",
-      "oldUrl": "https://akorpro.com.tr/akor/karaf/ask-durdukca"
+      "prodUrl": "https://akorpro.com.tr/akor/karaf/ask-durdukca",
+      "brandUrl": "https://akorpro.com/akor/karaf/ask-durdukca"
     },
     {
       "path": "/akor/blok3/kusura-bakma",
@@ -492,8 +492,8 @@
       "key": "blok3/kusura-bakma",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/blok3/kusura-bakma",
-      "oldUrl": "https://akorpro.com.tr/akor/blok3/kusura-bakma"
+      "prodUrl": "https://akorpro.com.tr/akor/blok3/kusura-bakma",
+      "brandUrl": "https://akorpro.com/akor/blok3/kusura-bakma"
     },
     {
       "path": "/akor/dolu-kadehi-ters-tut/dilerim-ki",
@@ -508,8 +508,8 @@
       "key": "dolu-kadehi-ters-tut/dilerim-ki",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/dolu-kadehi-ters-tut/dilerim-ki",
-      "oldUrl": "https://akorpro.com.tr/akor/dolu-kadehi-ters-tut/dilerim-ki"
+      "prodUrl": "https://akorpro.com.tr/akor/dolu-kadehi-ters-tut/dilerim-ki",
+      "brandUrl": "https://akorpro.com/akor/dolu-kadehi-ters-tut/dilerim-ki"
     },
     {
       "path": "/akor/mor-ve-otesi/cambaz",
@@ -524,8 +524,8 @@
       "key": "mor-ve-otesi/cambaz",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/mor-ve-otesi/cambaz",
-      "oldUrl": "https://akorpro.com.tr/akor/mor-ve-otesi/cambaz"
+      "prodUrl": "https://akorpro.com.tr/akor/mor-ve-otesi/cambaz",
+      "brandUrl": "https://akorpro.com/akor/mor-ve-otesi/cambaz"
     },
     {
       "path": "/akor/sezen-aksu/yani",
@@ -540,8 +540,8 @@
       "key": "sezen-aksu/yani",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/sezen-aksu/yani",
-      "oldUrl": "https://akorpro.com.tr/akor/sezen-aksu/yani"
+      "prodUrl": "https://akorpro.com.tr/akor/sezen-aksu/yani",
+      "brandUrl": "https://akorpro.com/akor/sezen-aksu/yani"
     },
     {
       "path": "/akor/ogun-sanlisoy/saydim",
@@ -556,8 +556,8 @@
       "key": "ogun-sanlisoy/saydim",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/ogun-sanlisoy/saydim",
-      "oldUrl": "https://akorpro.com.tr/akor/ogun-sanlisoy/saydim"
+      "prodUrl": "https://akorpro.com.tr/akor/ogun-sanlisoy/saydim",
+      "brandUrl": "https://akorpro.com/akor/ogun-sanlisoy/saydim"
     },
     {
       "path": "/akor/sezen-aksu/sizli-bizli",
@@ -572,8 +572,8 @@
       "key": "sezen-aksu/sizli-bizli",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/sezen-aksu/sizli-bizli",
-      "oldUrl": "https://akorpro.com.tr/akor/sezen-aksu/sizli-bizli"
+      "prodUrl": "https://akorpro.com.tr/akor/sezen-aksu/sizli-bizli",
+      "brandUrl": "https://akorpro.com/akor/sezen-aksu/sizli-bizli"
     },
     {
       "path": "/akor/umut-kaya/mor-yazma",
@@ -588,8 +588,8 @@
       "key": "umut-kaya/mor-yazma",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/umut-kaya/mor-yazma",
-      "oldUrl": "https://akorpro.com.tr/akor/umut-kaya/mor-yazma"
+      "prodUrl": "https://akorpro.com.tr/akor/umut-kaya/mor-yazma",
+      "brandUrl": "https://akorpro.com/akor/umut-kaya/mor-yazma"
     },
     {
       "path": "/akor/koray-avci/magusa-limani-akustik",
@@ -604,8 +604,8 @@
       "key": "koray-avci/magusa-limani-akustik",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/koray-avci/magusa-limani-akustik",
-      "oldUrl": "https://akorpro.com.tr/akor/koray-avci/magusa-limani-akustik"
+      "prodUrl": "https://akorpro.com.tr/akor/koray-avci/magusa-limani-akustik",
+      "brandUrl": "https://akorpro.com/akor/koray-avci/magusa-limani-akustik"
     },
     {
       "path": "/akor/volkan-konak/izmir-marsi",
@@ -620,8 +620,8 @@
       "key": "volkan-konak/izmir-marsi",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/volkan-konak/izmir-marsi",
-      "oldUrl": "https://akorpro.com.tr/akor/volkan-konak/izmir-marsi"
+      "prodUrl": "https://akorpro.com.tr/akor/volkan-konak/izmir-marsi",
+      "brandUrl": "https://akorpro.com/akor/volkan-konak/izmir-marsi"
     },
     {
       "path": "/akor/can-bonomo/bir-basina",
@@ -636,8 +636,8 @@
       "key": "can-bonomo/bir-basina",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/can-bonomo/bir-basina",
-      "oldUrl": "https://akorpro.com.tr/akor/can-bonomo/bir-basina"
+      "prodUrl": "https://akorpro.com.tr/akor/can-bonomo/bir-basina",
+      "brandUrl": "https://akorpro.com/akor/can-bonomo/bir-basina"
     },
     {
       "path": "/akor/baris-akarsu/islak-islak",
@@ -652,8 +652,8 @@
       "key": "baris-akarsu/islak-islak",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/baris-akarsu/islak-islak",
-      "oldUrl": "https://akorpro.com.tr/akor/baris-akarsu/islak-islak"
+      "prodUrl": "https://akorpro.com.tr/akor/baris-akarsu/islak-islak",
+      "brandUrl": "https://akorpro.com/akor/baris-akarsu/islak-islak"
     },
     {
       "path": "/akor/mehmet-gureli/kimse-bilmez",
@@ -668,8 +668,8 @@
       "key": "mehmet-gureli/kimse-bilmez",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/mehmet-gureli/kimse-bilmez",
-      "oldUrl": "https://akorpro.com.tr/akor/mehmet-gureli/kimse-bilmez"
+      "prodUrl": "https://akorpro.com.tr/akor/mehmet-gureli/kimse-bilmez",
+      "brandUrl": "https://akorpro.com/akor/mehmet-gureli/kimse-bilmez"
     },
     {
       "path": "/akor/duman/aman-aman",
@@ -684,8 +684,8 @@
       "key": "duman/aman-aman",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/duman/aman-aman",
-      "oldUrl": "https://akorpro.com.tr/akor/duman/aman-aman"
+      "prodUrl": "https://akorpro.com.tr/akor/duman/aman-aman",
+      "brandUrl": "https://akorpro.com/akor/duman/aman-aman"
     },
     {
       "path": "/akor/baris-manco/kara-sevda",
@@ -700,8 +700,8 @@
       "key": "baris-manco/kara-sevda",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/baris-manco/kara-sevda",
-      "oldUrl": "https://akorpro.com.tr/akor/baris-manco/kara-sevda"
+      "prodUrl": "https://akorpro.com.tr/akor/baris-manco/kara-sevda",
+      "brandUrl": "https://akorpro.com/akor/baris-manco/kara-sevda"
     },
     {
       "path": "/akor/sezen-aksu/ask-dansi",
@@ -716,8 +716,8 @@
       "key": "sezen-aksu/ask-dansi",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/sezen-aksu/ask-dansi",
-      "oldUrl": "https://akorpro.com.tr/akor/sezen-aksu/ask-dansi"
+      "prodUrl": "https://akorpro.com.tr/akor/sezen-aksu/ask-dansi",
+      "brandUrl": "https://akorpro.com/akor/sezen-aksu/ask-dansi"
     },
     {
       "path": "/akor/ahmet-kaya/agladikca",
@@ -732,8 +732,8 @@
       "key": "ahmet-kaya/agladikca",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/ahmet-kaya/agladikca",
-      "oldUrl": "https://akorpro.com.tr/akor/ahmet-kaya/agladikca"
+      "prodUrl": "https://akorpro.com.tr/akor/ahmet-kaya/agladikca",
+      "brandUrl": "https://akorpro.com/akor/ahmet-kaya/agladikca"
     },
     {
       "path": "/",
@@ -746,8 +746,8 @@
       "key": "/",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/",
-      "oldUrl": "https://akorpro.com.tr/"
+      "prodUrl": "https://akorpro.com.tr/",
+      "brandUrl": "https://akorpro.com/"
     },
     {
       "path": "/akor/anatolian-land/gonlun-var-mi-bende-sarmasik",
@@ -762,8 +762,8 @@
       "key": "anatolian-land/gonlun-var-mi-bende-sarmasik",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/anatolian-land/gonlun-var-mi-bende-sarmasik",
-      "oldUrl": "https://akorpro.com.tr/akor/anatolian-land/gonlun-var-mi-bende-sarmasik"
+      "prodUrl": "https://akorpro.com.tr/akor/anatolian-land/gonlun-var-mi-bende-sarmasik",
+      "brandUrl": "https://akorpro.com/akor/anatolian-land/gonlun-var-mi-bende-sarmasik"
     },
     {
       "path": "/akor/rengin/aldatildik",
@@ -778,8 +778,8 @@
       "key": "rengin/aldatildik",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/rengin/aldatildik",
-      "oldUrl": "https://akorpro.com.tr/akor/rengin/aldatildik"
+      "prodUrl": "https://akorpro.com.tr/akor/rengin/aldatildik",
+      "brandUrl": "https://akorpro.com/akor/rengin/aldatildik"
     },
     {
       "path": "/akor/adamlar/acinin-ilaci",
@@ -794,8 +794,8 @@
       "key": "adamlar/acinin-ilaci",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/adamlar/acinin-ilaci",
-      "oldUrl": "https://akorpro.com.tr/akor/adamlar/acinin-ilaci"
+      "prodUrl": "https://akorpro.com.tr/akor/adamlar/acinin-ilaci",
+      "brandUrl": "https://akorpro.com/akor/adamlar/acinin-ilaci"
     },
     {
       "path": "/akor/ankara-echoes/beni-al",
@@ -810,8 +810,8 @@
       "key": "ankara-echoes/beni-al",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/ankara-echoes/beni-al",
-      "oldUrl": "https://akorpro.com.tr/akor/ankara-echoes/beni-al"
+      "prodUrl": "https://akorpro.com.tr/akor/ankara-echoes/beni-al",
+      "brandUrl": "https://akorpro.com/akor/ankara-echoes/beni-al"
     },
     {
       "path": "/sanatci/eypio",
@@ -825,8 +825,8 @@
       "key": "eypio",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/sanatci/eypio",
-      "oldUrl": "https://akorpro.com.tr/sanatci/eypio"
+      "prodUrl": "https://akorpro.com.tr/sanatci/eypio",
+      "brandUrl": "https://akorpro.com/sanatci/eypio"
     },
     {
       "path": "/akor/ferhat-gocer-ve-nese-secil/askin-bana-verdigi-yetkiye",
@@ -841,8 +841,8 @@
       "key": "ferhat-gocer-ve-nese-secil/askin-bana-verdigi-yetkiye",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/ferhat-gocer-ve-nese-secil/askin-bana-verdigi-yetkiye",
-      "oldUrl": "https://akorpro.com.tr/akor/ferhat-gocer-ve-nese-secil/askin-bana-verdigi-yetkiye"
+      "prodUrl": "https://akorpro.com.tr/akor/ferhat-gocer-ve-nese-secil/askin-bana-verdigi-yetkiye",
+      "brandUrl": "https://akorpro.com/akor/ferhat-gocer-ve-nese-secil/askin-bana-verdigi-yetkiye"
     },
     {
       "path": "/akor/onur-can-ozcan/intiask",
@@ -857,8 +857,8 @@
       "key": "onur-can-ozcan/intiask",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/onur-can-ozcan/intiask",
-      "oldUrl": "https://akorpro.com.tr/akor/onur-can-ozcan/intiask"
+      "prodUrl": "https://akorpro.com.tr/akor/onur-can-ozcan/intiask",
+      "brandUrl": "https://akorpro.com/akor/onur-can-ozcan/intiask"
     },
     {
       "path": "/akor/semicenk/cikmaz-bir-sokakta",
@@ -873,8 +873,8 @@
       "key": "semicenk/cikmaz-bir-sokakta",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/semicenk/cikmaz-bir-sokakta",
-      "oldUrl": "https://akorpro.com.tr/akor/semicenk/cikmaz-bir-sokakta"
+      "prodUrl": "https://akorpro.com.tr/akor/semicenk/cikmaz-bir-sokakta",
+      "brandUrl": "https://akorpro.com/akor/semicenk/cikmaz-bir-sokakta"
     },
     {
       "path": "/akor/senay/hayat-bayram-olsa",
@@ -889,8 +889,8 @@
       "key": "senay/hayat-bayram-olsa",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/senay/hayat-bayram-olsa",
-      "oldUrl": "https://akorpro.com.tr/akor/senay/hayat-bayram-olsa"
+      "prodUrl": "https://akorpro.com.tr/akor/senay/hayat-bayram-olsa",
+      "brandUrl": "https://akorpro.com/akor/senay/hayat-bayram-olsa"
     },
     {
       "path": "/akor/duman/her-seyi-yak",
@@ -905,8 +905,8 @@
       "key": "duman/her-seyi-yak",
       "indexed": false,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/duman/her-seyi-yak",
-      "oldUrl": "https://akorpro.com.tr/akor/duman/her-seyi-yak"
+      "prodUrl": "https://akorpro.com.tr/akor/duman/her-seyi-yak",
+      "brandUrl": "https://akorpro.com/akor/duman/her-seyi-yak"
     },
     {
       "path": "/akor/duman/senden-daha-guzel",
@@ -921,8 +921,8 @@
       "key": "duman/senden-daha-guzel",
       "indexed": false,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/akor/duman/senden-daha-guzel",
-      "oldUrl": "https://akorpro.com.tr/akor/duman/senden-daha-guzel"
+      "prodUrl": "https://akorpro.com.tr/akor/duman/senden-daha-guzel",
+      "brandUrl": "https://akorpro.com/akor/duman/senden-daha-guzel"
     },
     {
       "path": "/sanatci/ferhat-gocer-ve-nese-secil",
@@ -936,8 +936,8 @@
       "key": "ferhat-gocer-ve-nese-secil",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/sanatci/ferhat-gocer-ve-nese-secil",
-      "oldUrl": "https://akorpro.com.tr/sanatci/ferhat-gocer-ve-nese-secil"
+      "prodUrl": "https://akorpro.com.tr/sanatci/ferhat-gocer-ve-nese-secil",
+      "brandUrl": "https://akorpro.com/sanatci/ferhat-gocer-ve-nese-secil"
     },
     {
       "path": "/akor/kenan-dogulu/kursun-adres-sormaz-ki",
@@ -952,8 +952,8 @@
       "key": "kenan-dogulu/kursun-adres-sormaz-ki",
       "indexed": false,
       "inSitemap": false,
-      "newUrl": "https://akorpro.com/akor/kenan-dogulu/kursun-adres-sormaz-ki",
-      "oldUrl": "https://akorpro.com.tr/akor/kenan-dogulu/kursun-adres-sormaz-ki",
+      "prodUrl": "https://akorpro.com.tr/akor/kenan-dogulu/kursun-adres-sormaz-ki",
+      "brandUrl": "https://akorpro.com/akor/kenan-dogulu/kursun-adres-sormaz-ki",
       "excluded": true,
       "excludedReason": "Karar (2026-08-20): kapsam dışı. 0 tıklama / 4 gösterim, pozisyon 54.5. Sitemap'te yok ve canlıda zaten soft 404 — gerçek içerik değil. İhtiyaç olursa yeni sitede normal içerik girişi olarak eklenir."
     },
@@ -969,8 +969,8 @@
       "key": "onur-can-ozcan",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/sanatci/onur-can-ozcan",
-      "oldUrl": "https://akorpro.com.tr/sanatci/onur-can-ozcan"
+      "prodUrl": "https://akorpro.com.tr/sanatci/onur-can-ozcan",
+      "brandUrl": "https://akorpro.com/sanatci/onur-can-ozcan"
     },
     {
       "path": "/sanatci/sertab-erener",
@@ -984,8 +984,8 @@
       "key": "sertab-erener",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/sanatci/sertab-erener",
-      "oldUrl": "https://akorpro.com.tr/sanatci/sertab-erener"
+      "prodUrl": "https://akorpro.com.tr/sanatci/sertab-erener",
+      "brandUrl": "https://akorpro.com/sanatci/sertab-erener"
     },
     {
       "path": "/sanatci/athena",
@@ -999,8 +999,8 @@
       "key": "athena",
       "indexed": true,
       "inSitemap": true,
-      "newUrl": "https://akorpro.com/sanatci/athena",
-      "oldUrl": "https://akorpro.com.tr/sanatci/athena"
+      "prodUrl": "https://akorpro.com.tr/sanatci/athena",
+      "brandUrl": "https://akorpro.com/sanatci/athena"
     }
   ]
 }
