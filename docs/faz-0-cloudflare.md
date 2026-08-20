@@ -18,6 +18,22 @@ Taşınacak kayıt yok → bu blokta kırılabilecek bir şey yok.
 - [ ] Cloudflare hesabı aç (varsa atla). Free plan bu iş için yeterli.
 - [ ] **Hesapta 2FA'yı aç.** Tüm altyapının DNS'i buraya bağlanacak.
 - [ ] `akorpro.com` domainini ekle → Free plan seç.
+- [ ] **"Connect your domain" ekranındaki ayarlar** — Cloudflare'in "Recommended" değerleri
+      indekslenmesi *istenen* bir site varsayar; staging için yanlış:
+
+      | Ayar | CF önerisi | Seç |
+      |---|---|---|
+      | Search | Allow | **Block** |
+      | Agent | Allow | **Block** |
+      | Training | Block on pages with ads | **Block** (tam) |
+      | Block training in robots.txt | Kapalı | **Kapalı bırak** |
+      | Import DNS records | Automatic | Automatic (kayıt yok, tarama boş döner) |
+
+      - Search/Agent/Training → Block: staging asla indekslenmemeli. Asıl koruma Access (Blok D),
+        bu ikinci katman. "Block on pages with ads" sitede reklam olmadığı için hiçbir şeyi engellemez.
+      - robots.txt toggle'ı **kapalı**: uygulama `robots.txt`'i kendisi üretiyor (`app/robots.ts`).
+        Cloudflare de yazarsa iki kaynak olur. Kontrol uygulamada kalsın.
+      - Hepsi sonradan dashboard'dan değiştirilebilir.
 - [ ] Cloudflare'in verdiği iki nameserver'ı not et (`xxx.ns.cloudflare.com`).
 - [ ] `akorpro.com`'un registrar'ında nameserver'ları bunlarla değiştir.
 - [ ] Zone'da **hiçbir A/CNAME kaydı ekleme** — Tunnel bunu kendisi yazacak (Blok C).
@@ -94,8 +110,12 @@ Neden şimdi, kesimde değil: `.com.tr` delegasyonu nic.tr/metunic üzerinden de
 TLD seviyesinde yavaş yayılıyor ve TTL bizde değil. Kesime bindirilirse rollback
 "NS yayılmasını bekle" olur. Ayrı yapılırsa kesim tek bir A kaydı düzenlemesine iner.
 
-- [ ] Cloudflare'e `akorpro.com.tr` ekle. Otomatik tarama kayıtları çekecek —
-      **tarama sonucuna güvenme**, aşağıdaki tabloyla birebir karşılaştır:
+- [ ] Cloudflare'e `akorpro.com.tr` ekle. Bu zone canlı ve indekslenmesi **isteniyor** →
+      Search/Agent ayarları staging'in tersi: **Search = Allow**. Training için karar
+      ayrıca verilir (içerik bu sitenin değeri; aceleye gerek yok, sonradan değiştirilebilir).
+      "Block training in robots.txt" yine **kapalı** — `app/robots.ts` tek kaynak.
+- [ ] ⚠️ Otomatik tarama kayıtları çekecek — **tarama sonucuna güvenme**,
+      aşağıdaki tabloyla birebir karşılaştır (özellikle `google-site-verification` TXT'i):
 
 | Tip | Ad | Değer | Proxy |
 |---|---|---|---|
