@@ -72,7 +72,9 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
 2. ~~**Coolify** kurulumu.~~ ✅ **Tamam** (2026-08-20).
    Kalan iş: Coolify UI'ın kendisi Tunnel + Cloudflare Access arkasına alınır (şu an public ise
    panel dışarıya açık demektir — Faz 0/3 ile birlikte kapatılmalı).
-3. **Cloudflare** (iki zone: `akorpro.com.tr` = production, `akorpro.com` = staging):
+3. **Cloudflare** (iki zone: `akorpro.com.tr` = production, `akorpro.com` = staging)
+   → **Uygulama adımları: [`docs/faz-0-cloudflare.md`](docs/faz-0-cloudflare.md)** (bloklar + doğrulama komutları).
+   Aşağıdaki maddeler o runbook'un gerekçeleri:
    - **`akorpro.com.tr` nameserver'ları Cloudflare'e taşınır — kesimden ÇOK önce, ayrı bir adım olarak.**
      Bu, siteyi taşımak değil: Cloudflare *aynı kayıtları* servis etmeye başlar, apex hâlâ Vercel'i
      (`216.198.79.1`) gösterir. Ziyaretçi açısından hiçbir değişiklik ve kesinti yok.
