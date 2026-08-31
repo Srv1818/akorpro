@@ -4,24 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
 import { ListPlus, Plus } from "lucide-react";
-import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
-import { getClientFirestore } from "@/lib/firebase/client";
-import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
-import type { PlaylistDoc, PlaylistItemDoc } from "@/lib/types/playlist";
+import { useSessionUid } from "@/lib/auth/use-session-user";
+import { addItem, createPlaylist, listPlaylists } from "@/lib/playlists/client";
 import type { SongSummary } from "@/lib/types/content";
-
-const PLAYLIST_SCHEMA_VERSION = 1;
 
 type PlaylistRow = { id: string; name: string };
 
@@ -37,7 +23,7 @@ function formatError(err: unknown): string {
 
 export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong }) {
   const pathname = usePathname();
-  const firebaseUid = useFirebaseUidFromSession();
+  const uid = useSessionUid();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -50,35 +36,27 @@ export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong })
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ variant: "success" | "error"; message: string } | null>(null);
 
-  const firebaseConfigured = Boolean(getFirebasePublicConfig());
   const loginHref = `/giris?returnTo=${encodeURIComponent(pathname || "/")}`;
 
   const loadPlaylists = useCallback(async () => {
-    if (!firebaseUid) return;
+    if (!uid) return;
     setListsLoading(true);
     setNotice(null);
     try {
-      const db = getClientFirestore();
-      const q = query(collection(db, "users", firebaseUid, "playlists"), orderBy("updatedAt", "desc"));
-      const snap = await getDocs(q);
-      setPlaylists(
-        snap.docs.map((d) => {
-          const data = d.data() as PlaylistDoc;
-          return { id: d.id, name: typeof data.name === "string" ? data.name : d.id };
-        }),
-      );
+      const rows = await listPlaylists();
+      setPlaylists(rows.map((r) => ({ id: r.id, name: r.name })));
     } catch (e) {
       setNotice({ variant: "error", message: formatError(e) });
       setPlaylists([]);
     } finally {
       setListsLoading(false);
     }
-  }, [firebaseUid]);
+  }, [uid]);
 
   useEffect(() => {
-    if (!open || !firebaseUid) return;
+    if (!open || !uid) return;
     void loadPlaylists();
-  }, [open, firebaseUid, loadPlaylists]);
+  }, [open, uid, loadPlaylists]);
 
   useEffect(() => {
     setMounted(true);
@@ -139,35 +117,13 @@ export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong })
 
   const addToPlaylist = useCallback(
     async (playlistId: string, playlistName: string) => {
-      if (!firebaseUid) return;
+      if (!uid) return;
       setBusy(true);
       setNotice(null);
       const listLabel = playlistName.trim() || "Liste";
       try {
-        const db = getClientFirestore();
-        const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistId, "items");
-        const allItems = await getDocs(itemsCol);
-        if (allItems.docs.some((d) => (d.data() as PlaylistItemDoc).songId === song.id)) {
-          setNotice({
-            variant: "error",
-            message: `Bu şarkı zaten “${listLabel}” listesinde.`,
-          });
-          return;
-        }
-        const existing = await getDocs(query(itemsCol, orderBy("order", "desc")));
-        const top = existing.docs[0]?.data() as PlaylistItemDoc | undefined;
-        const nextOrder = typeof top?.order === "number" ? top.order + 1 : 0;
-        await addDoc(itemsCol, {
-          order: nextOrder,
-          songId: song.id,
-          title: song.title,
-          artistSlug: song.artistSlug,
-          songSlug: song.slug,
-          createdAt: serverTimestamp(),
-        });
-        await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistId), {
-          updatedAt: serverTimestamp(),
-        });
+        // Tekrar kontrolü ve sıra sunucuda; duplicate 409 ile geri döner.
+        await addItem(playlistId, song.id);
         setNotice({
           variant: "success",
           message: `“${listLabel}” listesine eklendi.`,
@@ -183,11 +139,11 @@ export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong })
         setBusy(false);
       }
     },
-    [firebaseUid, song.artistSlug, song.id, song.slug, song.title],
+    [uid, song.id],
   );
 
   const createPlaylistAndAdd = useCallback(async () => {
-    if (!firebaseUid) return;
+    if (!uid) return;
     const name = newName.trim();
     if (!name) {
       setNotice({ variant: "error", message: "Liste adı girin." });
@@ -196,25 +152,8 @@ export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong })
     setBusy(true);
     setNotice(null);
     try {
-      const db = getClientFirestore();
-      const playlistRef = await addDoc(collection(db, "users", firebaseUid, "playlists"), {
-        name,
-        schemaVersion: PLAYLIST_SCHEMA_VERSION,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistRef.id, "items");
-      await addDoc(itemsCol, {
-        order: 0,
-        songId: song.id,
-        title: song.title,
-        artistSlug: song.artistSlug,
-        songSlug: song.slug,
-        createdAt: serverTimestamp(),
-      });
-      await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistRef.id), {
-        updatedAt: serverTimestamp(),
-      });
+      const playlist = await createPlaylist(name);
+      await addItem(playlist.id, song.id);
       setNewName("");
       setNotice({
         variant: "success",
@@ -230,11 +169,7 @@ export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong })
     } finally {
       setBusy(false);
     }
-  }, [firebaseUid, newName, song.artistSlug, song.id, song.slug, song.title]);
-
-  if (!firebaseConfigured) {
-    return null;
-  }
+  }, [uid, newName, song.id]);
 
   const panel =
     open && popoverCoords ? (
@@ -246,9 +181,9 @@ export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong })
         style={{ top: popoverCoords.top, right: popoverCoords.right }}
         onClick={(e) => e.stopPropagation()}
       >
-        {firebaseUid === undefined ? (
+        {uid === undefined ? (
           <p className="text-xs text-muted">Oturum kontrol ediliyor…</p>
-        ) : firebaseUid === null ? (
+        ) : uid === null ? (
           <p className="text-sm text-foreground">
             Çalma listesine eklemek için{" "}
             <Link href={loginHref} className="text-accent underline-offset-2 hover:underline">
@@ -336,7 +271,7 @@ export function SongCardPlaylistAdd({ song }: { song: SongCardPlaylistAddSong })
           setOpen((o) => !o);
           if (!open) setNotice(null);
         }}
-        disabled={firebaseUid === undefined}
+        disabled={uid === undefined}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border bg-surface/95 p-0 text-accent shadow-sm backdrop-blur-sm transition hover:border-accent/40 hover:bg-bg disabled:opacity-50 sm:h-7 sm:w-7"
         aria-expanded={open}
         aria-haspopup="dialog"

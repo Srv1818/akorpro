@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import admin from "firebase-admin";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { canPublishSongs } from "@/lib/auth/publisher";
-import { getAdminFirestore } from "@/lib/firebase/admin";
+import { createItem, createItems, readItems } from "@directus/sdk";
+import { directus } from "@/lib/directus/client";
 import { TAGS } from "@/lib/cache/tags";
 import { validateImportPayload } from "@/lib/firestore/import-validator";
-import { writeAuditLog } from "@/lib/security/audit-log";
 import { sanitizeTextContent } from "@/lib/security/sanitize";
 import {
   inferKeyModeFromOriginalKey,
@@ -134,11 +133,34 @@ function normalizeRowsForImport(rows: unknown[]): unknown[] {
   });
 }
 
-function db() {
-  const fs = getAdminFirestore();
-  if (!fs) throw new Error("Firestore Admin başlatılamadı.");
-  return fs;
+/**
+ * Sanatçı slug'ını Directus id'sine çevirir; yoksa oluşturur.
+ * Firestore sürümünde `artistId` alanına slug yazılıyordu (sahte id);
+ * Directus'ta gerçek bir FK gerektiği için burada çözülüyor.
+ */
+async function resolveArtistIds(slugs: string[], names: Map<string, string>): Promise<Map<string, string>> {
+  const unique = [...new Set(slugs)];
+  const found = await directus().request(
+    readItems("artists", {
+      filter: { slug: { _in: unique } },
+      fields: ["id", "slug"] as const,
+      limit: -1,
+    }),
+  );
+
+  const byslug = new Map(found.map((a) => [a.slug, a.id]));
+
+  for (const slug of unique) {
+    if (byslug.has(slug)) continue;
+    const created = await directus().request(
+      createItem("artists", { slug, name: names.get(slug) ?? slug } as never),
+    );
+    byslug.set(slug, created.id);
+  }
+
+  return byslug;
 }
+
 
 /**
  * Bulk import songs.
@@ -184,61 +206,54 @@ export async function POST(request: Request) {
     );
   }
 
-  const firestore = db();
-  const now = admin.firestore.FieldValue.serverTimestamp();
-  const BATCH_SIZE = 500;
+  const importModerationStatus = canPublishSongs(auth.user) ? "approved" : "pending";
+
+  const artistNames = new Map(valid.map((r) => [r.artistSlug, r.artistName]));
+  const artistIds = await resolveArtistIds(valid.map((r) => r.artistSlug), artistNames);
+
+  const rows = valid.map((row) => {
+    const keyMode = row.keyMode ?? inferKeyModeFromOriginalKey(row.originalKey);
+    return {
+      title: row.title,
+      slug: row.slug,
+      artist: artistIds.get(row.artistSlug),
+      artist_name: row.artistName,
+      artist_slug: row.artistSlug,
+      chord_body: row.chordBody,
+      original_key: row.originalKey,
+      key_mode: keyMode,
+      gamlar_scale_id:
+        normalizeGamlarScaleIdForKeyMode(row.gamlarScaleId, keyMode) ??
+        keyModeToGamlarCatalogScaleId(keyMode),
+      difficulty: row.difficulty,
+      genre: row.genre,
+      moderation_status: importModerationStatus,
+      tempo: row.tempo != null ? String(row.tempo) : null,
+      time_signature: row.timeSignature ?? null,
+      tuning: row.tuning ?? null,
+      capo: row.capo ?? null,
+      copyright_source: row.copyrightSource ?? null,
+      popularity: row.popularity ?? 0,
+      ...(row.showHarmonyDetails !== undefined
+        ? { show_harmony_details: row.showHarmonyDetails }
+        : {}),
+      ...(typeof row.harmonyDetailsNotes === "string"
+        ? { harmony_details_notes: sanitizeTextContent(row.harmonyDetailsNotes) }
+        : {}),
+    };
+  });
+
+  // Directus tek istekte çoklu kayıt kabul ediyor; Firestore'un 500'lük batch
+  // sınırı için yazılmış döngüye gerek kalmadı.
   let imported = 0;
-  const importModerationStatus = canPublishSongs(auth.user.uid) ? "approved" : "pending";
-
-  for (let i = 0; i < valid.length; i += BATCH_SIZE) {
-    const batch = firestore.batch();
-    const chunk = valid.slice(i, i + BATCH_SIZE);
-
-    for (const row of chunk) {
-      const ref = firestore.collection("songs").doc();
-      batch.set(ref, {
-        title: row.title,
-        slug: row.slug,
-        artistName: row.artistName,
-        artistSlug: row.artistSlug,
-        artistId: row.artistSlug,
-        chordBody: row.chordBody,
-        originalKey: row.originalKey,
-        keyMode: row.keyMode ?? inferKeyModeFromOriginalKey(row.originalKey),
-        gamlarScaleId: (() => {
-          const km = row.keyMode ?? inferKeyModeFromOriginalKey(row.originalKey);
-          return (
-            normalizeGamlarScaleIdForKeyMode(row.gamlarScaleId, km) ?? keyModeToGamlarCatalogScaleId(km)
-          );
-        })(),
-        difficulty: row.difficulty,
-        genre: row.genre,
-        moderationStatus: importModerationStatus,
-        tempo: row.tempo ?? null,
-        timeSignature: row.timeSignature ?? null,
-        tuning: row.tuning ?? null,
-        capo: row.capo ?? null,
-        copyrightSource: row.copyrightSource ?? null,
-        popularity: row.popularity ?? 0,
-        ...(row.showHarmonyDetails !== undefined ? { showHarmonyDetails: row.showHarmonyDetails } : {}),
-        ...(typeof row.harmonyDetailsNotes === "string"
-          ? { harmonyDetailsNotes: sanitizeTextContent(row.harmonyDetailsNotes) }
-          : {}),
-        schemaVersion: 1,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    await batch.commit();
+  const CHUNK = 100;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    await directus().request(createItems("songs", chunk as never));
     imported += chunk.length;
   }
 
-  await writeAuditLog(auth.user.uid, "bulk-import", "songs", "*", {
-    totalRows: b.songs.length,
-    imported,
-    errorCount: errors.length,
-  });
+  // Denetim izini Directus'un Activity Log'u tutuyor; ayrı audit_log yazımı kalktı.
 
   // Keşfet blokları `unstable_cache` ile tag'leniyor; bulk import sonrası hemen invalidation yap.
   revalidateTag(TAGS.SONGS_ALL, "max");

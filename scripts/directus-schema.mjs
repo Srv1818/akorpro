@@ -322,6 +322,27 @@ const collections = [
     ],
   },
   {
+    collection: "takedown_requests",
+    meta: {
+      icon: "gavel",
+      note: "Telif kaldırma talepleri — site formundan gelir, yalnız ekip görür",
+      display_template: "{{song_url}}",
+    },
+    fields: [
+      pk(),
+      str("name", { required: true }),
+      str("email", { required: true }),
+      str("song_url", { required: true, length: 500 }),
+      longtext("original_work", { required: true }),
+      longtext("proof", { required: true }),
+      enumf("status", ["pending", "reviewing", "resolved", "rejected"], {
+        required: true,
+        default: "pending",
+      }),
+      createdAt(),
+    ],
+  },
+  {
     collection: "playlists",
     meta: { icon: "playlist_play", note: "Kullanıcı çalma listeleri", display_template: "{{name}}" },
     fields: [

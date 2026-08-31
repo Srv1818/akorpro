@@ -1,59 +1,67 @@
-import type { JWTPayload } from "jose";
 import { cookies } from "next/headers";
-import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { SESSION_COOKIE_NAME, STAFF_ROLES } from "@/lib/auth/constants";
 import type { SessionUser } from "@/lib/auth/session-user";
-import { verifyFirebaseJwt } from "@/lib/auth/verify-firebase-jwt";
-import { getAdminAuth } from "@/lib/firebase/admin";
+import { directusUrl } from "@/lib/directus/client";
 
 export type { SessionUser };
 
-function claimsFromJwtPayload(payload: JWTPayload): Pick<SessionUser, "emailVerified" | "signInProvider"> {
-  const rec = payload as Record<string, unknown>;
-  const rawEv = rec.email_verified;
-  const emailVerified = rawEv === true || rawEv === "true";
-  const fb = rec.firebase;
-  let signInProvider: string | null = null;
-  if (fb && typeof fb === "object" && fb !== null && "sign_in_provider" in fb) {
-    const p = (fb as { sign_in_provider?: unknown }).sign_in_provider;
-    signInProvider = typeof p === "string" ? p : null;
-  }
-  return { emailVerified, signInProvider };
+type DirectusMe = {
+  id: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  provider: string | null;
+  status: string;
+  role: { name: string } | null;
+};
+
+function displayNameOf(me: DirectusMe): string | null {
+  const full = [me.first_name, me.last_name].filter(Boolean).join(" ").trim();
+  return full || me.email || null;
 }
 
+/**
+ * Oturumdaki kullanıcı — Directus.
+ *
+ * Firebase `verifySessionCookie` / custom claim akışının yerine geçer:
+ * tarayıcıdaki Directus oturum çerezi doğrudan Directus'a sorulur, yetki
+ * kararı **rol adına** göre verilir (eski `admin` custom claim'i yerine).
+ *
+ * Çerez yoksa veya Directus reddederse `null` döner — çağıranlar bunu bekliyor.
+ */
 export async function getServerSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies();
-  const raw = jar.get(SESSION_COOKIE_NAME)?.value;
-  if (!raw) return null;
+  const token = jar.get(SESSION_COOKIE_NAME)?.value;
+  if (!token) return null;
 
-  const auth = getAdminAuth();
-  if (auth) {
-    try {
-      const decoded = await auth.verifySessionCookie(raw, true);
-      const firebaseClaim = decoded.firebase as { sign_in_provider?: string } | undefined;
-      return {
-        uid: decoded.uid,
-        email: decoded.email ?? null,
-        emailVerified: decoded.email_verified === true,
-        signInProvider: firebaseClaim?.sign_in_provider ?? null,
-        admin: decoded.admin === true,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!projectId) return null;
-
+  let me: DirectusMe;
   try {
-    const payload = await verifyFirebaseJwt(raw, projectId);
-    const uid = typeof payload.sub === "string" ? payload.sub : null;
-    if (!uid) return null;
-    const email = typeof payload.email === "string" ? payload.email : null;
-    const { emailVerified, signInProvider } = claimsFromJwtPayload(payload);
-    const admin = (payload as Record<string, unknown>).admin === true;
-    return { uid, email, emailVerified, signInProvider, admin };
+    const res = await fetch(
+      `${directusUrl()}/users/me?fields=id,email,first_name,last_name,provider,status,role.name`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) return null;
+    me = (await res.json()).data as DirectusMe;
   } catch {
     return null;
   }
+
+  if (!me?.id || me.status !== "active") return null;
+
+  const role = me.role?.name ?? null;
+
+  return {
+    uid: me.id,
+    email: me.email,
+    // Directus'ta ayrı bir "email verified" alanı yok; SSO ile gelen hesap
+    // sağlayıcı tarafından doğrulanmış sayılır, yerel hesaplar admin tarafından açılır.
+    emailVerified: true,
+    signInProvider: me.provider,
+    admin: role != null && STAFF_ROLES.includes(role),
+    role,
+    displayName: displayNameOf(me),
+  };
 }

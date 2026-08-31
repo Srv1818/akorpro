@@ -34,7 +34,7 @@ export async function POST(request: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Geçersiz durum." }, { status: 400 });
   }
 
-  if (status === "approved" && !canPublishSongs(auth.user.uid)) {
+  if (status === "approved" && !canPublishSongs(auth.user)) {
     return NextResponse.json(
       { error: "Şarkıyı yayına alma yetkisi yalnız yayın yetkilisindedir." },
       { status: 403 },

@@ -145,6 +145,17 @@ export interface PlaylistItemRow {
   created_at: string;
 }
 
+export interface TakedownRequestRow {
+  id: string;
+  name: string;
+  email: string;
+  song_url: string;
+  original_work: string;
+  proof: string;
+  status: "pending" | "reviewing" | "resolved" | "rejected";
+  created_at: string;
+}
+
 /** `createDirectus<DirectusSchema>()` için koleksiyon haritası. */
 export interface DirectusSchema {
   artists: ArtistRow[];
@@ -158,4 +169,5 @@ export interface DirectusSchema {
   discover_items: DiscoverItemRow[];
   playlists: PlaylistRow[];
   playlist_items: PlaylistItemRow[];
+  takedown_requests: TakedownRequestRow[];
 }

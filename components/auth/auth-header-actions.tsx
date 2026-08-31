@@ -4,75 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import type { SessionUser } from "@/lib/auth/session-user";
+import { publishSession, useSessionUser } from "@/lib/auth/use-session-user";
 import { MessageCircle, PenLine, User, LogOut } from "lucide-react";
-
-type MeResponse = { user: SessionUser | null };
-type SessionState = SessionUser | null | undefined;
-
-/* Modül-seviyesi oturum önbelleği. Tüm bileşenler (desktop header, mobil giriş
- * butonu, hamburger menü) tek bir kaynağa abone olur; /api/auth/me sayfa ömrü
- * boyunca yalnızca 1 kez çağrılır. Navigasyon, remount veya ek bileşen mount'u
- * yeniden istek tetiklemez — yalnızca `akorpro:auth-change` eventi yeniler. */
-let cachedSession: SessionState = undefined;
-let inflight: Promise<void> | null = null;
-let hasFetched = false;
-const listeners = new Set<(value: SessionState) => void>();
-
-function publishSession(value: SessionState) {
-  cachedSession = value;
-  listeners.forEach((fn) => fn(value));
-}
-
-function fetchSessionOnce(): Promise<void> {
-  if (inflight) return inflight;
-  hasFetched = true;
-  inflight = (async () => {
-    try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
-      if (!res.ok) {
-        publishSession(null);
-        return;
-      }
-      const data = (await res.json()) as MeResponse;
-      publishSession(data.user);
-    } catch {
-      publishSession(null);
-    } finally {
-      inflight = null;
-    }
-  })();
-  return inflight;
-}
-
-let authChangeInstalled = false;
-function ensureAuthChangeListener() {
-  if (authChangeInstalled || typeof window === "undefined") return;
-  authChangeInstalled = true;
-  window.addEventListener("akorpro:auth-change", () => {
-    hasFetched = false;
-    void fetchSessionOnce();
-  });
-}
-
-function useSessionUser(): SessionState {
-  const [state, setState] = useState<SessionState>(cachedSession);
-
-  useEffect(() => {
-    ensureAuthChangeListener();
-    listeners.add(setState);
-    if (!hasFetched) {
-      void fetchSessionOnce();
-    } else if (cachedSession !== state) {
-      setState(cachedSession);
-    }
-    return () => {
-      listeners.delete(setState);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return state;
-}
 
 function AuthedMenu({ user, onSignOut }: { user: SessionUser; onSignOut: () => Promise<void> }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -177,16 +110,9 @@ export function AuthHeaderActions() {
   const user = useSessionUser();
 
   async function onSignOut() {
+    // Directus oturumunu sonlandırır ve çerezi düşürür; istemcide tutulan
+    // ayrı bir kimlik durumu kalmadı (Firebase Auth SDK kaldırıldı).
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
-    try {
-      const [{ signOut }, { getClientAuth }] = await Promise.all([
-        import("firebase/auth"),
-        import("@/lib/firebase/client"),
-      ]);
-      await signOut(getClientAuth());
-    } catch {
-      /* İstemci yapılandırması yoksa yalnızca çerez silinir. */
-    }
     startTransition(() => publishSession(null));
     window.dispatchEvent(new Event("akorpro:auth-change"));
     router.refresh();
@@ -245,13 +171,6 @@ export function MobileNavUserSection({ onClose }: { onClose: () => void }) {
 
   async function handleSignOut() {
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
-    try {
-      const [{ signOut }, { getClientAuth }] = await Promise.all([
-        import("firebase/auth"),
-        import("@/lib/firebase/client"),
-      ]);
-      await signOut(getClientAuth());
-    } catch { /* İstemci yapılandırması yoksa yalnızca çerez silinir. */ }
     startTransition(() => publishSession(null));
     window.dispatchEvent(new Event("akorpro:auth-change"));
     router.refresh();

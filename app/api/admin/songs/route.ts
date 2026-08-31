@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   const moderationStatus =
     source === "studio"
       ? "pending"
-      : (canPublishSongs(auth.user.uid) ? "approved" : "pending");
+      : (canPublishSongs(auth.user) ? "approved" : "pending");
 
   let id: string;
   try {

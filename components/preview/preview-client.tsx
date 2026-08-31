@@ -15,19 +15,6 @@ import {
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-  limit,
-} from "firebase/firestore";
 import { GuitarChordDiagramClassic } from "@/components/chords/guitar-chord-diagram-classic";
 import { MetronomeControls, MetronomeEngine } from "@/components/preview/preview-toolbar";
 import { AutoScrollWidget } from "@/components/song/AutoScrollWidget";
@@ -35,11 +22,15 @@ import { ChordPopup } from "@/components/chords/chord-popup";
 import { PreviewGamlarScaleExplorer } from "@/components/gamlar/gamlar-scale-explorer";
 import { PreviewGamlarScaleFormulaPanel } from "@/components/gamlar/gamlar-scale-controls";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
-import type { PlaylistDoc } from "@/lib/types/playlist";
 import type { KeyMode } from "@/lib/types/content";
-import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
-import { getFirebasePublicConfig } from "@/lib/firebase/public-config";
-import { getClientFirestore } from "@/lib/firebase/client";
+import { useSessionUid } from "@/lib/auth/use-session-user";
+import {
+  addItem,
+  createPlaylist,
+  listItems,
+  listPlaylists,
+  upsertSongWithTranspose,
+} from "@/lib/playlists/client";
 import { keyModeToGamlarCatalogScaleId } from "@/lib/music/key-mode-gamlar";
 import { usePreviewToolsStore } from "@/lib/stores/preview-tools-store";
 import { PC_TO_NAME, PC_TO_NAME_FLAT, noteNameToPitchClass } from "@/lib/music/note-utils";
@@ -53,8 +44,6 @@ import {
   transposeChordToken,
 } from "@/lib/music/transpose";
 import { BookmarkCheck, BookmarkPlus, ChevronDown, ChevronLeft, ChevronRight, Columns2, Info, KeyRound, ListMusic, Mic, Minus, MoreHorizontal, Music2, Plus, RotateCcw, Sparkles, Timer, X } from "lucide-react";
-
-const PLAYLIST_SCHEMA_VERSION = 1;
 
 
 type Props = {
@@ -547,7 +536,6 @@ export function PreviewClient({
   songTitle,
   artistName,
   artistSlug,
-  songSlug,
   originalKey,
   keyMode,
   initialGamlarScaleId,
@@ -707,7 +695,7 @@ export function PreviewClient({
     setTonalCenterIndex(transposedTonicPc);
   }, [transposedTonicPc, setTonalCenterIndex]);
 
-  const firebaseUid = useFirebaseUidFromSession();
+  const uid = useSessionUid();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveAndAddOpen, setSaveAndAddOpen] = useState(false);
@@ -882,8 +870,7 @@ export function PreviewClient({
       setPlaylistPrevSong(null);
       return;
     }
-    if (!firebaseUid || !getFirebasePublicConfig()) {
-      // Can't compute playlist order without client Firestore access.
+    if (!uid) {
       setPlaylistNextSong(null);
       setPlaylistNextLoading(false);
       setPlaylistPosition(null);
@@ -895,21 +882,9 @@ export function PreviewClient({
     setPlaylistNextLoading(true);
     void (async () => {
       try {
-        const db = getClientFirestore();
-        const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistId, "items");
-        const snap = await getDocs(query(itemsCol, orderBy("order", "asc")));
+        const items = await listItems(playlistId);
         if (cancelled) return;
-        const items = snap.docs.map(
-          (d) =>
-            d.data() as {
-              songId?: unknown;
-              title?: unknown;
-              artistSlug?: unknown;
-              songSlug?: unknown;
-              transposeSemitones?: unknown;
-            },
-        );
-        const idx = items.findIndex((it) => typeof it.songId === "string" && it.songId === songId);
+        const idx = items.findIndex((it) => it.songId === songId);
         // Playlist bağlamında (returnTo) açıldığında, sadece playlist item snapshot’ındaki transpoze kullan.
         // Böylece "Tüm şarkılar" gibi gezinme ekranlarında orijinal şarkı görünür.
         if (!hasTransposeParam && !transposeLockRef.current && idx >= 0) {
@@ -947,7 +922,7 @@ export function PreviewClient({
     return () => {
       cancelled = true;
     };
-  }, [firebaseUid, returnToParam, songId, hasTransposeParam, setTransposeSemitones]);
+  }, [uid, returnToParam, songId, hasTransposeParam, setTransposeSemitones]);
 
   useEffect(() => {
     if (!openWidgets.gamlar && !openWidgets.metronome) return;
@@ -1302,37 +1277,23 @@ export function PreviewClient({
   }, [hasTransposeParam, initialClamped]);
 
   useEffect(() => {
-    if (firebaseUid === undefined || firebaseUid === null || !getFirebasePublicConfig()) {
+    if (!uid) {
       setPlaylists([]);
       return;
     }
     let cancelled = false;
-    try {
-      const db = getClientFirestore();
-      const q = query(collection(db, "users", firebaseUid, "playlists"), orderBy("updatedAt", "desc"));
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          if (cancelled) return;
-          setPlaylists(
-            snap.docs.map((d) => {
-              const data = d.data() as PlaylistDoc;
-              return { id: d.id, name: typeof data.name === "string" ? data.name : d.id };
-            }),
-          );
-        },
-        () => {
-          if (!cancelled) setPlaylists([]);
-        },
-      );
-      return () => {
-        cancelled = true;
-        unsub();
-      };
-    } catch {
-      setPlaylists([]);
-    }
-  }, [firebaseUid]);
+    void (async () => {
+      try {
+        const rows = await listPlaylists();
+        if (!cancelled) setPlaylists(rows.map((r) => ({ id: r.id, name: r.name })));
+      } catch {
+        if (!cancelled) setPlaylists([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
 
   useEffect(() => {
     if (!selectedPlaylistId && playlists.length > 0) {
@@ -1420,20 +1381,8 @@ export function PreviewClient({
 
   const onSave = useCallback(async () => {
     setSaveMessage(null);
-    if (!firebaseUid) {
+    if (!uid) {
       router.push(`/giris?returnTo=${encodeURIComponent(pathname)}`);
-      return;
-    }
-    if (serverUid && serverUid !== firebaseUid) {
-      setSaveState("error");
-      setSaveMessage("Tarayıcı oturumu ile sunucu çerezi eşleşmiyor. Çıkış yapıp yeniden giriş yapın.");
-      setSaveAndAddOpen(false);
-      return;
-    }
-    if (!getFirebasePublicConfig()) {
-      setSaveState("error");
-      setSaveMessage("Firebase istemci yapılandırması eksik.");
-      setSaveAndAddOpen(false);
       return;
     }
     setSaveState("saving");
@@ -1446,19 +1395,12 @@ export function PreviewClient({
       setSaveMessage(formatError(e));
       setSaveAndAddOpen(false);
     }
-  }, [firebaseUid, serverUid]);
+  }, [uid, serverUid]);
 
   const onAddToPlaylist = useCallback(async () => {
     setAddNotice(null);
-    if (!firebaseUid) {
+    if (!uid) {
       setAddNotice({ variant: "error", message: "Önce giriş yapın." });
-      return;
-    }
-    if (serverUid && serverUid !== firebaseUid) {
-      setAddNotice({
-        variant: "error",
-        message: "Oturum eşleşmiyor; çıkış yapıp yeniden giriş yapın.",
-      });
       return;
     }
     if (!selectedPlaylistId) {
@@ -1470,40 +1412,12 @@ export function PreviewClient({
     }
     setPlaylistModalBusy("add");
     try {
-      const db = getClientFirestore();
-      const itemsCol = collection(db, "users", firebaseUid, "playlists", selectedPlaylistId, "items");
-      const dupeSnap = await getDocs(query(itemsCol, where("songId", "==", songId), limit(1)));
-
-      if (!dupeSnap.empty) {
-        const existingRef = doc(itemsCol, dupeSnap.docs[0].id);
-        await updateDoc(existingRef, {
-          title: songTitle,
-          artistSlug,
-          songSlug,
-          transposeSemitones: semitones,
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        const existing = await getDocs(query(itemsCol, orderBy("order", "desc"), limit(1)));
-        const top = existing.docs[0]?.data() as { order?: unknown } | undefined;
-        const nextOrder = typeof top?.order === "number" ? top.order + 1 : 0;
-        await addDoc(itemsCol, {
-          order: nextOrder,
-          songId,
-          title: songTitle,
-          artistSlug,
-          songSlug,
-          transposeSemitones: semitones,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
-      await updateDoc(doc(db, "users", firebaseUid, "playlists", selectedPlaylistId), {
-        updatedAt: serverTimestamp(),
-      });
+      // Şarkı adı/slug'ı artık kayıtta tutulmuyor; ilişki üzerinden okunuyor.
+      // Bu yüzden burada yalnız transpoze değeri yazılıyor.
+      const outcome = await upsertSongWithTranspose(selectedPlaylistId, songId, semitones);
       setAddNotice({
         variant: "success",
-        message: dupeSnap.empty ? "Şarkı listeye eklendi." : "Listede vardı; güncellendi.",
+        message: outcome === "added" ? "Şarkı listeye eklendi." : "Listede vardı; güncellendi.",
       });
       setSaveAndAddOpen(false);
     } catch (e) {
@@ -1511,28 +1425,12 @@ export function PreviewClient({
     } finally {
       setPlaylistModalBusy(null);
     }
-  }, [
-    artistSlug,
-    firebaseUid,
-    selectedPlaylistId,
-    semitones,
-    serverUid,
-    songId,
-    songSlug,
-    songTitle,
-  ]);
+  }, [uid, selectedPlaylistId, semitones, songId]);
 
   const onCreatePlaylistAndAdd = useCallback(async () => {
     setAddNotice(null);
-    if (!firebaseUid) {
+    if (!uid) {
       setAddNotice({ variant: "error", message: "Önce giriş yapın." });
-      return;
-    }
-    if (serverUid && serverUid !== firebaseUid) {
-      setAddNotice({
-        variant: "error",
-        message: "Oturum eşleşmiyor; çıkış yapıp yeniden giriş yapın.",
-      });
       return;
     }
     const name = saveModalNewListName.trim();
@@ -1542,53 +1440,25 @@ export function PreviewClient({
     }
     setPlaylistModalBusy("create");
     try {
-      const db = getClientFirestore();
-      const playlistRef = await addDoc(collection(db, "users", firebaseUid, "playlists"), {
-        name,
-        schemaVersion: PLAYLIST_SCHEMA_VERSION,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistRef.id, "items");
-      await addDoc(itemsCol, {
-        order: 0,
-        songId,
-        title: songTitle,
-        artistSlug,
-        songSlug,
-        transposeSemitones: semitones,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistRef.id), {
-        updatedAt: serverTimestamp(),
-      });
+      const playlist = await createPlaylist(name);
+      await addItem(playlist.id, songId, semitones);
+      setPlaylists((prev) => [{ id: playlist.id, name: playlist.name }, ...prev]);
       setAddNotice({
         variant: "success",
         message: `“${name}” listesine eklendi.`,
       });
-      setSelectedPlaylistId(playlistRef.id);
+      setSelectedPlaylistId(playlist.id);
       setSaveAndAddOpen(false);
     } catch (e) {
       setAddNotice({ variant: "error", message: formatError(e) });
     } finally {
       setPlaylistModalBusy(null);
     }
-  }, [
-    artistSlug,
-    firebaseUid,
-    saveModalNewListName,
-    semitones,
-    serverUid,
-    songId,
-    songSlug,
-    songTitle,
-  ]);
+  }, [uid, saveModalNewListName, semitones, songId]);
 
-  const firebaseConfigured = Boolean(getFirebasePublicConfig());
-  const sessionMismatch = Boolean(serverUid && firebaseUid && serverUid !== firebaseUid);
-  const canSave =
-    firebaseConfigured && firebaseUid !== undefined && firebaseUid !== null && !sessionMismatch;
+  // Tarayıcıda ayrı bir Firebase oturumu tutulmadığı için "oturum eşleşmiyor"
+  // durumu ortadan kalktı; tek koşul giriş yapılmış olması.
+  const canSave = Boolean(uid);
   const canAddToPlaylist =
     canSave && Boolean(selectedPlaylistId) && playlists.length > 0;
   const canCreatePlaylistInModal = canSave && Boolean(saveModalNewListName.trim());
@@ -1932,12 +1802,6 @@ export function PreviewClient({
           </div>
         </div>
       ) : null}
-      {sessionMismatch ? (
-        <p className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
-          Sunucu oturumu ile tarayıcı Firebase oturumu eşleşmiyor. Çıkış yapıp yeniden giriş yapın.
-        </p>
-      ) : null}
-
       {saveAndAddOpen ? (
         <div
           className="fixed inset-0 z-60 bg-black/50 p-4"
@@ -2380,7 +2244,7 @@ export function PreviewClient({
               {/* Kaydet */}
               <button
                 type="button"
-                disabled={saveState === "saving" || (firebaseUid !== null && !canSave)}
+                disabled={saveState === "saving" || (uid !== null && !canSave)}
                 onClick={() => void onSave()}
                 title={saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
                 aria-label={saveState === "saving" ? "Kaydediliyor…" : "Kaydet"}
@@ -2424,7 +2288,7 @@ export function PreviewClient({
         </div>
       </div>
 
-      {playlists.length === 0 && firebaseUid && !sessionMismatch ? (
+      {playlists.length === 0 && uid ? (
         <p className="mt-2 text-right text-sm text-muted">
           Liste oluşturmak için{" "}
           <Link href="/calma-listeleri" className="text-accent underline-offset-2 hover:underline">

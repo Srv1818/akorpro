@@ -1,17 +1,19 @@
+import { PUBLISHER_ROLES } from "@/lib/auth/constants";
+import type { SessionUser } from "@/lib/auth/session-user";
+
 /**
  * Şarkıların siteye düşmesi (approved) ve yayında içeriğin düzenlenmesi.
  *
- * `AKORPRO_PUBLISHER_UIDS` virgülle ayrılmış Firebase Auth UID listesi.
- * Boş veya tanımsız → tüm adminler eskisi gibi yayınlar (geriye dönük uyumluluk).
+ * Eskiden `AKORPRO_PUBLISHER_UIDS` env'indeki Firebase UID listesiyle yönetiliyordu.
+ * Artık Directus rolüne bakılıyor: kapı her zaman açık, karar `Publisher` /
+ * `Administrator` rolüne sahip olup olmamakta (bkz. scripts/directus-roles.mjs —
+ * `Moderator` rolü `moderation_status`'ü `approved` yapamıyor).
  */
 export function publisherGateActive(): boolean {
-  const raw = process.env.AKORPRO_PUBLISHER_UIDS?.trim() ?? "";
-  return raw.length > 0;
+  return true;
 }
 
-export function canPublishSongs(uid: string): boolean {
-  const raw = process.env.AKORPRO_PUBLISHER_UIDS?.trim() ?? "";
-  if (!raw) return true;
-  const set = new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
-  return set.has(uid);
+export function canPublishSongs(user: Pick<SessionUser, "role"> | null): boolean {
+  if (!user?.role) return false;
+  return PUBLISHER_ROLES.includes(user.role);
 }

@@ -49,7 +49,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
   const existing = await getSongByIdAdmin(id);
   if (!existing) return NextResponse.json({ error: "Şarkı bulunamadı." }, { status: 404 });
 
-  if (existing.moderationStatus === "approved" && !canPublishSongs(auth.user.uid)) {
+  if (existing.moderationStatus === "approved" && !canPublishSongs(auth.user)) {
     return NextResponse.json(
       { error: "Yayında şarkıları yalnızca yayın yetkilisi düzenleyebilir." },
       { status: 403 },
@@ -77,7 +77,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
   if (typeof b.tuning === "string") updates.tuning = b.tuning;
   if (typeof b.capo === "number") updates.capo = b.capo;
   if (typeof b.copyrightSource === "string") updates.copyrightSource = b.copyrightSource;
-  if (typeof b.moderationStatus === "string" && canPublishSongs(auth.user.uid)) {
+  if (typeof b.moderationStatus === "string" && canPublishSongs(auth.user)) {
     updates.moderationStatus = b.moderationStatus;
   }
   if (typeof b.popularity === "number") updates.popularity = b.popularity;
@@ -132,7 +132,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const song = await getSongByIdAdmin(id);
   if (!song) return NextResponse.json({ error: "Şarkı bulunamadı." }, { status: 404 });
-  if (song.moderationStatus === "approved" && !canPublishSongs(auth.user.uid)) {
+  if (song.moderationStatus === "approved" && !canPublishSongs(auth.user)) {
     return NextResponse.json(
       { error: "Yayında şarkıları yalnızca yayın yetkilisi silebilir." },
       { status: 403 },

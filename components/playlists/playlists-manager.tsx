@@ -13,23 +13,20 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  writeBatch,
-} from "firebase/firestore";
 import type { PlaylistDoc, PlaylistItemDoc } from "@/lib/types/playlist";
-import { useFirebaseUidFromSession } from "@/lib/auth/use-firebase-uid-from-session";
 import { chordPath } from "@/lib/paths";
-import { getClientFirestore } from "@/lib/firebase/client";
+import {
+  addItem,
+  createPlaylist,
+  deletePlaylist,
+  listItems,
+  listPlaylists,
+  removeItem,
+  renamePlaylist,
+  swapItemPositions,
+  type Playlist,
+  type PlaylistItem,
+} from "@/lib/playlists/client";
 
 type ApiSearchSong = {
   id: string;
@@ -167,23 +164,30 @@ function PlaylistSongSearch({
   );
 }
 
-async function deletePlaylistAndItems(uid: string, playlistId: string): Promise<void> {
-  const db = getClientFirestore();
-  const itemsCol = collection(db, "users", uid, "playlists", playlistId, "items");
-  const snap = await getDocs(itemsCol);
-  const refs = snap.docs.map((d) => d.ref);
-  for (let i = 0; i < refs.length; i += 500) {
-    const batch = writeBatch(db);
-    for (const ref of refs.slice(i, i + 500)) {
-      batch.delete(ref);
-    }
-    await batch.commit();
-  }
-  await deleteDoc(doc(db, "users", uid, "playlists", playlistId));
+/** API biçimini bileşenin beklediği satır biçimine çevirir. */
+function toPlaylistRow(p: Playlist): PlaylistRow {
+  return { id: p.id, data: { name: p.name, schemaVersion: PLAYLIST_SCHEMA_VERSION, createdAt: p.createdAt, updatedAt: p.updatedAt } };
+}
+
+function toItemRow(i: PlaylistItem): ItemRow {
+  return {
+    id: i.id,
+    data: {
+      order: i.order,
+      songId: i.songId,
+      title: i.title,
+      artistSlug: i.artistSlug,
+      songSlug: i.songSlug,
+      ...(i.transposeSemitones != null ? { transposeSemitones: i.transposeSemitones } : {}),
+      createdAt: i.createdAt,
+    },
+  };
 }
 
 export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
-  const firebaseUid = useFirebaseUidFromSession();
+  // Kimlik artık sunucudan geliyor; istemcide ayrı bir oturum eşitlemesi yok
+  // (Firebase custom-token senkronizasyonu kaldırıldı).
+  const uid = serverUid;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -221,88 +225,62 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
     }
   }, [pParam, playlists, playlistListReady, pathname, router]);
 
-  useEffect(() => {
-    if (firebaseUid === undefined || firebaseUid === null) return;
-    setPlaylistListReady(false);
-    const db = getClientFirestore();
-    const q = query(collection(db, "users", firebaseUid, "playlists"), orderBy("updatedAt", "desc"));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setPlaylistListReady(true);
-        setPlaylists(
-          snap.docs.map((d) => ({
-            id: d.id,
-            data: d.data() as PlaylistDoc,
-          })),
-        );
-      },
-      (err) => {
-        setPlaylistListReady(true);
-        setError(formatError(err));
-      },
-    );
-    return () => unsub();
-  }, [firebaseUid]);
+  const refreshPlaylists = useCallback(async () => {
+    try {
+      const rows = await listPlaylists();
+      setPlaylists(rows.map(toPlaylistRow));
+    } catch (e) {
+      setError(formatError(e));
+    } finally {
+      setPlaylistListReady(true);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!firebaseUid || !openPlaylistId) {
-      return;
+    if (!uid) return;
+    setPlaylistListReady(false);
+    void refreshPlaylists();
+  }, [uid, refreshPlaylists]);
+
+  const refreshItems = useCallback(async (playlistId: string) => {
+    try {
+      const rows = await listItems(playlistId);
+      setItemsByPlaylist((prev) => ({ ...prev, [playlistId]: rows.map(toItemRow) }));
+    } catch (e) {
+      setError(formatError(e));
     }
-    const db = getClientFirestore();
-    const q = query(
-      collection(db, "users", firebaseUid, "playlists", openPlaylistId, "items"),
-      orderBy("order", "asc"),
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setItemsByPlaylist((prev) => ({
-          ...prev,
-          [openPlaylistId]: snap.docs.map((d) => ({
-            id: d.id,
-            data: d.data() as PlaylistItemDoc,
-          })),
-        }));
-      },
-      (err) => setError(formatError(err)),
-    );
-    return () => unsub();
-  }, [firebaseUid, openPlaylistId]);
+  }, []);
+
+  useEffect(() => {
+    if (!uid || !openPlaylistId) return;
+    void refreshItems(openPlaylistId);
+  }, [uid, openPlaylistId, refreshItems]);
 
   const onCreate = useCallback(async () => {
-    if (!firebaseUid || !newName.trim()) return;
+    if (!uid || !newName.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      const db = getClientFirestore();
-      await addDoc(collection(db, "users", firebaseUid, "playlists"), {
-        name: newName.trim(),
-        schemaVersion: PLAYLIST_SCHEMA_VERSION,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      await createPlaylist(newName.trim());
       setNewName("");
+      await refreshPlaylists();
     } catch (e) {
       setError(formatError(e));
     } finally {
       setBusy(false);
     }
-  }, [firebaseUid, newName]);
+}, [uid, newName, refreshPlaylists]);
 
   const onRename = useCallback(
     async (playlistId: string) => {
-      if (!firebaseUid) return;
+      if (!uid) return;
       const name = (renameDraft[playlistId] ?? "").trim();
       if (!name) return;
       setBusy(true);
       setError(null);
       try {
-        const db = getClientFirestore();
-        await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistId), {
-          name,
-          updatedAt: serverTimestamp(),
-        });
+        await renamePlaylist(playlistId, name);
+        await refreshPlaylists();
         setRenameDraft((r) => {
           const next = { ...r };
           delete next[playlistId];
@@ -315,17 +293,19 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
         setBusy(false);
       }
     },
-    [firebaseUid, renameDraft],
+    [uid, renameDraft, refreshPlaylists],
   );
 
   const onDeletePlaylist = useCallback(
     async (playlistId: string) => {
-      if (!firebaseUid) return;
+      if (!uid) return;
       if (!window.confirm("Bu listeyi ve içindeki şarkıları silmek istediğinize emin misiniz?")) return;
       setBusy(true);
       setError(null);
       try {
-        await deletePlaylistAndItems(firebaseUid, playlistId);
+        // playlist_items şemada CASCADE — kayıtları ayrıca silmeye gerek yok.
+        await deletePlaylist(playlistId);
+        await refreshPlaylists();
         if (openPlaylistId === playlistId) setOpenPlaylist(null);
         setRenamingPlaylistId((id) => (id === playlistId ? null : id));
       } catch (e) {
@@ -334,48 +314,30 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
         setBusy(false);
       }
     },
-    [firebaseUid, openPlaylistId, setOpenPlaylist],
+    [uid, openPlaylistId, setOpenPlaylist, refreshPlaylists],
   );
 
   const onAddSong = useCallback(
     async (playlistId: string, song: ApiSearchSong) => {
-      if (!firebaseUid) return;
+      if (!uid) return;
       setBusy(true);
       setError(null);
       try {
-        const db = getClientFirestore();
-        const itemsCol = collection(db, "users", firebaseUid, "playlists", playlistId, "items");
-        const allItems = await getDocs(itemsCol);
-        if (allItems.docs.some((d) => (d.data() as PlaylistItemDoc).songId === song.id)) {
-          setError("Bu şarkı zaten bu listede.");
-          return;
-        }
-        const existing = await getDocs(query(itemsCol, orderBy("order", "desc")));
-        const top = existing.docs[0]?.data() as PlaylistItemDoc | undefined;
-        const nextOrder = typeof top?.order === "number" ? top.order + 1 : 0;
-        await addDoc(itemsCol, {
-          order: nextOrder,
-          songId: song.id,
-          title: song.title,
-          artistSlug: song.artistSlug,
-          songSlug: song.slug,
-          createdAt: serverTimestamp(),
-        });
-        await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistId), {
-          updatedAt: serverTimestamp(),
-        });
+        // Sıra, tekrar kontrolü ve liste sınırı sunucuda uygulanıyor.
+        await addItem(playlistId, song.id);
+        await Promise.all([refreshItems(playlistId), refreshPlaylists()]);
       } catch (e) {
         setError(formatError(e));
       } finally {
         setBusy(false);
       }
     },
-    [firebaseUid],
+    [uid, refreshItems, refreshPlaylists],
   );
 
   const onMoveItem = useCallback(
     async (playlistId: string, itemId: string, delta: -1 | 1) => {
-      if (!firebaseUid) return;
+      if (!uid) return;
       const items = itemsByPlaylist[playlistId] ?? [];
       const sorted = [...items].sort((a, b) => a.data.order - b.data.order);
       const idx = sorted.findIndex((i) => i.id === itemId);
@@ -388,72 +350,51 @@ export function PlaylistsManager({ serverUid }: { serverUid: string | null }) {
       setBusy(true);
       setError(null);
       try {
-        const db = getClientFirestore();
-        const batch = writeBatch(db);
-        const refA = doc(db, "users", firebaseUid, "playlists", playlistId, "items", a.id);
-        const refB = doc(db, "users", firebaseUid, "playlists", playlistId, "items", b.id);
-        batch.update(refA, { order: orderB });
-        batch.update(refB, { order: orderA });
-        await batch.commit();
-        await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistId), {
-          updatedAt: serverTimestamp(),
-        });
+        await swapItemPositions(
+          playlistId,
+          { id: a.id, order: orderA },
+          { id: b.id, order: orderB },
+        );
+        await refreshItems(playlistId);
       } catch (e) {
         setError(formatError(e));
       } finally {
         setBusy(false);
       }
     },
-    [firebaseUid, itemsByPlaylist],
+    [uid, itemsByPlaylist, refreshItems],
   );
 
   const onRemoveItem = useCallback(
     async (playlistId: string, itemId: string) => {
-      if (!firebaseUid) return;
+      if (!uid) return;
       setBusy(true);
       setError(null);
       try {
-        const db = getClientFirestore();
-        await deleteDoc(doc(db, "users", firebaseUid, "playlists", playlistId, "items", itemId));
-        await updateDoc(doc(db, "users", firebaseUid, "playlists", playlistId), {
-          updatedAt: serverTimestamp(),
-        });
+        await removeItem(playlistId, itemId);
+        await refreshItems(playlistId);
       } catch (e) {
         setError(formatError(e));
       } finally {
         setBusy(false);
       }
     },
-    [firebaseUid],
+    [uid, refreshItems],
   );
 
-  if (firebaseUid === undefined) {
-    return (
-      <p className="text-center text-sm text-muted" aria-live="polite">
-        Oturum kontrol ediliyor…
-      </p>
-    );
-  }
-
-  if (firebaseUid === null) {
+  // Firestore kuralları için tarayıcıda ayrı bir Firebase oturumu tutma zorunluluğu
+  // kalktı; sunucu oturumu tek kaynak. "Oturum kontrol ediliyor" ve "oturumlar
+  // eşleşmiyor" durumları da bu yüzden ortadan kalktı.
+  if (!uid) {
     return (
       <div className="rounded-2xl border border-border bg-surface p-6 text-center text-sm text-muted">
         <p>
-          Listeler Firestore kuralları için tarayıcıda Firebase oturumu gerekir. HTTP-only çerez tek başına
-          yeterli değil; lütfen{" "}
+          Çalma listelerini görmek için{" "}
           <Link href="/giris?returnTo=/calma-listeleri" className="text-accent underline-offset-2 hover:underline">
-            tekrar giriş
-          </Link>{" "}
-          yapın (Google ile aynı sekmede oturum açık kalmalı).
+            giriş yap
+          </Link>
+          .
         </p>
-      </div>
-    );
-  }
-
-  if (serverUid && serverUid !== firebaseUid) {
-    return (
-      <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground">
-        Sunucu oturumu ile tarayıcı Firebase oturumu eşleşmiyor. Çıkış yapıp yeniden giriş yapın.
       </div>
     );
   }

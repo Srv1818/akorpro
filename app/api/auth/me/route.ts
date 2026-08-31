@@ -9,6 +9,6 @@ export async function GET() {
   return NextResponse.json({
     user,
     publisherGateActive: publisherGateActive(),
-    canPublishSongs: user ? canPublishSongs(user.uid) : false,
+    canPublishSongs: canPublishSongs(user),
   });
 }

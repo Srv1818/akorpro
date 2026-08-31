@@ -4,7 +4,6 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { canPublishSongs } from "@/lib/auth/publisher";
 import { getPendingContributions, getContributionById, updateContributionStatus } from "@/lib/firestore/contributions";
 import { createSong } from "@/lib/firestore/admin-songs";
-import { writeAuditLog } from "@/lib/security/audit-log";
 import { TAGS } from "@/lib/cache/tags";
 import type { KeyMode } from "@/lib/types/content";
 
@@ -59,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   if (action === "approve") {
-    const songModerationStatus = canPublishSongs(auth.user.uid) ? "approved" : "pending";
+    const songModerationStatus = canPublishSongs(auth.user) ? "approved" : "pending";
 
     const slug = contrib.songTitle
       .toLowerCase()
@@ -103,13 +102,11 @@ export async function POST(request: Request) {
     revalidateTag(TAGS.SONGS_ALL, "max");
     revalidateTag(TAGS.SONGS_FACETS, "max");
 
-    await writeAuditLog(auth.user.uid, "contribution:approve", "contributions", id, { songId });
 
     return NextResponse.json({ ok: true, songId });
   }
 
   await updateContributionStatus(id, "rejected", auth.user.uid, note);
-  await writeAuditLog(auth.user.uid, "contribution:reject", "contributions", id, { note });
 
   return NextResponse.json({ ok: true });
 }

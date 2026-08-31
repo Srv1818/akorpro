@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAdminFirestore } from "@/lib/firebase/admin";
+import { createItem } from "@directus/sdk";
+import { directus } from "@/lib/directus/client";
 import { rateLimiter } from "@/lib/security/rate-limit";
-
-const COLLECTION = "takedown_requests";
 
 export const runtime = "nodejs";
 
@@ -33,21 +32,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Tüm alanlar zorunludur." }, { status: 400 });
   }
 
-  const db = getAdminFirestore();
-  if (!db) {
-    console.error("[takedown] Firestore Admin not initialised");
-    return NextResponse.json({ error: "Sunucu yapılandırma hatası" }, { status: 500 });
+  // Sunucu token'ıyla yazılır: telif bildirimi formu girişsiz kullanılabilmeli,
+  // ama bunun için Directus'ta anonim yazma izni açmaya gerek yok.
+  try {
+    await directus().request(
+      createItem("takedown_requests", {
+        name: name.trim().slice(0, 200),
+        email: email.trim().slice(0, 200),
+        song_url: songUrl.trim().slice(0, 500),
+        original_work: originalWork.trim().slice(0, 500),
+        proof: proof.trim().slice(0, 2000),
+        status: "pending",
+      }),
+    );
+  } catch (e) {
+    console.error("[takedown]", e);
+    return NextResponse.json({ error: "Talep kaydedilemedi." }, { status: 500 });
   }
-
-  await db.collection(COLLECTION).add({
-    name: name.trim().slice(0, 200),
-    email: email.trim().slice(0, 200),
-    songUrl: songUrl.trim().slice(0, 500),
-    originalWork: originalWork.trim().slice(0, 500),
-    proof: proof.trim().slice(0, 2000),
-    status: "pending",
-    createdAt: new Date(),
-  });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }
