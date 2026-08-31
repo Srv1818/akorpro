@@ -19,9 +19,12 @@
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "lighthouse": "lhci autorun",
     "emulators": "firebase emulators:start --only firestore,auth",
-    "seed:firestore": "node scripts/seed-firestore.mjs"
+    "seed:firestore": "node scripts/seed-firestore.mjs",
+    "directus:schema": "node scripts/directus-schema.mjs",
+    "directus:roles": "node scripts/directus-roles.mjs"
   },
   "dependencies": {
+    "@directus/sdk": "^18.0.3",
     "@sentry/nextjs": "^10.46.0",
     "@tombatossals/chords-db": "^0.5.1",
     "@vercel/analytics": "^2.0.1",

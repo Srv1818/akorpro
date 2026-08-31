@@ -1,12 +1,25 @@
 import { unstable_cache } from "next/cache";
-import { getAdminFirestore } from "@/lib/firebase/admin";
-import { serializeDoc } from "@/lib/firestore/serialize";
+import { readItems } from "@directus/sdk";
+import { directus } from "@/lib/directus/client";
+import { sanitizePlainField } from "@/lib/security/sanitize";
 import { getSongsByIds } from "./songs";
 import { TAGS, TTL } from "@/lib/cache/tags";
-import type { DiscoverSectionDoc, SongDoc } from "@/lib/types/firestore";
+import type { SongRow } from "@/lib/directus/schema";
+import type { SongDoc } from "@/lib/types/firestore";
 import type { SongSummary } from "@/lib/types/content";
 
-const COLLECTION = "discover";
+/**
+ * Keşfet blokları — Directus.
+ *
+ * `discover/{section}` dokümanındaki `songIds[]` dizisi yerine artık
+ * `discover_sections` + `discover_items` (sıralı M2M) var; Directus admin'de
+ * sürükle-bırak ile yönetilebiliyor (MIGRATION-PLAN.md Faz 1 kararı).
+ *
+ * Firestore'a özgü retry ve composite-index yedekleri kaldırıldı; sıralama
+ * doğrudan sorguda yapılıyor. Hata durumunda blok boş döner — ana sayfa
+ * tek bir blok yüzünden çökmez.
+ */
+
 const DISCOVER_TARGET_COUNT = 12;
 const MAX_CURATED_IDS_READ = 24;
 
@@ -25,123 +38,73 @@ function toSongSummary(s: SongWithId): SongSummary {
   };
 }
 
-function timestampToMillis(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (value && typeof value === "object" && "toMillis" in (value as Record<string, unknown>)) {
-    const toMillis = (value as { toMillis?: () => number }).toMillis;
-    if (typeof toMillis === "function") {
-      return toMillis.call(value as object);
-    }
-  }
-  return 0;
+const APPROVED = { moderation_status: { _eq: "approved" } } as const;
+
+/** Kart için gereken alanlar — `chord_body` gibi ağır sütunlar çekilmez. */
+const SUMMARY_FIELDS = [
+  "id", "title", "slug", "artist_slug", "artist_name", "original_key", "difficulty",
+] as const;
+
+type SummaryRow = Pick<
+  SongRow,
+  "id" | "title" | "slug" | "artist_slug" | "artist_name" | "original_key" | "difficulty"
+>;
+
+function rowToSummary(r: SummaryRow): SongSummary {
+  return {
+    id: r.id,
+    title: sanitizePlainField(r.title),
+    slug: r.slug,
+    artistSlug: r.artist_slug,
+    artistName: sanitizePlainField(r.artist_name),
+    originalKey: r.original_key,
+    difficulty: r.difficulty,
+  };
 }
 
-function isFailedPrecondition(err: unknown): boolean {
-  const e = err as { code?: number | string; message?: string };
-  if (e.code === 9) return true;
-  if (e.code === "FAILED_PRECONDITION" || e.code === "failed-precondition") return true;
-  const msg = typeof e.message === "string" ? e.message.toLowerCase() : "";
-  return msg.includes("requires an index") || msg.includes("composite index");
+/** Popülerlik skoru yüksek onaylı şarkılar; eşitlikte yeni olan öne geçer. */
+async function popularSongs(): Promise<SongSummary[]> {
+  const rows = await directus().request(
+    readItems("songs", {
+      filter: APPROVED,
+      sort: ["-popularity", "-created_at"],
+      limit: DISCOVER_TARGET_COUNT,
+      fields: SUMMARY_FIELDS,
+    }),
+  );
+  return rows.map(rowToSummary);
 }
 
-/** İlk istekte (soğuk başlatma / geçici UNAVAILABLE) sık görülen hatalarda birkaç kez dene. */
-async function withFirestoreRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
-  const delaysMs = [0, 300, 700];
-  let last: unknown;
-  for (let i = 0; i < delaysMs.length; i++) {
-    if (delaysMs[i] > 0) {
-      await new Promise((r) => setTimeout(r, delaysMs[i]));
-    }
-    try {
-      return await fn();
-    } catch (e) {
-      if (isFailedPrecondition(e)) {
-        throw e;
-      }
-      last = e;
-      console.warn(`[discover] ${label} deneme ${i + 1}/${delaysMs.length}`, e);
-    }
-  }
-  throw last;
+/** En yeni onaylı şarkılar. */
+async function newSongs(): Promise<SongSummary[]> {
+  const rows = await directus().request(
+    readItems("songs", {
+      filter: APPROVED,
+      sort: ["-created_at"],
+      limit: DISCOVER_TARGET_COUNT,
+      fields: SUMMARY_FIELDS,
+    }),
+  );
+  return rows.map(rowToSummary);
 }
 
-function comparePopular(a: SongWithId, b: SongWithId): number {
-  const pa = a.popularity ?? 0;
-  const pb = b.popularity ?? 0;
-  if (pb !== pa) return pb - pa;
-  return timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt);
-}
+/** Elle seçilmiş blok — sıralama `discover_items.position`'dan gelir. */
+async function getFeaturedCurated(): Promise<SongSummary[]> {
+  const items = await directus().request(
+    readItems("discover_items", {
+      filter: { section: { key: { _eq: "featured" } } },
+      sort: ["position"],
+      limit: MAX_CURATED_IDS_READ,
+      fields: ["song"],
+    }),
+  );
 
-/** Onaylı şarkılar: `popularity` desc (şemada elle veya içe aktarım ile). */
-async function getPopularSongsDynamic(limit: number): Promise<SongWithId[]> {
-  const fs = getAdminFirestore();
-  if (!fs) return [];
+  const songIds = items
+    .map((i) => (typeof i.song === "string" ? i.song : i.song?.id))
+    .filter((id): id is string => Boolean(id));
 
-  try {
-    const q = fs
-      .collection("songs")
-      .where("moderationStatus", "==", "approved")
-      .orderBy("popularity", "desc");
-
-    const snap = await q.limit(limit).get();
-    return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as SongDoc) }));
-  } catch (err: unknown) {
-    if (isFailedPrecondition(err)) {
-      const snap = await fs
-        .collection("songs")
-        .where("moderationStatus", "==", "approved")
-        .limit(limit * 5)
-        .get();
-      return snap.docs
-        .map((d) => serializeDoc({ id: d.id, ...(d.data() as SongDoc) }))
-        .sort(comparePopular)
-        .slice(0, limit);
-    }
-    throw err;
-  }
-}
-
-async function getNewSongsDynamic(limit: number): Promise<SongWithId[]> {
-  const fs = getAdminFirestore();
-  if (!fs) return [];
-
-  try {
-    const q = fs
-      .collection("songs")
-      .where("moderationStatus", "==", "approved")
-      .orderBy("createdAt", "desc");
-
-    const snap = await q.limit(limit).get();
-    return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as SongDoc) }));
-  } catch (err: unknown) {
-    if (isFailedPrecondition(err)) {
-      const snap = await fs
-        .collection("songs")
-        .where("moderationStatus", "==", "approved")
-        .limit(limit * 3)
-        .get();
-      return snap.docs
-        .map((d) => serializeDoc({ id: d.id, ...(d.data() as SongDoc) }))
-        .sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt))
-        .slice(0, limit);
-    }
-    throw err;
-  }
-}
-
-async function getFeaturedCurated(): Promise<SongWithId[]> {
-  const fs = getAdminFirestore();
-  if (!fs) {
-    throw new Error("Firestore Admin başlatılamadı — FIREBASE_SERVICE_ACCOUNT_KEY eksik.");
-  }
-
-  return withFirestoreRetry("featured", async () => {
-    const doc = await fs.collection(COLLECTION).doc("featured").get();
-    const data = doc.exists ? serializeDoc(doc.data() as DiscoverSectionDoc) : null;
-    const curatedIds = (data?.songIds ?? []).slice(0, MAX_CURATED_IDS_READ);
-    const curated = await getSongsByIds(curatedIds);
-    return curated.slice(0, DISCOVER_TARGET_COUNT);
-  });
+  const songs = await getSongsByIds(songIds);
+  return songs.slice(0, DISCOVER_TARGET_COUNT).map(toSongSummary);
 }
 
 function discoverCatch(label: string, p: Promise<SongSummary[]>): Promise<SongSummary[]> {
@@ -156,14 +119,10 @@ function discoverCatch(label: string, p: Promise<SongSummary[]>): Promise<SongSu
 /* ------------------------------------------------------------------ */
 
 export function getDiscoverPopular(): Promise<SongSummary[]> {
-  if (!getAdminFirestore()) return Promise.resolve([]);
   return discoverCatch(
     "popular",
     unstable_cache(
-      async () => {
-        const songs = await withFirestoreRetry("popular", () => getPopularSongsDynamic(DISCOVER_TARGET_COUNT));
-        return songs.map(toSongSummary);
-      },
+      popularSongs,
       ["discover-popular"],
       { tags: [TAGS.DISCOVER_POPULAR], revalidate: TTL.DISCOVER_POPULAR },
     )(),
@@ -171,14 +130,10 @@ export function getDiscoverPopular(): Promise<SongSummary[]> {
 }
 
 export function getDiscoverNew(): Promise<SongSummary[]> {
-  if (!getAdminFirestore()) return Promise.resolve([]);
   return discoverCatch(
     "new",
     unstable_cache(
-      async () => {
-        const songs = await withFirestoreRetry("new", () => getNewSongsDynamic(DISCOVER_TARGET_COUNT));
-        return songs.map(toSongSummary);
-      },
+      newSongs,
       ["discover-new"],
       { tags: [TAGS.DISCOVER_NEW], revalidate: TTL.DISCOVER },
     )(),
@@ -186,16 +141,11 @@ export function getDiscoverNew(): Promise<SongSummary[]> {
 }
 
 export function getDiscoverFeatured(): Promise<SongSummary[]> {
-  if (!getAdminFirestore()) return Promise.resolve([]);
   return discoverCatch(
     "featured",
-    unstable_cache(
-      async () => {
-        const songs = await getFeaturedCurated();
-        return songs.map(toSongSummary);
-      },
-      ["discover-featured"],
-      { tags: [TAGS.DISCOVER_FEATURED], revalidate: TTL.DISCOVER },
-    )(),
+    unstable_cache(getFeaturedCurated, ["discover-featured"], {
+      tags: [TAGS.DISCOVER_FEATURED],
+      revalidate: TTL.DISCOVER,
+    })(),
   );
 }

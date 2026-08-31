@@ -199,7 +199,10 @@ Tut / At / Karar kolonları. "At" = Directus'ta oluşturulmaz.
 
 - **Koleksiyonlar & alanlar**: Faz 1 şeması (bootstrap için `schema apply` snapshot dosyası repo'ya konur → tekrarlanabilir kurulum).
 - **Roller** (Firebase custom claims + `firestore.rules` + `AKORPRO_PUBLISHER_UIDS` yerine):
-  - `Public` (anon): approved song/artist/chord/discover **okuma**; contribution **create**.
+  - `Public` (anon): approved song/artist/chord/discover **okuma**. Yazma yok.
+    **KARAR 2026-08-31**: anonim contribution **create kaldırıldı** — katkı göndermek giriş ister.
+    Girişsiz katkı isteyen kullanıcı mail atar; misafir katkı akışı kurulmaz.
+    (Gerekçe: `contributions.contributor` zorunlu FK; ayrıca girişsiz yazma ucu spam/moderasyon yükü demek.)
   - `Contributor` (giriş yapan): kendi profili + katkıları.
   - `Moderator` (admin): tüm içerik CRUD, moderasyon.
   - `Publisher`: approved yayınlama + yayında düzenleme (mevcut publisher-gate). Directus rol/policy ile.

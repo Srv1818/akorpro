@@ -53,7 +53,8 @@ export interface SongDoc {
   harmonyDetailsNotes?: string;
 
   /* Meta -------------------------------------------------------------- */
-  schemaVersion: number;
+  /** @deprecated Firestore kalıntısı — Directus şemasında yok, yeni kayıtlarda yazılmaz. */
+  schemaVersion?: number;
   /** Epoch milisaniye — serializeDoc() Firestore Timestamp → number dönüşümü yapar. */
   createdAt: number;
   updatedAt: number;
@@ -74,7 +75,8 @@ export interface ArtistDoc {
   /** Popülerlik skoru (indeks için) */
   popularity?: number;
 
-  schemaVersion: number;
+  /** @deprecated Firestore kalıntısı — Directus şemasında yok, yeni kayıtlarda yazılmaz. */
+  schemaVersion?: number;
   /** Epoch milisaniye */
   createdAt: number;
   updatedAt: number;

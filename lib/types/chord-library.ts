@@ -14,7 +14,8 @@ export interface ChordShapeDoc {
   /** Display order within same root+quality group */
   sortOrder?: number;
 
-  schemaVersion: number;
+  /** @deprecated Firestore kalıntısı — Directus şemasında yok. */
+  schemaVersion?: number;
   /** Epoch milisaniye — serializeDoc() dönüşümü. */
   createdAt: number;
   updatedAt: number;

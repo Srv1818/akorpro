@@ -1,28 +1,68 @@
-import { getAdminFirestore } from "@/lib/firebase/admin";
-import { serializeDoc } from "@/lib/firestore/serialize";
+import { aggregate, readItems } from "@directus/sdk";
+import { directus } from "@/lib/directus/client";
+import { toEpochMs } from "@/lib/directus/serialize";
 import type { ContributorProfileDoc } from "@/lib/types/contribution";
 
-const COLLECTION = "contributor_profiles";
+/**
+ * Katkıcı profilleri — Directus.
+ *
+ * İki Firestore kalıntısı burada kapanıyor:
+ * - `approvedCount` artık kayıtta tutulan sayaç değil, onaylı katkılardan türetiliyor
+ *   (elle güncellenen sayaçtaki tutarsızlık riski kalkıyor).
+ * - `songs.contributorIds` + `array-contains` yerine `song_contributors` junction'ı.
+ */
 
-function db() {
-  const fs = getAdminFirestore();
-  if (!fs) throw new Error("Firestore Admin başlatılamadı.");
-  return fs;
+type ContributorProfile = ContributorProfileDoc & { id: string };
+
+/** Bir kullanıcının onaylanmış katkı sayısı. */
+async function approvedContributionCount(uid: string): Promise<number> {
+  const rows = (await directus().request(
+    aggregate("contributions", {
+      aggregate: { count: "*" },
+      query: { filter: { contributor: { _eq: uid }, status: { _eq: "approved" } } },
+    }),
+  )) as unknown as { count: string | number }[];
+
+  return Number(rows[0]?.count) || 0;
 }
 
-export async function getContributorProfile(
-  uid: string,
-): Promise<(ContributorProfileDoc & { id: string }) | null> {
-  const doc = await db().collection(COLLECTION).doc(uid).get();
-  if (!doc.exists) return null;
-  return serializeDoc({ id: doc.id, ...(doc.data() as ContributorProfileDoc) });
+export async function getContributorProfile(uid: string): Promise<ContributorProfile | null> {
+  const rows = await directus().request(
+    readItems("contributor_profiles", {
+      filter: { user: { _eq: uid } },
+      limit: 1,
+    }),
+  );
+
+  const row = rows[0];
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    uid: row.user,
+    displayName: row.display_name,
+    ...(row.bio ? { bio: row.bio } : {}),
+    ...(row.avatar_url ? { avatarUrl: row.avatar_url } : {}),
+    approvedCount: await approvedContributionCount(uid),
+    verified: row.verified,
+    joinedAt: toEpochMs(row.created_at),
+    updatedAt: toEpochMs(row.updated_at),
+  };
 }
 
+/** Kullanıcının katkıda bulunduğu onaylı şarkı sayısı (junction üzerinden). */
 export async function getContributorSongCount(uid: string): Promise<number> {
-  const snap = await db()
-    .collection("songs")
-    .where("moderationStatus", "==", "approved")
-    .where("contributorIds", "array-contains", uid)
-    .get();
-  return snap.size;
+  const rows = (await directus().request(
+    aggregate("song_contributors", {
+      aggregate: { count: "*" },
+      query: {
+        filter: {
+          user: { _eq: uid },
+          song: { moderation_status: { _eq: "approved" } },
+        },
+      },
+    }),
+  )) as unknown as { count: string | number }[];
+
+  return Number(rows[0]?.count) || 0;
 }

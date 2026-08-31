@@ -1,59 +1,77 @@
-import admin from "firebase-admin";
-import { getAdminFirestore } from "@/lib/firebase/admin";
-import { serializeDoc } from "@/lib/firestore/serialize";
-import { writeAuditLog } from "@/lib/security/audit-log";
+import { aggregate, createItem, deleteItem, readItems, updateItem } from "@directus/sdk";
+import { directus } from "@/lib/directus/client";
+import { toEpochMs } from "@/lib/directus/serialize";
+import { approvedSongCounts } from "./artists";
+import type { ArtistRow } from "@/lib/directus/schema";
 import type { ArtistDoc } from "@/lib/types/firestore";
 
-const COLLECTION = "artists";
+/**
+ * Sanatçı yazma işlemleri — Directus.
+ *
+ * Denetim izi Directus'un yerleşik Activity Log'una devredildi; `actorUid`
+ * parametreleri imza uyumu için duruyor (Faz 5'te admin route'ları ile birlikte silinecek).
+ * `songCount` artık yazılabilir bir alan değil — onaylı şarkılardan türetiliyor,
+ * bu yüzden `createArtist`/`updateArtist` girdisinde yok sayılır.
+ */
 
-function db() {
-  const fs = getAdminFirestore();
-  if (!fs) throw new Error("Firestore Admin başlatılamadı.");
-  return fs;
-}
-
+type Artist = ArtistDoc & { id: string };
 type ArtistInput = Omit<ArtistDoc, "schemaVersion" | "createdAt" | "updatedAt">;
 
-function omitUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined));
+function toRow(input: Partial<ArtistInput>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (input.name !== undefined) row.name = input.name;
+  if (input.slug !== undefined) row.slug = input.slug;
+  if (input.imageUrl !== undefined) row.image_url = input.imageUrl;
+  if (input.genre !== undefined) row.genre = input.genre;
+  if (input.popularity !== undefined) row.popularity = input.popularity;
+  // songCount bilerek atlanır — türetilen değer.
+  return row;
 }
 
-export async function createArtist(input: ArtistInput, actorUid: string): Promise<string> {
-  const now = admin.firestore.FieldValue.serverTimestamp();
-  // Firestore `undefined` değerli alanları kabul etmez; opsiyonelleri temizliyoruz.
-  const data: Record<string, unknown> = omitUndefined({
-    ...input,
-    schemaVersion: 1,
-    createdAt: now,
-    updatedAt: now,
-  });
+function mapArtist(row: ArtistRow, songCount: number): Artist {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    ...(row.image_url ? { imageUrl: row.image_url } : {}),
+    ...(row.genre ? { genre: row.genre } : {}),
+    songCount,
+    ...(row.popularity != null ? { popularity: row.popularity } : {}),
+    createdAt: toEpochMs(row.created_at),
+    updatedAt: toEpochMs(row.updated_at),
+  };
+}
 
-  const ref = await db().collection(COLLECTION).add(data);
-  await writeAuditLog(actorUid, "artist:create", COLLECTION, ref.id, { name: input.name });
-  return ref.id;
+export async function createArtist(input: ArtistInput, _actorUid: string): Promise<string> {
+  const row = await directus().request(createItem("artists", toRow(input) as never));
+  return row.id;
 }
 
 export async function updateArtist(
   artistId: string,
   updates: Partial<ArtistInput>,
-  actorUid: string,
+  _actorUid: string,
 ): Promise<void> {
-  const now = admin.firestore.FieldValue.serverTimestamp();
-  await db().collection(COLLECTION).doc(artistId).update({ ...updates, updatedAt: now });
-  await writeAuditLog(actorUid, "artist:update", COLLECTION, artistId, updates as Record<string, unknown>);
+  await directus().request(updateItem("artists", artistId, toRow(updates) as never));
 }
 
-export async function deleteArtist(artistId: string, actorUid: string): Promise<void> {
-  await db().collection(COLLECTION).doc(artistId).delete();
-  await writeAuditLog(actorUid, "artist:delete", COLLECTION, artistId);
+export async function deleteArtist(artistId: string, _actorUid: string): Promise<void> {
+  await directus().request(deleteItem("artists", artistId));
 }
 
-export async function getAllArtistsAdmin(): Promise<(ArtistDoc & { id: string })[]> {
-  const snap = await db().collection(COLLECTION).orderBy("name").get();
-  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as ArtistDoc) }));
+export async function getAllArtistsAdmin(): Promise<Artist[]> {
+  const [rows, counts] = await Promise.all([
+    directus().request(readItems("artists", { sort: ["name"], limit: -1 })),
+    approvedSongCounts(),
+  ]);
+
+  return rows.map((row) => mapArtist(row, counts.get(row.slug) ?? 0));
 }
 
 export async function getAllArtistsCount(): Promise<number> {
-  const snap = await db().collection(COLLECTION).count().get();
-  return snap.data().count;
+  const rows = (await directus().request(
+    aggregate("artists", { aggregate: { count: "*" } }),
+  )) as unknown as { count: string | number }[];
+
+  return Number(rows[0]?.count) || 0;
 }

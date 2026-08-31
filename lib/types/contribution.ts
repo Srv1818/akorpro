@@ -29,7 +29,8 @@ export interface ContributionDoc {
   /** If approved, the resulting songId */
   approvedSongId?: string;
 
-  schemaVersion: number;
+  /** @deprecated Firestore kalıntısı — Directus şemasında yok. */
+  schemaVersion?: number;
   /** Epoch milisaniye — serializeDoc() dönüşümü. */
   createdAt: number;
   updatedAt: number;
@@ -40,6 +41,7 @@ export interface ContributorProfileDoc {
   displayName: string;
   bio?: string;
   avatarUrl?: string;
+  /** @deprecated Directus şemasında yok — onaylı katkılardan türetilir. */
   approvedCount: number;
   /** Moderator-verified badge */
   verified: boolean;

@@ -1,57 +1,85 @@
 import { unstable_cache } from "next/cache";
-import { getAdminFirestore } from "@/lib/firebase/admin";
-import { serializeDoc } from "@/lib/firestore/serialize";
+import { aggregate, readItems } from "@directus/sdk";
+import { directus } from "@/lib/directus/client";
+import { toEpochMs } from "@/lib/directus/serialize";
+import type { ArtistRow } from "@/lib/directus/schema";
 import { artistTag, TAGS, TTL } from "@/lib/cache/tags";
 import type { ArtistDoc } from "@/lib/types/firestore";
 
-const COLLECTION = "artists";
+/**
+ * Sanatçı okuma katmanı — Directus.
+ *
+ * Dışa aktarılan imzalar Firestore sürümüyle aynı bırakıldı; çağıran sayfalar değişmedi.
+ * `songCount` artık kayıtta tutulan bir alan değil, onaylı şarkılardan **türetiliyor**
+ * (MIGRATION-PLAN.md Faz 1 şema denetimi kararı) — elle güncellenen sayaçtaki
+ * tutarsızlık riski böylece ortadan kalkıyor.
+ */
 
-function normalizeSlugMatch(s: string): string {
-  return s.trim().normalize("NFKC").toLocaleLowerCase("tr-TR");
+type Artist = ArtistDoc & { id: string };
+
+function mapArtist(row: ArtistRow, songCount: number): Artist {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    ...(row.image_url ? { imageUrl: row.image_url } : {}),
+    ...(row.genre ? { genre: row.genre } : {}),
+    songCount,
+    ...(row.popularity != null ? { popularity: row.popularity } : {}),
+    createdAt: toEpochMs(row.created_at),
+    updatedAt: toEpochMs(row.updated_at),
+  };
 }
 
-function db() {
-  const fs = getAdminFirestore();
-  if (!fs) throw new Error("Firestore Admin başlatılamadı — FIREBASE_SERVICE_ACCOUNT_KEY eksik.");
-  return fs;
+/**
+ * artist_slug → onaylı şarkı sayısı. Tek sorguda gruplanır.
+ * `search.ts` de aynı türetmeyi kullandığı için dışa açık.
+ */
+export async function approvedSongCounts(artistSlugs?: string[]): Promise<Map<string, number>> {
+  const rows = (await directus().request(
+    aggregate("songs", {
+      aggregate: { count: "*" },
+      groupBy: ["artist_slug"],
+      query: {
+        filter: {
+          moderation_status: { _eq: "approved" },
+          ...(artistSlugs ? { artist_slug: { _in: artistSlugs } } : {}),
+        },
+      },
+    }),
+  )) as unknown as { artist_slug: string; count: string | number }[];
+
+  return new Map(rows.map((r) => [r.artist_slug, Number(r.count) || 0]));
 }
 
 /* ------------------------------------------------------------------ */
 /*  Raw (uncached) queries                                             */
 /* ------------------------------------------------------------------ */
 
-async function _getArtistBySlug(slug: string): Promise<(ArtistDoc & { id: string }) | null> {
-  const trimmedSlug = slug.trim();
-  const snap = await db()
-    .collection(COLLECTION)
-    .where("slug", "==", trimmedSlug)
-    .limit(1)
-    .get();
+async function _getArtistBySlug(slug: string): Promise<Artist | null> {
+  const trimmed = slug.trim();
 
-  if (!snap.empty) {
-    const doc = snap.docs[0];
-    return serializeDoc({ id: doc.id, ...(doc.data() as ArtistDoc) });
-  }
+  const rows = await directus().request(
+    readItems("artists", {
+      filter: { slug: { _eq: trimmed } },
+      limit: 1,
+    }),
+  );
 
-  // Eski verilerde slug biçimi (boşluk/büyük-küçük harf/birleşik karakter) farklı olabilir.
-  // Bu durumda tüm sanatçılar içinde normalize karşılaştırma ile doğru kaydı bul.
-  const normalizedSlug = normalizeSlugMatch(trimmedSlug);
-  const allSnap = await db().collection(COLLECTION).get();
-  const matched = allSnap.docs.find((d) => {
-    const data = d.data() as ArtistDoc;
-    return normalizeSlugMatch(data.slug) === normalizedSlug;
-  });
-  if (!matched) return null;
-  return serializeDoc({ id: matched.id, ...(matched.data() as ArtistDoc) });
+  const row = rows[0];
+  if (!row) return null;
+
+  const counts = await approvedSongCounts([row.slug]);
+  return mapArtist(row, counts.get(row.slug) ?? 0);
 }
 
-async function _getAllArtists(): Promise<(ArtistDoc & { id: string })[]> {
-  const snap = await db()
-    .collection(COLLECTION)
-    .orderBy("name")
-    .get();
+async function _getAllArtists(): Promise<Artist[]> {
+  const [rows, counts] = await Promise.all([
+    directus().request(readItems("artists", { sort: ["name"], limit: -1 })),
+    approvedSongCounts(),
+  ]);
 
-  return snap.docs.map((d) => serializeDoc({ id: d.id, ...(d.data() as ArtistDoc) }));
+  return rows.map((row) => mapArtist(row, counts.get(row.slug) ?? 0));
 }
 
 /* ------------------------------------------------------------------ */
