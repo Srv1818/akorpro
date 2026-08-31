@@ -7,7 +7,8 @@
  */
 
 const SENSITIVE_KEYS = [
-  "FIREBASE_SERVICE_ACCOUNT_KEY",
+  // Directus sunucu token'ı: istemciye sızarsa herkes içerik yazabilir hale gelir.
+  "DIRECTUS_TOKEN",
 ] as const;
 
 export function assertNoClientSecrets(): void {
