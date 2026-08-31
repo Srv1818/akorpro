@@ -1,7 +1,9 @@
 # AkorPro: Vercel + Firebase → Contabo/Coolify + MariaDB/Directus + Cloudflare
 
-> **Durum:** Taslak — okunacak, güncellenecek ve üzerine konuşulacak canlı doküman.
-> Kararlar netleştikçe bu dosya güncellenir.
+> **Durum (2026-08-31):** Faz 1–5 kod tarafı tamamlandı ve `feature/directus-migration`
+> dalında. `akorpro.com` staging yayında (Directus + Next.js). `akorpro.com.tr` hâlâ
+> Vercel'de, dokunulmadı. Kalanlar: içerik girişi, `.com.tr` zone'u ve kesim.
+> Uygulama adımları: [`docs/faz-0-cloudflare.md`](docs/faz-0-cloudflare.md)
 
 ## Context
 
@@ -9,14 +11,19 @@ Proje şu an **Vercel** üzerinde host ediliyor ve tüm veri/kimlik katmanı **F
 (Firestore = veri, Firebase Auth = Google girişi + session cookie + custom claims + App Check,
 Firebase Admin SDK = sunucu). Amaç: bağımsız, sahip olunan bir yığına geçmek —
 **Contabo VPS + Coolify** (host/orkestrasyon), **MariaDB** (veri), **Directus** (headless API + admin UI),
-**Cloudflare** (DNS + CDN + WAF + Tunnel + R2).
+**Cloudflare** (DNS + CDN + WAF + R2).
 
 Kullanıcı kararları (netleşti):
 - **Auth**: Firebase Auth tamamen kalkar → **Directus auth + Google SSO**.
 - **Veri erişimi**: Next.js, **Directus REST/GraphQL API** üzerinden okur/yazar (doğrudan MariaDB değil).
 - **Veri taşıma**: Yok — greenfield. Firestore→MariaDB migration scripti gerekmiyor, temiz şema kurulur. İçerik yeni yığında yeniden girilir; **URL yapısı birebir korunur** ki kesimde her sayfa 1:1 eşleşsin.
 - **Admin paneli**: **Tamamen Directus admin UI**. Mevcut Next.js admin arayüzü (`app/admin/*`) ve admin API route'ları (`app/api/admin/*`) **kaldırılır** — CRUD/moderasyon/import/keşfet düzenleme Directus'ta yapılır.
-- **Cloudflare**: DNS + CDN + proxy/WAF **+ Cloudflare Tunnel** (VPS'te port açılmaz) **+ R2** (Directus dosya storage).
+- **Cloudflare**: DNS + CDN + proxy/WAF **+ R2** (Directus dosya storage).
+  **KARAR 2026-08-31: Cloudflare Tunnel kullanılmıyor.** Tunnel'ın tek gerekçesi
+  "VPS'te port açılmasın"dı; ama VPS paylaşımlı — üzerinde başka projeler çalışıyor ve
+  hepsi 80/443'ten Traefik'e giriyor, o portlar kapatılamaz. Gerekçe düşünce geriye
+  yalnız fazladan bir katman ve arıza noktası kalıyor. Trafik: Cloudflare proxy →
+  VPS:443 → Traefik (coolify-proxy) → konteyner. Kurulan Tunnel geri alındı.
 - **VPS**: 8 GB RAM.
 - **Domain / kesim (KARAR 2026-08-20 — güncellendi)**: **`akorpro.com.tr` birincil domain olarak KALIR.**
   Altyapı göçü ile domain değişimi ayrı kararlar; domain değiştirilmiyor.
@@ -25,7 +32,7 @@ Kullanıcı kararları (netleşti):
   - Yeni yığın **`akorpro.com`** üzerinde paralel kurulur — ama **staging/prova ortamı olarak**,
     kalıcı adres olarak değil. Arama motorlarına **tamamen kapalı** tutulur (aşağıya bak).
   - **Kesim = DNS anahtarı**: yeni yığın test edilip onaylanınca `akorpro.com.tr`'nin DNS'i
-    Vercel'den Cloudflare Tunnel'a çevrilir. URL'ler, canonical'lar, sitemap — hepsi `.com.tr` kalır.
+    Vercel'den VPS'e çevrilir. URL'ler, canonical'lar, sitemap — hepsi `.com.tr` kalır.
   - Kesimden sonra **`akorpro.com` → `akorpro.com.tr` 301** (marka koruması; tersi değil).
   - **SEO sonucu**: adres değişikliği bildirimi yok, 301 zinciri yok, ccTLD sinyali korunur,
     geçiş dalgalanması yok. Domain kaynaklı SEO riski sıfır.
@@ -51,13 +58,16 @@ GA4 (kalır), Vercel Analytics (kaldırılır), ISR on-demand revalidate (kalır
 ## Hedef Mimari
 
 ```
-Cloudflare (DNS + CDN + WAF + Turnstile + R2)
-   │  Cloudflare Tunnel  (cloudflared → origin; VPS 80/443 dışarı kapalı)
+Cloudflare (DNS + CDN + WAF + R2)
+   │  proxy'li A kaydı → VPS:443
    ▼
 Contabo VPS (8 GB, Ubuntu) — Coolify ile yönetilen container'lar:
-   ├── next-app      Next.js 16 (output: standalone, node 24) — SSR/ISR
-   ├── directus      API (REST+GraphQL) + Admin UI, storage adapter = R2 (S3)
-   └── mariadb       tek veri kaynağı
+   ├── coolify-proxy (Traefik)  TLS sonlandırma + hostname yönlendirme
+   ├── akorpro-web   Next.js 16 (Nixpacks) — SSR/ISR   → akorpro.com
+   ├── directus      API (REST+GraphQL) + Admin UI     → admin.akorpro.com
+   └── postgres + redis   Directus'un veri katmanı
+
+VPS paylaşımlı: aynı Traefik başka projelere de hizmet ediyor.
 ```
 
 Kimlik: Tarayıcı → Directus Google SSO → Directus access+refresh JWT → Next httpOnly cookie'de tutulur.
@@ -70,8 +80,10 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
 1. ~~**Contabo VPS** (8 GB) provizyon, Ubuntu LTS.~~ ✅ **Tamam** (2026-08-20).
    Kalan kontrol: SSH sertleştirme (key-only login, ufw) yapıldı mı?
 2. ~~**Coolify** kurulumu.~~ ✅ **Tamam** (2026-08-20).
-   Kalan iş: Coolify UI'ın kendisi Tunnel + Cloudflare Access arkasına alınır (şu an public ise
-   panel dışarıya açık demektir — Faz 0/3 ile birlikte kapatılmalı).
+   Panel `xyz.coronstudio.com` üzerinden erişiliyor (Cloudflare proxy → Traefik → 443).
+   Açık madde: panelin 8000 portu VPS IP'sinden de erişilebilir durumda; istenirse
+   80/443/8000 yalnız Cloudflare IP aralıklarına kısıtlanabilir. VPS paylaşımlı olduğu
+   için bu değişiklik diğer projeleri de etkiler, bilinçli karar gerektirir.
 3. **Cloudflare** (iki zone: `akorpro.com.tr` = production, `akorpro.com` = staging)
    → **Uygulama adımları: [`docs/faz-0-cloudflare.md`](docs/faz-0-cloudflare.md)** (bloklar + doğrulama komutları).
    Aşağıdaki maddeler o runbook'un gerekçeleri:
@@ -135,7 +147,7 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
      ⚠️ **Bu kritik**: staging, production'ın birebir kopyası. Açık bırakılırsa Google
      `akorpro.com`'u indeksler ve `.com.tr` ile **duplicate content** çakışması doğar —
      yani korumak istediğimiz sıralamalara zarar verir.
-   - **Cloudflare Tunnel**: `cloudflared` container'ı Coolify'da. Public hostname'ler:
+   - ~~**Cloudflare Tunnel**~~ — kullanılmıyor (yukarıdaki karara bak). Hostname'ler Traefik'te:
      geliştirme boyunca `akorpro.com` → `next-app`; kesimde buna `akorpro.com.tr` eklenir.
      Ayrı subdomain'ler → `directus` ve Coolify paneli (ikisi de Access arkasında). VPS'te 80/443 dışa kapalı.
    - **WAF + Rate limiting**: yazma uçları (`/api/contributions`, `/api/takedown`) ve `/directus/*` için kurallar.
@@ -309,7 +321,7 @@ Aynı davranış kurulmazsa problem *yeniden* doğar.
 
 **Kesim mekanizması (domain kararı sonrası güncellendi)** — Domain değişmediği için `.com.tr` tarafında
 **hiçbir yönlendirme kuralı yok**. Kesim tek adım: `akorpro.com.tr` DNS kaydı Vercel'den
-Cloudflare Tunnel'a çevrilir. URL'ler zaten aynı olduğu için kullanıcı ve Google açısından
+VPS'e çevrilir. URL'ler zaten aynı olduğu için kullanıcı ve Google açısından
 sayfa adresleri hiç değişmez.
 
 Kesimden **sonra** `akorpro.com` zone'unda tek bir Redirect Rule (301, path + query korunarak) —
@@ -400,7 +412,7 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 - **Silinen admin**: `app/admin/*` (8 sayfa), `app/api/admin/*` (12 route), `lib/firestore/admin-*.ts`, `lib/firestore/import-validator.ts`, `lib/security/audit-log.ts` (→ Directus activity/revisions)
 - Kalan public route: `app/api/{auth,contributions,takedown,search,revalidate}/*`, `app/api/songs/[songId]/open`
 - Config: `next.config.ts`, `.env.example`, `package.json`, `.github/*`, Firebase artefaktları (silinir). **Dockerfile yok** → Coolify Nixpacks derler.
-- Infra (repo dışı ama repo'da doküman): Directus schema snapshot, Coolify servis tanımları, Cloudflare Tunnel config
+- Infra: şema/roller `scripts/directus-*.mjs` ile versiyonlu; Coolify servis tanımları ve Cloudflare kayıtları `docs/faz-0-cloudflare.md`'de
 
 ---
 
@@ -415,7 +427,7 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
    - Playlists: ekle/çıkar + realtime güncelleme.
    - `/api/revalidate` ile ISR invalidation.
 3. **Testler**: `__tests__/integration/firestore-rules.test.ts` → Directus permission testine dönüştürülür; `vitest` + Playwright e2e yeşile alınır.
-4. **Staging cutover provası**: Cloudflare Tunnel arkasında tam yığını çalıştır, gerçek domain'in staging subdomain'inde smoke.
+4. **Staging cutover provası**: tam yığını `akorpro.com` üzerinde çalıştır, smoke testleri koş.
 
 ---
 
@@ -423,7 +435,7 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 
 - **Kesim (cutover) — DNS anahtarı**: Yeni yığın `akorpro.com` (staging, Access arkasında) üzerinde
   kurulur ve tam test edilir. Mevcut `akorpro.com.tr` (Vercel + Firebase) o ana kadar hiç etkilenmez.
-  Kesim = `akorpro.com.tr` DNS kaydının Cloudflare Tunnel'a çevrilmesi. Domain, URL'ler ve canonical'lar
+  Kesim = `akorpro.com.tr` DNS kaydının VPS'e çevrilmesi. Domain, URL'ler ve canonical'lar
   değişmediği için Google açısından **hiçbir şey taşınmıyor** — yalnız origin değişiyor.
   - **Rollback**: DNS kaydını Vercel'e geri al. Bu yüzden kesimden ≥24 saat önce **TTL 300 sn**'ye
     düşürülür ve Vercel + Firebase kesimden sonra **≥2 hafta** ayakta bırakılır.

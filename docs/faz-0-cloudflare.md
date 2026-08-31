@@ -1,174 +1,157 @@
-# Faz 0.3 — Cloudflare kurulum runbook
+# Altyapı runbook — Cloudflare + Coolify
 
-> Uygulama sırası önemli. Her blok sonunda **DUR** ve doğrulama komutlarını çalıştır.
-> Bloklar arası geçmeden önce doğrulamanın yeşil olması gerekir.
->
-> Durum (2026-08-20): VPS ✅ · Coolify ✅ · Blok A ✅ · Blok B–F ⬜
->
-> Temel ilke: **önce `akorpro.com` (staging, sıfır risk), sonra `akorpro.com.tr` (canlı).**
-> Böylece Cloudflare'i canlı domainde değil, kaybedecek hiçbir şeyi olmayan domainde öğreniyoruz.
+> Durum (2026-08-31): `akorpro.com` (staging) yayında, Directus ve uygulama çalışıyor.
+> `akorpro.com.tr` hâlâ Vercel'de, dokunulmadı.
 
----
+## Gerçekleşen mimari
 
-## Blok A — Cloudflare hesabı + `akorpro.com` zone'u ✅ TAMAM (2026-08-20)
-
-`akorpro.com` şu an hiçbir nameserver'a delege değil (NS/SOA boş, doğrulandı).
-Taşınacak kayıt yok → bu blokta kırılabilecek bir şey yok.
-
-- [ ] Cloudflare hesabı aç (varsa atla). Free plan bu iş için yeterli.
-- [ ] **Hesapta 2FA'yı aç.** Tüm altyapının DNS'i buraya bağlanacak.
-- [ ] `akorpro.com` domainini ekle → Free plan seç.
-- [ ] **"Connect your domain" ekranındaki ayarlar** — Cloudflare'in "Recommended" değerleri
-      indekslenmesi *istenen* bir site varsayar; staging için yanlış:
-
-      | Ayar | CF önerisi | Seç |
-      |---|---|---|
-      | Search | Allow | **Block** |
-      | Agent | Allow | **Block** |
-      | Training | Block on pages with ads | **Block** (tam) |
-      | Block training in robots.txt | Kapalı | **Kapalı bırak** |
-      | Import DNS records | Automatic | Automatic (kayıt yok, tarama boş döner) |
-
-      - Search/Agent/Training → Block: staging asla indekslenmemeli. Asıl koruma Access (Blok D),
-        bu ikinci katman. "Block on pages with ads" sitede reklam olmadığı için hiçbir şeyi engellemez.
-      - robots.txt toggle'ı **kapalı**: uygulama `robots.txt`'i kendisi üretiyor (`app/robots.ts`).
-        Cloudflare de yazarsa iki kaynak olur. Kontrol uygulamada kalsın.
-      - Hepsi sonradan dashboard'dan değiştirilebilir.
-- [ ] Cloudflare'in verdiği iki nameserver'ı not et (`xxx.ns.cloudflare.com`).
-- [ ] `akorpro.com`'un registrar'ında nameserver'ları bunlarla değiştir.
-- [ ] Zone'da **hiçbir A/CNAME kaydı ekleme** — Tunnel bunu kendisi yazacak (Blok C).
-
-**DUR — doğrula:**
-```bash
-dig +short NS akorpro.com @1.1.1.1     # cloudflare.com NS'leri dönmeli
 ```
-✅ Doğrulandı (2026-08-20): `louis.ns.cloudflare.com` + `maxine.ns.cloudflare.com`,
-SOA Cloudflare'i gösteriyor, `.com` TLD sunucuları da yeni NS'leri veriyor.
-Registrar: **METUnic** (`.com.tr` ile aynı sağlayıcı — Blok E'de aynı panel kullanılacak).
+Cloudflare (DNS + CDN + WAF + R2)
+   │  proxy'li A kaydı → VPS:443
+   ▼
+Contabo VPS (158.220.96.32) — Coolify
+   ├── coolify-proxy (Traefik)  → TLS sonlandırma, hostname yönlendirme
+   ├── akorpro-web              → Next.js       → akorpro.com
+   ├── directus                 → API + admin   → admin.akorpro.com
+   ├── postgres + redis         → Directus'un veri katmanı
+   └── (başka projelerin konteynerleri — VPS paylaşımlı)
+```
 
-> 📌 **Ölçülen gerçek:** TLD seviyesindeki NS kaydının TTL'i **172800 sn = 48 saat** ve bu
-> bizim kontrolümüzde değil. Planın "NS taşımasını kesimden ayır" kararının somut gerekçesi bu:
-> NS'i kesime bindirseydik rollback 48 saate kadar sürerdi. Ayrı yaptığımız için kesim tek bir
-> A kaydı düzenlemesine iniyor → geri dönüş dakikalar. Aynı 48 saat `.com.tr` için de geçerli.
+### Cloudflare Tunnel neden kullanılmıyor
+
+Planın ilk hali "VPS'te port açılmaz, her şey Tunnel'dan geçer" diyordu. Bu karar
+**tek amaçlı VPS** varsayımına dayanıyordu ve gerçekle uyuşmadı:
+
+- VPS paylaşımlı — üzerinde kadrokurs, sporsek, faceji gibi başka projeler çalışıyor
+  ve hepsi 80/443'ten Traefik'e giriyor. O portları kapatmak o siteleri düşürürdü.
+- Dolayısıyla Tunnel'ın tek gerekçesi (açık port bırakmamak) ortadan kalkıyor;
+  geriye yalnız fazladan bir katman ve fazladan bir arıza noktası kalıyor.
+- Sunucu zaten çalışan bir düzene sahip: Cloudflare proxy → 443 → Traefik.
+  akorpro da aynı düzeni kullanıyor.
+
+**2026-08-31'de kurulan Tunnel, Access uygulaması ve ilgili firewall kuralları
+geri alındı.** Origin IP'yi gizleme hedefi bırakıldı; bunun yerine (istenirse)
+80/443'ü yalnız Cloudflare IP aralıklarına açmak sonraya bırakıldı.
 
 ---
 
-## Blok B — R2 + Turnstile (bağımsız, Tunnel'dan önce yapılabilir)
+## Blok A — `akorpro.com` zone'u ✅ TAMAM (2026-08-20)
 
-- [ ] **R2**: bucket oluştur (ör. `akorpro-media`).
-- [ ] R2 → **S3 API token** üret (izin: Object Read & Write, yalnız bu bucket'a scope'lu).
+- [x] Cloudflare hesabı + 2FA
+- [x] `akorpro.com` eklendi (Free plan)
+- [x] Bağlanma ekranında Search / Agent / Training → **Block** (staging indekslenmemeli)
+- [x] Nameserver'lar registrar'da (METUnic) Cloudflare'e çevrildi
+- [x] Doğrulandı: `louis.ns.cloudflare.com` + `maxine.ns.cloudflare.com`
 
-> 🔐 **Secret'lar nereye gider:** Doğrudan **Coolify → Environment Variables** + bir kopya
-> **şifre yöneticisine**. Repoya, plana, dokümana veya sohbete **yazılmaz**.
-> Secret Access Key R2'de yalnız bir kez gösterilir; kaçırılırsa token yeniden üretilir.
-> Bir secret sohbete/ekran görüntüsüne düşerse **rotasyon** en ucuz çözümdür — özellikle
-> henüz hiçbir servis onu kullanmıyorken.
+> 📌 **Ölçülen gerçek:** TLD seviyesindeki NS TTL'i **172800 sn = 48 saat** ve bizim
+> kontrolümüzde değil. Planın "NS taşımasını kesimden ayır" kararının somut gerekçesi bu:
+> NS'i kesime bindirseydik rollback 48 saate kadar sürerdi. Ayrı yaptığımız için kesim
+> tek bir A kaydı düzenlemesine iniyor. Aynı 48 saat `.com.tr` için de geçerli.
 
-Directus S3 storage adapter'ının beklediği değişkenler (Faz 0.4'te Coolify'a girilecek):
+---
+
+## Blok B — R2 ✅ TAMAM
+
+- [x] Bucket: `akorpro-media`
+- [x] S3 API token (Object Read & Write, yalnız bu bucket'a scope'lu)
+- [x] Directus env'leri girildi:
 
 ```
 STORAGE_LOCATIONS=r2
 STORAGE_R2_DRIVER=s3
-STORAGE_R2_KEY=<access key id>
-STORAGE_R2_SECRET=<secret access key>
+STORAGE_R2_KEY / STORAGE_R2_SECRET
 STORAGE_R2_BUCKET=akorpro-media
 STORAGE_R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 STORAGE_R2_REGION=auto
 STORAGE_R2_FORCE_PATH_STYLE=true
 ```
 
-> `REGION=auto` ve `FORCE_PATH_STYLE=true` R2 için gereklidir — S3 varsayılanlarıyla çalışmaz.
-- [ ] **Turnstile**: yeni site oluştur. Hostname olarak hem `akorpro.com` hem
-      `akorpro.com.tr` ekle (kesimden sonra ikincisi kullanılacak).
-      Kaydet: `site key` (public), `secret key`.
+> `REGION=auto` ve `FORCE_PATH_STYLE=true` R2 için zorunlu — S3 varsayılanlarıyla çalışmaz.
 
-> Not: Bu anahtarlar Coolify'da env olarak saklanacak, repoya girmeyecek.
+**Turnstile henüz kurulmadı.** Yazma uçları (katkı formu, telif bildirimi) giriş
+gerektirdiği için acil değil; anonim yazma ucu yok.
 
 ---
 
-## Blok C — Cloudflare Tunnel
+## Blok C — Directus servisi ✅ TAMAM
 
-VPS'te 80/443 dışarı **açılmaz**; tüm trafik Tunnel üzerinden gelir.
+- [x] Coolify → `Akorpro` projesi → **Directus With Postgresql** şablonu
+      (Directus 11 + postgis/postgres 16 + redis 7)
+- [x] Domain: `https://admin.akorpro.com:8055` (Coolify formatı; dışarıya 443)
+- [x] Cloudflare'de `admin` A kaydı → `158.220.96.32`
+- [x] Şema ve roller script'ten kuruldu:
+      `npm run directus:schema` · `npm run directus:roles`
 
-> ⚠️ **Sıralama:** `next-app` ve `directus` servisleri **henüz yok** (Faz 0.4'te kurulacak).
-> Bu yüzden Blok C iki aşamaya bölündü. C1 şimdi yapılır ve **Coolify panelini public
-> internetten çeker** — hem Tunnel'ın çalıştığını kanıtlar hem gerçek bir açığı kapatır.
-> C2, servisler ayağa kalktıkça hostname eklemekten ibarettir.
-
-### C1 — Tunnel + Coolify paneli (şimdi)
-
-- [ ] Cloudflare → Zero Trust → Networks → Tunnels → yeni tunnel oluştur (ad: `akorpro`).
-- [ ] Tunnel token'ını al (secret — Coolify env'e, sohbete değil).
-- [ ] VPS'te `cloudflared` container'ını bu token ile çalıştır.
-      Coolify'ın kendi ağına erişebilmeli.
-- [ ] Tek public hostname bağla:
-
-| Hostname | Hedef | Not |
-|---|---|---|
-| `coolify.akorpro.com` | `http://localhost:8000` (Coolify panel portu) | şu an tek var olan servis |
-
-- [ ] **Blok D'yi bu hostname için hemen uygula** (Access). Panel korumasız kalmamalı.
-
-**DUR — doğrula:**
-```bash
-curl -sI https://coolify.akorpro.com | head -1   # Access giriş ekranına yönlenmeli
-curl -sI --max-time 5 http://<VPS-IP>            # panel IP'den erişilebiliyor mu?
-```
-- [ ] Panel Tunnel üzerinden çalıştığı doğrulanınca: VPS firewall'da **80/443'ü dışarıya kapat**
-      (ufw: yalnız SSH). Bu adım C1'in sonunda yapılır — önce değil, yoksa paneli kendine kaparsın.
-
-### C2 — Uygulama hostname'leri (Faz 0.4'te, servisler kurulunca)
-
-Servisler ayağa kalktıkça aynı tunnel'a hostname eklenir:
-
-| Hostname | Hedef | Ne zaman |
-|---|---|---|
-| `directus.akorpro.com` | `directus:8055` | Directus container'ı kurulunca |
-| `akorpro.com` | `next-app:3000` | next-app deploy olunca |
-
-- [ ] Her yeni hostname için **Blok D (Access) politikasını da uygula.**
+> **Sertifika sırası önemli:** A kaydı önce **DNS-only** bırakıldı, Traefik
+> Let's Encrypt sertifikasını aldı, sonra proxy açıldı. Ters sırada HTTP-01
+> doğrulaması takılabiliyor.
 
 ---
 
-## Blok D — Cloudflare Access (⚠️ atlanmamalı)
+## Blok D — Google SSO ✅ TAMAM
 
-Staging, production'ın birebir kopyası olacak. Açık bırakılırsa Google indeksler
-ve `.com.tr` ile **duplicate content** çakışması doğar — yani korumak istediğimiz
-sıralamalara zarar verir. `robots.txt` yeterli değil; bot içeriğe hiç ulaşmamalı.
+- [x] Google Cloud → OAuth client (Web application), redirect URI:
+      `https://admin.akorpro.com/auth/login/google/callback`
+- [x] Directus env'leri: `AUTH_PROVIDERS=google`, `AUTH_GOOGLE_DRIVER=openid`,
+      client id/secret, `AUTH_GOOGLE_MODE=session`,
+      `AUTH_GOOGLE_DEFAULT_ROLE_ID=<Contributor>`,
+      `AUTH_GOOGLE_REDIRECT_ALLOW_LIST=https://akorpro.com,https://akorpro.com/`
+- [x] `SESSION_COOKIE_DOMAIN=.akorpro.com`
 
-- [ ] Zero Trust → Access → Application ekle: `akorpro.com` **ve** `*.akorpro.com`.
-      Wildcard sayesinde sonradan eklenen her subdomain otomatik korunur — tek tek eklemeyi unutma riski kalkar.
-- [ ] Policy: yalnız iki kişinin e-posta adresi (Allow → Emails).
-- [ ] Sıra gereği ilk uygulanacağı yer `coolify.akorpro.com` (Blok C1).
-- [ ] **Service token** üret — `scripts/verify-urls.mjs`'in staging'i kontrol
-      edebilmesi için gerekecek (Faz 5.1, doğrulama adımı 1).
+### Yaşanan iki tuzak (tekrarlanmasın)
 
-**DUR — doğrula:** Gizli sekmede `akorpro.com` → Access giriş ekranı gelmeli, içerik gelmemeli.
-
-> Access, ancak kesim tamamlanıp `.com → .com.tr` 301 kuralı eklendikten sonra kaldırılır.
+1. **`INVALID_CREDENTIALS` — mevcut hesap `provider: default`'tu.** Directus SSO
+   kullanıcıyı `provider` + `external_identifier` ile arar; parolayla açılmış hesabı
+   bulamayıp yeni kayıt açmaya çalışır, e-posta çakışır. Çözüm: hesabın
+   `provider`'ını `google`, `external_identifier`'ını e-posta yapmak.
+2. **Provider değişince tarayıcıdaki oturum çerezi anında geçersizleşiyor** ama
+   tarayıcı göndermeye devam ediyor → *her* istek 401. Belirti: giriş ekranı bile
+   açılmıyor. Teşhis: `fetch('/server/info', {credentials:'omit'})` 200 dönerken
+   `'include'` 401 dönüyorsa çerez bayattır. Çözüm: çerezi silmek (gizli pencere).
+   Directus'un `/auth/logout`'u bu durumda çalışmaz — geçersiz oturumu çıkaramıyor.
 
 ---
 
-## Blok E — `akorpro.com.tr` zone'u (canlı domain — dikkatli)
+## Blok E — Uygulama servisi ✅ TAMAM
 
-Bu blok **siteyi taşımaz.** Cloudflare aynı kayıtları servis etmeye başlar,
-apex hâlâ Vercel'i gösterir. Ziyaretçi açısından hiçbir değişiklik olmaz.
+- [x] Coolify → `akorpro-web`, GitHub App ile `Srv1818/akorpro`,
+      branch `feature/directus-migration`, Nixpacks, port 3000
+- [x] Domain `https://akorpro.com`, Cloudflare'de apex A kaydı (DNS-only → proxy'li)
+- [x] Env: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_DIRECTUS_URL`, `DIRECTUS_URL`,
+      `DIRECTUS_TOKEN` (Directus'ta `AkorPro App` kullanıcısı, **Publisher** rolü)
 
-Neden şimdi, kesimde değil: `.com.tr` delegasyonu nic.tr/metunic üzerinden değişiyor,
-TLD seviyesinde yavaş yayılıyor ve TTL bizde değil. Kesime bindirilirse rollback
-"NS yayılmasını bekle" olur. Ayrı yapılırsa kesim tek bir A kaydı düzenlemesine iner.
+> Uygulama admin token'ı kullanmıyor. `Publisher` rolü içerik okuyup yazabiliyor ama
+> kullanıcı/rol tarafına dokunamıyor.
 
-- [ ] Cloudflare'e `akorpro.com.tr` ekle. Bu zone canlı ve indekslenmesi **isteniyor** →
-      Search/Agent ayarları staging'in tersi: **Search = Allow**. Training için karar
-      ayrıca verilir (içerik bu sitenin değeri; aceleye gerek yok, sonradan değiştirilebilir).
-      "Block training in robots.txt" yine **kapalı** — `app/robots.ts` tek kaynak.
-- [ ] ⚠️ Otomatik tarama kayıtları çekecek — **tarama sonucuna güvenme**,
-      aşağıdaki tabloyla birebir karşılaştır (özellikle `google-site-verification` TXT'i):
+**Açık:** `www.akorpro.com` 503 dönüyor — Coolify'ın Domains alanına ikinci hostname
+eklenmesi gerekiyor. Staging indekslemeye kapalı olduğu için aciliyeti yok.
+
+---
+
+## Staging koruması
+
+`app/robots.ts` host'a bakıyor: `NEXT_PUBLIC_SITE_URL` `akorpro.com.tr` ile bitmiyorsa
+ortam staging sayılıp **tamamen indekslemeye kapatılıyor** (`Disallow: /`).
+
+Gerekçe: staging canlının birebir kopyası. İndekslenirse `.com.tr` ile duplicate
+content çakışması doğar ve korumaya çalıştığımız sıralamalara zarar verir.
+Kesimde `NEXT_PUBLIC_SITE_URL` `.com.tr` olunca koruma kendiliğinden kalkar.
+
+---
+
+## Blok F — `akorpro.com.tr` zone'u ⬜ YAPILMADI
+
+Bu blok **siteyi taşımaz.** Cloudflare aynı kayıtları servis etmeye başlar, apex hâlâ
+Vercel'i gösterir. Ziyaretçi açısından hiçbir değişiklik olmaz.
+
+- [ ] Cloudflare'e `akorpro.com.tr` ekle. Bu zone indekslenmeli → **Search = Allow**
+      (staging'in tersi). "Block training in robots.txt" **kapalı** — `app/robots.ts` tek kaynak.
+- [ ] ⚠️ Otomatik tarama sonucuna güvenme, aşağıdaki tabloyla birebir karşılaştır:
 
 | Tip | Ad | Değer | Proxy |
 |---|---|---|---|
-| A | `@` | `216.198.79.1` | **DNS only (gri)** |
-| CNAME | `www` | `e3d3d21bd769d68b.vercel-dns-017.com` | **DNS only (gri)** |
+| A | `@` | `216.198.79.1` | **DNS only** |
+| CNAME | `www` | `e3d3d21bd769d68b.vercel-dns-017.com` | **DNS only** |
 | MX 10 | `@` | `mt-spamexperts.guzel.net.tr` | — |
 | MX 20 | `@` | `ni-spamexperts.guzel.net.tr` | — |
 | MX 30 | `@` | `pmg.guzel.net.tr` | — |
@@ -176,14 +159,10 @@ TLD seviyesinde yavaş yayılıyor ve TTL bizde değil. Kesime bindirilirse roll
 | TXT | `@` | `v=spf1 a mx include:relay.guzelhosting.com ~all` | — |
 | TXT | `@` | `google-site-verification=TDDdB2nn7YzUQ0hao3DByhV7ZPQmHumbf7yH0CLIcQQ` | — |
 
-- [ ] **Her kayıt DNS-only (gri bulut).** Proxy açma — davranış birebir korunmalı.
-- [ ] Wildcard kaydı **ekleme** (canlıda yok, doğrulandı). `_dmarc` de yok.
-
 > ⚠️ Tablodaki **tek kritik kayıt `google-site-verification` TXT'i.** Kaybedilirse GSC
 > doğrulaması düşebilir — bu planın tamamen dayandığı Search Console erişimi.
-> MX/SPF düşük riskli: posta kutusu şu an aktif değil (Email Routing sonra kurulacak).
 
-- [ ] **NS değişiminden ÖNCE** Cloudflare NS'lerine doğrudan sorarak kayıtları doğrula:
+- [ ] **NS değişiminden ÖNCE** Cloudflare NS'lerine doğrudan sorarak doğrula:
 ```bash
 CFNS=<cloudflare-ns-1>
 dig @$CFNS akorpro.com.tr A     +short
@@ -191,25 +170,32 @@ dig @$CFNS akorpro.com.tr MX    +short
 dig @$CFNS akorpro.com.tr TXT   +short
 dig @$CFNS www.akorpro.com.tr CNAME +short
 ```
-Çıktılar yukarıdaki tabloyla **birebir** eşleşmeli. Eşleşmiyorsa NS'i değiştirme.
-
-- [ ] Ancak bundan sonra: registrar'da (Güzel Hosting / nic.tr) nameserver'ları
-      Cloudflare'inkilerle değiştir. Mevcut: `ns1.metunic.com.tr`, `ns2.metunic.com.tr`.
-
-**DUR — doğrula (NS değişiminden sonra):**
-```bash
-dig +short NS akorpro.com.tr @1.1.1.1      # cloudflare NS'leri
-curl -sI https://akorpro.com.tr | head -1  # 200, site normal
-node scripts/verify-urls.mjs               # 35/35 geçmeli — regresyon kontrolü
-```
-- [ ] GSC'de doğrulamanın hâlâ geçerli olduğunu kontrol et.
+- [ ] Ancak bundan sonra registrar'da NS'leri değiştir.
 
 ---
 
-## Blok F — Kesim hazırlığı (kesimden ≥24 saat önce)
+## Kesim kontrol listesi ⬜
 
-- [ ] `akorpro.com.tr` apex A kaydının **TTL'ini 300 sn**'ye düşür.
-      (Şu anki TTL ~1620 sn.) Hızlı rollback için şart.
+Kesimden ≥24 saat önce:
+- [ ] `akorpro.com.tr` apex A kaydının **TTL'ini 300 sn**'ye düşür (hızlı rollback için)
+
+Kesim günü:
+- [ ] `NEXT_PUBLIC_SITE_URL` → `https://akorpro.com.tr` (robots koruması otomatik kalkar)
+- [ ] Coolify → `akorpro-web` Domains'e `https://akorpro.com.tr` ekle
+- [ ] `akorpro.com.tr` apex A kaydı → `158.220.96.32`
+- [ ] **Directus'a `admin.akorpro.com.tr` hostname'i ekle ve
+      `SESSION_COOKIE_DOMAIN=.akorpro.com.tr` yap.** Oturum çerezi uygulama ile
+      Directus'un aynı üst alan adı altında olmasını gerektiriyor; bu yapılmazsa
+      kesimden sonra kimse giriş yapamaz. (bkz. `lib/auth/constants.ts`)
+- [ ] Google OAuth client'a `https://admin.akorpro.com.tr/auth/login/google/callback`
+      redirect URI'ını ekle; `AUTH_GOOGLE_REDIRECT_ALLOW_LIST`'e `.com.tr` adreslerini ekle
+- [ ] Google consent screen **Testing → Published** (aksi halde yalnız test
+      kullanıcıları giriş yapabilir)
+- [ ] `node scripts/verify-urls.mjs` — 35/35 geçmeli
+- [ ] GSC'de doğrulamanın hâlâ geçerli olduğunu kontrol et
+
+Kesimden sonra:
+- [ ] `akorpro.com` → `akorpro.com.tr` 301 (marka koruması; tersi değil)
 
 ---
 
@@ -217,14 +203,8 @@ node scripts/verify-urls.mjs               # 35/35 geçmeli — regresyon kontro
 
 | İş | Ne zaman | Neden |
 |---|---|---|
-| **WAF + Rate limiting** | Uygulama deploy olduktan sonra | Kurallar gerçek uçlara (`/api/contributions`, `/api/takedown`, `/directus/*`) yazılır; ortada uygulama yokken yazılamaz |
-| **Email Routing** | NS taşındıktan sonra, ayrı adım | Mail kapalı, acil değil. Devreye alırken eski MX + SPF temizlenir |
-| **`.com` → `.com.tr` 301** | Kesimden **sonra** | Staging o hostname üzerinde çalışıyor; önce eklenirse staging'i kırar |
-| **Access kaldırma** | 301 kuralı eklendikten sonra | Sıra: kesim → 301 → Access kaldır |
-
----
-
-## Bu blok bitince sıradaki
-
-**Faz 0.4 — Coolify servisleri**: MariaDB (persistent volume + günlük yedek → R2),
-Directus (Google SSO + R2 storage + MariaDB env'leri), next-app (Nixpacks build).
+| **WAF + Rate limiting** | İçerik girildikten sonra | Kurallar gerçek uçlara yazılır |
+| **80/443'ü Cloudflare IP'lerine kısıtlama** | İstenirse | Origin'e doğrudan bağlanmayı kapatır; VPS paylaşımlı olduğu için tüm projeleri etkiler |
+| **Turnstile** | Anonim yazma ucu açılırsa | Şu an yazma uçları giriş istiyor |
+| **Email Routing** | Gerekirse | Mail kapalı; SMTP bilinçli olarak kurulmadı |
+| **`www` hostname'i** | Kesimde | Staging'de kimse www'den gelmiyor |
