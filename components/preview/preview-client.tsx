@@ -59,7 +59,6 @@ type Props = {
   chordBody: string;
   tempo?: number | string;
   timeSignature?: string;
-  serverUid: string | null;
   /** Firestore `showHarmonyDetails`; false değilse armoni özeti gösterilir. */
   showHarmonyDetails?: boolean;
   /** Firestore `harmonyDetailsNotes` — düzenleyici notu, modalın üstünde. */
@@ -542,7 +541,6 @@ export function PreviewClient({
   chordBody,
   tempo,
   timeSignature,
-  serverUid,
   showHarmonyDetails = true,
   harmonyDetailsNotes = "",
   prevSong = null,
@@ -1395,7 +1393,7 @@ export function PreviewClient({
       setSaveMessage(formatError(e));
       setSaveAndAddOpen(false);
     }
-  }, [uid, serverUid]);
+  }, [uid]);
 
   const onAddToPlaylist = useCallback(async () => {
     setAddNotice(null);

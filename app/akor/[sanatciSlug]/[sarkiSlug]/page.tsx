@@ -21,7 +21,6 @@ import {
 import { chordPath } from "@/lib/paths";
 import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
 import { songJsonLd } from "@/lib/seo/structured-data";
-import { getServerSessionUser } from "@/lib/auth/server-session";
 import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
 import { firstParam } from "@/lib/search-params";
@@ -106,7 +105,6 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
   const initialGamlarScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
   const gamScaleName = gamlarScaleById(initialGamlarScaleId)?.name;
 
-  const sessionUser = await getServerSessionUser();
   let artistSongs: Awaited<ReturnType<typeof getSongsByArtist>> = [];
   try {
     artistSongs = await getSongsByArtist(sanatciSlug);
@@ -275,7 +273,6 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
                 chordBody={song.chordBody}
                 tempo={song.tempo}
                 timeSignature={song.timeSignature}
-                serverUid={sessionUser?.uid ?? null}
                 showHarmonyDetails={song.showHarmonyDetails !== false}
                 harmonyDetailsNotes={song.harmonyDetailsNotes}
                 prevSong={

@@ -9,7 +9,6 @@ import { PreviewShell } from "@/components/preview/preview-shell";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getSongBySlugs } from "@/lib/firestore/songs";
 import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
-import { getServerSessionUser } from "@/lib/auth/server-session";
 import { firstParam } from "@/lib/search-params";
 import { chordPath } from "@/lib/paths";
 import { songJsonLd } from "@/lib/seo/structured-data";
@@ -61,7 +60,6 @@ export default async function PreviewPage({ params, searchParams }: Props) {
   const parsedTranspose = rawTranspose !== undefined ? Number(rawTranspose) : 0;
   const initialTranspose = Number.isFinite(parsedTranspose) ? parsedTranspose : 0;
 
-  const sessionUser = await getServerSessionUser();
 
   const canonical = chordPath(artistSlug, songSlug);
 
@@ -132,7 +130,6 @@ export default async function PreviewPage({ params, searchParams }: Props) {
               chordBody={song.chordBody}
               tempo={song.tempo}
               timeSignature={song.timeSignature}
-              serverUid={sessionUser?.uid ?? null}
               showHarmonyDetails={song.showHarmonyDetails !== false}
               harmonyDetailsNotes={song.harmonyDetailsNotes}
             />
