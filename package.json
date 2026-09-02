@@ -19,7 +19,8 @@
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "lighthouse": "lhci autorun",
     "directus:schema": "node scripts/directus-schema.mjs",
-    "directus:roles": "node scripts/directus-roles.mjs"
+    "directus:roles": "node scripts/directus-roles.mjs",
+    "directus:flows": "node scripts/directus-flows.mjs"
   },
   "dependencies": {
     "@directus/sdk": "^18.0.3",
