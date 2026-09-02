@@ -62,6 +62,16 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
   },
+  // Tüm ikon yüzeyleri tek yerden tanımlı — hepsi aynı yuvarlatılmış logo.
+  // favicon.ico 32+48 piksel içeriyor: Google Search favicon'u 48'in katlarını
+  // tercih ediyor, eski 16x16'lık dosya arama sonucunda bulanık çıkıyordu.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32 48x48" },
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+  },
   alternates: {
     canonical: "/",
   },

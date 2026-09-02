@@ -8,12 +8,33 @@
   "theme_color": "#6D5DFC",
   "orientation": "portrait-primary",
   "lang": "tr",
-  "categories": ["music", "education"],
+  "categories": [
+    "music",
+    "education"
+  ],
   "icons": [
     {
       "src": "/icons/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/akorpro_ap_logo_128px.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/akorpro_ap_logo_256px.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/akorpro_ap_logo_512px.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
