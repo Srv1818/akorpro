@@ -31,28 +31,28 @@ COPY . .
 # NEXT_PUBLIC_* değişkenleri build sırasında bundle'a gömülür.
 # Bu yüzden imaj ortama özeldir: akorpro.com imajı akorpro.com.tr'de kullanılamaz.
 ARG NEXT_PUBLIC_SITE_URL
-ARG NEXT_PUBLIC_DIRECTUS_URL
 ARG NEXT_PUBLIC_GA4_ID
 ARG NEXT_PUBLIC_VITALS_ENDPOINT
-# Sunucu tarafı: prerender sırasında Directus'tan okumak için gerekli.
-ARG DIRECTUS_URL
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
 
 ENV NODE_ENV=production \
     NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL} \
-    NEXT_PUBLIC_DIRECTUS_URL=${NEXT_PUBLIC_DIRECTUS_URL} \
     NEXT_PUBLIC_GA4_ID=${NEXT_PUBLIC_GA4_ID} \
     NEXT_PUBLIC_VITALS_ENDPOINT=${NEXT_PUBLIC_VITALS_ENDPOINT} \
-    DIRECTUS_URL=${DIRECTUS_URL} \
     SENTRY_ORG=${SENTRY_ORG} \
     SENTRY_PROJECT=${SENTRY_PROJECT}
 
 # Sırlar ARG ile geçilmez — ARG imaj katman geçmişinde okunabilir kalır.
 # BuildKit secret mount'u yalnız bu RUN adımı boyunca dosya olarak var olur.
-RUN --mount=type=secret,id=directus_token \
+# Admin panelinin özel bileşen haritası derlemeden ÖNCE üretilmeli.
+RUN npx payload generate:importmap
+
+RUN --mount=type=secret,id=payload_secret \
+    --mount=type=secret,id=database_uri \
     --mount=type=secret,id=sentry_auth_token \
-    export DIRECTUS_TOKEN="$(cat /run/secrets/directus_token 2>/dev/null || echo '')" && \
+    export PAYLOAD_SECRET="$(cat /run/secrets/payload_secret 2>/dev/null || echo 'build-time-placeholder')" && \
+    export DATABASE_URI="$(cat /run/secrets/database_uri 2>/dev/null || echo '')" && \
     export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || echo '')" && \
     npm run build
 
@@ -74,6 +74,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # ISR disk önbelleği buraya yazar; konteyner içinde yazılabilir olmalı.
 RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
+
+# Migration'a ayrı bir adım gerekmiyor: payload.config.ts `prodMigrations`
+# kullanıyor, şema veritabanına ilk bağlantıda uygulanıyor.
 
 USER nextjs
 EXPOSE 3000

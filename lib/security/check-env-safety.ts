@@ -7,8 +7,13 @@
  */
 
 const SENSITIVE_KEYS = [
-  // Directus sunucu token'ı: istemciye sızarsa herkes içerik yazabilir hale gelir.
-  "DIRECTUS_TOKEN",
+  // Oturum çerezlerini imzalayan anahtar: sızarsa herkes kendini admin yapabilir.
+  "PAYLOAD_SECRET",
+  // Veritabanı bağlantı dizesi — parola içerir.
+  "DATABASE_URI",
+  // R2 anahtarları.
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
 ] as const;
 
 export function assertNoClientSecrets(): void {

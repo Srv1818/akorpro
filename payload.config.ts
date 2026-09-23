@@ -8,6 +8,8 @@ import { seoPlugin } from "@payloadcms/plugin-seo";
 import { s3Storage } from "@payloadcms/storage-s3";
 import { buildConfig } from "payload";
 
+import { migrations } from "./migrations";
+
 import { Artists } from "./payload/collections/Artists";
 import { ChordLibrary } from "./payload/collections/ChordLibrary";
 import { Contributions } from "./payload/collections/Contributions";
@@ -64,8 +66,18 @@ export default buildConfig({
     pool: {
       connectionString: process.env.DATABASE_URI ?? "",
     },
-    // Üretimde şema değişikliği otomatik uygulanmaz; migration dosyası üretilir.
+    // Geliştirmede şema doğrudan senkronlanır; üretimde asla (sütun düşürebilir).
     push: process.env.NODE_ENV !== "production",
+    /**
+     * Üretimde şema migration ile kurulur ve bağlantı anında otomatik uygulanır.
+     *
+     * Neden CLI değil: imaj `output: "standalone"` ile derleniyor ve standalone
+     * çıktısı Payload CLI'ını taşımıyor. Konteynerde `npx payload migrate`
+     * denendiğinde npm paketi indirmeye çalışıp tsconfig bulamadan çöküyor
+     * (doğrulandı). Migration'ları buraya import etmek onları derleme grafiğine
+     * sokuyor, yani standalone çıktısının içinde yer alıyorlar.
+     */
+    prodMigrations: migrations,
   }),
 
   secret: process.env.PAYLOAD_SECRET ?? "",
