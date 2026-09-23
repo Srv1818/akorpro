@@ -114,8 +114,9 @@ gerektirdiği için acil değil; anonim yazma ucu yok.
 
 ## Blok E — Uygulama servisi ✅ TAMAM
 
-- [x] Coolify → `akorpro-web`, GitHub App ile `Srv1818/akorpro`,
-      branch `feature/directus-migration`, Nixpacks, port 3000
+- [x] Coolify → `akorpro-web`, port 3000
+      Kurulumda GitHub App + Nixpacks kullanılmıştı; **artık GHCR'daki hazır imaj**
+      çekiliyor (bkz. "Build'in VPS'ten çıkarılması" bölümü).
 - [x] Domain `https://akorpro.com`, Cloudflare'de apex A kaydı (DNS-only → proxy'li)
 - [x] Env: `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_DIRECTUS_URL`, `DIRECTUS_URL`,
       `DIRECTUS_TOKEN` (Directus'ta `AkorPro App` kullanıcısı, **Publisher** rolü)

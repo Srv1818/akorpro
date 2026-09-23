@@ -63,7 +63,7 @@ Cloudflare (DNS + CDN + WAF + R2)
    ▼
 Contabo VPS (8 GB, Ubuntu) — Coolify ile yönetilen container'lar:
    ├── coolify-proxy (Traefik)  TLS sonlandırma + hostname yönlendirme
-   ├── akorpro-web   Next.js 16 (Nixpacks) — SSR/ISR   → akorpro.com
+   ├── akorpro-web   Next.js 16 (GHCR imajı) — SSR/ISR → akorpro.com
    ├── directus      API (REST+GraphQL) + Admin UI     → admin.akorpro.com
    └── postgres + redis   Directus'un veri katmanı
 
@@ -153,7 +153,7 @@ Sunucu tarafı Directus'a static token / kullanıcı token'ı ile gider.
    - **WAF + Rate limiting**: yazma uçları (`/api/contributions`, `/api/takedown`) ve `/directus/*` için kurallar.
    - **Turnstile**: App Check yerine bot koruması (contribution/takedown formları). Site+secret key.
    - **R2**: bucket + S3 API token (Directus storage ve gelecekteki görseller için).
-4. **Coolify servisleri**: MariaDB (persistent volume + zamanlanmış yedek → R2), Directus (env ile Google SSO + R2 + MariaDB), next-app (Git repo → **Nixpacks build**, Dockerfile yok).
+4. **Coolify servisleri**: Postgres (persistent volume + zamanlanmış yedek → R2), Directus (env ile Google SSO + R2 + Postgres), next-app (**GHCR'daki hazır imaj**; build GitHub Actions'ta, repodaki `Dockerfile` ile).
 
 ---
 
@@ -284,10 +284,10 @@ Strateji: `lib/firestore/*` modüllerinin **dışa aktardığı fonksiyon imzala
 production'ı gösterir — staging Cloudflare Access arkasında olduğu için taranmaz, indekslenmez. Slug üretim mantığı (`artist_slug`+`slug`) birebir aynı kalır.
 
 **Config**:
-- **Build = Nixpacks** (Coolify varsayılanı) — **elle Dockerfile yok**. Nixpacks Next.js'i otomatik algılar: `next build` → `next start` (node 24). `output: "standalone"` **gerekmez**; istenirse ileride küçültme için eklenebilir ama Nixpacks default akışı yeterli.
-- **`next.config.ts`**: `images.remotePatterns`'a R2/Cloudflare host'ları eklenir; Sentry config kalır. (Standalone zorunlu değil.)
+- **Build = Dockerfile, GitHub Actions'ta** (Nixpacks terk edildi). Repodaki `Dockerfile` üç aşamalı (`node:24-alpine`), `output: "standalone"` kullanır. İmaj GHCR'a yüklenir, Coolify yalnız çeker. Gerekçe ve kurulum: `docs/faz-0-cloudflare.md`.
+- **`next.config.ts`**: `images.remotePatterns`'a R2/Cloudflare host'ları eklenir; Sentry config kalır. `output: "standalone"` **zorunlu** (Docker imajı buna dayanıyor).
 - **`@vercel/analytics` kaldırılır** (kodda `<Analytics/>` sökülür); istenirse Cloudflare Web Analytics beacon.
-- Not: MariaDB + Directus, Coolify'da resmi hazır imajlar olarak çalışır (bizim yazdığımız Dockerfile değil). Nixpacks yalnız kendi Next.js uygulamamızı derler.
+- Not: Postgres + Directus, Coolify'da resmi hazır imajlar olarak çalışır. Kendi Next.js uygulamamız ise repodaki `Dockerfile` ile GitHub Actions'ta derlenir; VPS derleme yapmaz.
 
 ---
 
@@ -411,7 +411,7 @@ tekrar çalıştırılır — o tarihe kadar yeni trafik alan sayfalar listeye g
 - Veri: `lib/firestore/*` (→ Directus), `lib/cache/tags.ts` (korunur), `components/playlists/playlists-manager.tsx`, `components/preview/preview-client.tsx` (realtime)
 - **Silinen admin**: `app/admin/*` (8 sayfa), `app/api/admin/*` (12 route), `lib/firestore/admin-*.ts`, `lib/firestore/import-validator.ts`, `lib/security/audit-log.ts` (→ Directus activity/revisions)
 - Kalan public route: `app/api/{auth,contributions,takedown,search,revalidate}/*`, `app/api/songs/[songId]/open`
-- Config: `next.config.ts`, `.env.example`, `package.json`, `.github/*`, Firebase artefaktları (silinir). **Dockerfile yok** → Coolify Nixpacks derler.
+- Config: `next.config.ts`, `.env.example`, `package.json`, `.github/*`, Firebase artefaktları (silinir). **`Dockerfile` + `.dockerignore` var** → build GitHub Actions'ta, Coolify yalnız imajı çeker.
 - Infra: şema/roller `scripts/directus-*.mjs` ile versiyonlu; Coolify servis tanımları ve Cloudflare kayıtları `docs/faz-0-cloudflare.md`'de
 
 ---

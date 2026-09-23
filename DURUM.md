@@ -38,7 +38,8 @@ Yeni yığın **`akorpro.com` üzerinde çalışıyor** (Directus + Next.js, Con
 ### Altyapı
 
 - Cloudflare: `akorpro.com` zone'u, `admin` ve apex A kayıtları (proxy'li)
-- Coolify: `directus` servisi (Directus 11 + Postgres + Redis), `akorpro-web` (Nixpacks)
+- Coolify: `directus` servisi (Directus 11 + Postgres + Redis), `akorpro-web` (GHCR imajı;
+  build GitHub Actions'ta, Nixpacks terk edildi)
 - R2 dosya depolama, Google OAuth client, Publisher rollü uygulama token'ı
 - `songs(artist_slug, slug)` bileşik unique indeksi
 - `robots.ts` host'a bakıyor: staging tamamen indekslemeye kapalı
