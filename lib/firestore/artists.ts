@@ -1,89 +1,110 @@
 import { unstable_cache } from "next/cache";
-import { aggregate, readItems } from "@directus/sdk";
-import { directus } from "@/lib/directus/client";
-import { toEpochMs } from "@/lib/directus/serialize";
-import type { ArtistRow } from "@/lib/directus/schema";
+import { sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getPayloadClient } from "@/lib/payload/client";
+import { toEpochMs } from "@/lib/payload/serialize";
+import type { Artist as ArtistRow } from "@/payload-types";
 import { artistTag, TAGS, TTL } from "@/lib/cache/tags";
 import type { ArtistDoc } from "@/lib/types/firestore";
 
 /**
- * Sanatçı okuma katmanı — Directus.
+ * Sanatçı okuma katmanı — Payload Local API.
  *
- * Dışa aktarılan imzalar Firestore sürümüyle aynı bırakıldı; çağıran sayfalar değişmedi.
- * `songCount` artık kayıtta tutulan bir alan değil, onaylı şarkılardan **türetiliyor**
- * (MIGRATION-PLAN.md Faz 1 şema denetimi kararı) — elle güncellenen sayaçtaki
- * tutarsızlık riski böylece ortadan kalkıyor.
+ * Dışa aktarılan imzalar değişmedi; çağıran sayfalar aynı.
+ * `songCount` kayıtta tutulan bir alan değil, onaylı şarkılardan türetiliyor
+ * (MIGRATION-PLAN.md Faz 1 kararı) — elle güncellenen sayaçtaki tutarsızlık
+ * riski böylece yok.
  */
 
 type Artist = ArtistDoc & { id: string };
 
 function mapArtist(row: ArtistRow, songCount: number): Artist {
   return {
-    id: row.id,
+    id: String(row.id),
     name: row.name,
-    slug: row.slug,
-    ...(row.image_url ? { imageUrl: row.image_url } : {}),
+    slug: row.slug ?? "",
+    ...(row.imageUrl ? { imageUrl: row.imageUrl } : {}),
     ...(row.genre ? { genre: row.genre } : {}),
     songCount,
     ...(row.popularity != null ? { popularity: row.popularity } : {}),
-    createdAt: toEpochMs(row.created_at),
-    updatedAt: toEpochMs(row.updated_at),
-  };
+    createdAt: toEpochMs(row.createdAt),
+    updatedAt: toEpochMs(row.updatedAt),
+  } as Artist;
 }
 
 /**
- * artist_slug → onaylı şarkı sayısı. Tek sorguda gruplanır.
+ * artistSlug → onaylı şarkı sayısı, tek sorguda gruplanır.
+ *
+ * Directus'ta bu `aggregate({ groupBy })` ile yapılıyordu. Payload Local
+ * API'sinde grup bazlı sayım yok; sanatçı başına ayrı sorgu atmak N+1 olurdu,
+ * hepsini çekip bellekte saymak ise Directus'a geçerken bilinçli olarak
+ * terk edilen yöntemdi. Bu yüzden doğrudan SQL.
+ *
  * `search.ts` de aynı türetmeyi kullandığı için dışa açık.
  */
 export async function approvedSongCounts(artistSlugs?: string[]): Promise<Map<string, number>> {
-  const rows = (await directus().request(
-    aggregate("songs", {
-      aggregate: { count: "*" },
-      groupBy: ["artist_slug"],
-      query: {
-        filter: {
-          moderation_status: { _eq: "approved" },
-          ...(artistSlugs ? { artist_slug: { _in: artistSlugs } } : {}),
-        },
-      },
-    }),
-  )) as unknown as { artist_slug: string; count: string | number }[];
+  if (artistSlugs && artistSlugs.length === 0) return new Map();
 
-  return new Map(rows.map((r) => [r.artist_slug, Number(r.count) || 0]));
+  const payload = await getPayloadClient();
+  const db = payload.db.drizzle as NodePgDatabase<Record<string, never>>;
+
+  // sql.param şart: drizzle şablonu çıplak diziyi birden çok parametreye
+  // böler ve Postgres "malformed array literal" döndürür.
+  const query = artistSlugs
+    ? sql`SELECT artist_slug, COUNT(*)::int AS count
+            FROM songs
+           WHERE moderation_status = 'approved'
+             AND artist_slug = ANY(${sql.param(artistSlugs)})
+           GROUP BY artist_slug`
+    : sql`SELECT artist_slug, COUNT(*)::int AS count
+            FROM songs
+           WHERE moderation_status = 'approved'
+           GROUP BY artist_slug`;
+
+  const result = await db.execute(query);
+  const rows = (result.rows ?? []) as { artist_slug: string | null; count: number }[];
+
+  return new Map(
+    rows
+      .filter((r): r is { artist_slug: string; count: number } => Boolean(r.artist_slug))
+      .map((r) => [r.artist_slug, Number(r.count) || 0]),
+  );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Raw (uncached) queries                                             */
+/*  Ham (önbelleksiz) sorgular                                         */
 /* ------------------------------------------------------------------ */
 
 async function _getArtistBySlug(slug: string): Promise<Artist | null> {
   const trimmed = slug.trim();
 
-  const rows = await directus().request(
-    readItems("artists", {
-      filter: { slug: { _eq: trimmed } },
-      limit: 1,
-    }),
-  );
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "artists",
+    where: { slug: { equals: trimmed } },
+    limit: 1,
+    depth: 0,
+  });
 
-  const row = rows[0];
+  const row = docs[0];
   if (!row) return null;
 
-  const counts = await approvedSongCounts([row.slug]);
-  return mapArtist(row, counts.get(row.slug) ?? 0);
+  const counts = await approvedSongCounts([row.slug ?? ""]);
+  return mapArtist(row, counts.get(row.slug ?? "") ?? 0);
 }
 
 async function _getAllArtists(): Promise<Artist[]> {
-  const [rows, counts] = await Promise.all([
-    directus().request(readItems("artists", { sort: ["name"], limit: -1 })),
+  const payload = await getPayloadClient();
+  const [{ docs }, counts] = await Promise.all([
+    payload.find({ collection: "artists", sort: "name", limit: 0, depth: 0 }),
     approvedSongCounts(),
   ]);
 
-  return rows.map((row) => mapArtist(row, counts.get(row.slug) ?? 0));
+  return docs.map((row) => mapArtist(row, counts.get(row.slug ?? "") ?? 0));
 }
 
 /* ------------------------------------------------------------------ */
-/*  Cached public API                                                  */
+/*  Önbellekli genel API                                               */
 /* ------------------------------------------------------------------ */
 
 /** Tek sanatçı — slug ile (ISR cached) */

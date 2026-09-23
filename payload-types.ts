@@ -165,6 +165,10 @@ export interface Song {
    * Başlıktan otomatik üretilir.
    */
   slug?: string | null;
+  /**
+   * Harf filtresi için başlığın ilk harfi (Türkçe büyük).
+   */
+  titleInitial?: string | null;
   artist: number | Artist;
   /**
    * Sanatçıdan otomatik dolar.
@@ -750,6 +754,7 @@ export interface PayloadMigration {
 export interface SongsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
+  titleInitial?: T;
   artist?: T;
   artistSlug?: T;
   artistName?: T;

@@ -1,8 +1,8 @@
 import { unstable_cache } from "next/cache";
-import { readItem, readItems } from "@directus/sdk";
-import { directus } from "@/lib/directus/client";
-import { toEpochMs } from "@/lib/directus/serialize";
-import type { SongRow } from "@/lib/directus/schema";
+import type { Where } from "payload";
+import { getPayloadClient } from "@/lib/payload/client";
+import { relId, toEpochMs } from "@/lib/payload/serialize";
+import type { Song as SongRow } from "@/payload-types";
 import { sanitizeTextContent, sanitizePlainField } from "@/lib/security/sanitize";
 import {
   songTag,
@@ -16,58 +16,53 @@ import type { SongDoc } from "@/lib/types/firestore";
 import type { Difficulty } from "@/lib/types/content";
 
 /**
- * Şarkı okuma katmanı — Directus.
+ * Şarkı okuma katmanı — Payload Local API.
  *
- * Dışa aktarılan imzalar Firestore sürümüyle aynı; çağıran sayfalar değişmedi.
+ * Dışa aktarılan imzalar değişmedi; çağıran sayfalar Firestore ve Directus
+ * dönemlerinde olduğu gibi çalışmaya devam ediyor.
  *
- * Firestore'a özgü olup burada gereksizleşen ve **kaldırılan** kısımlar:
- * - Composite-index (`FAILED_PRECONDITION` / kod 9) yedek sorguları — Postgres
- *   keyfi `WHERE` kombinasyonlarını indekssiz de yürütür.
- * - Slug varyantı taramaları (Türkçe normalize edip koleksiyonu gezen fallback'ler) —
- *   greenfield şemada slug'lar tek biçimli.
- * - Soğuk başlatma retry sarmalayıcısı — Directus HTTP'si için karşılığı yok.
- * Bellek içi filtreleme de sorguya taşındı; artık tüm koşullar veritabanında.
+ * Directus sürümüne göre fark: HTTP isteği yok. Sorgular aynı süreç içinde
+ * Postgres'e gidiyor, yani her okuma bir ağ gidiş-dönüşü tasarruf ediyor.
+ * Filtrelerin tamamı hâlâ veritabanında; bellek içi filtrelemeye dönülmedi.
  */
 
 type Song = SongDoc & { id: string };
 
 type CachedSongLookup = { found: true; song: Song } | { found: false };
 
-const APPROVED = { moderation_status: { _eq: "approved" } } as const;
+const APPROVED: Where = { moderationStatus: { equals: "approved" } };
 
-/** Directus satırı → uygulama biçimi. `admin-songs.ts` de aynı eşlemeyi kullanır. */
+/** Payload belgesi → uygulama biçimi. */
 export function mapSong(row: SongRow): Song {
-  const artistId = typeof row.artist === "string" ? row.artist : row.artist?.id;
-
   return {
-    id: row.id,
+    id: String(row.id),
     title: sanitizePlainField(row.title),
-    slug: row.slug,
-    artistId,
-    artistSlug: row.artist_slug,
-    artistName: sanitizePlainField(row.artist_name),
-    chordBody: sanitizeTextContent(row.chord_body),
-    originalKey: row.original_key,
-    difficulty: row.difficulty,
-    ...(row.key_mode ? { keyMode: row.key_mode } : {}),
-    ...(row.gamlar_scale_id ? { gamlarScaleId: row.gamlar_scale_id } : {}),
+    slug: row.slug ?? "",
+    artistId: relId(row.artist),
+    artistSlug: row.artistSlug ?? "",
+    artistName: sanitizePlainField(row.artistName ?? ""),
+    chordBody: sanitizeTextContent(row.chordBody),
+    originalKey: row.originalKey,
+    difficulty: row.difficulty as Difficulty,
+    ...(row.keyMode ? { keyMode: row.keyMode } : {}),
+    ...(row.gamlarScaleId ? { gamlarScaleId: row.gamlarScaleId } : {}),
     genre: row.genre,
     ...(row.tempo ? { tempo: row.tempo } : {}),
-    ...(row.time_signature ? { timeSignature: row.time_signature } : {}),
+    ...(row.timeSignature ? { timeSignature: row.timeSignature } : {}),
     ...(row.tuning ? { tuning: row.tuning } : {}),
     ...(row.capo != null ? { capo: row.capo } : {}),
-    moderationStatus: row.moderation_status,
-    ...(row.copyright_source
-      ? { copyrightSource: sanitizePlainField(row.copyright_source) }
+    moderationStatus: row.moderationStatus,
+    ...(row.copyrightSource
+      ? { copyrightSource: sanitizePlainField(row.copyrightSource) }
       : {}),
     ...(row.popularity != null ? { popularity: row.popularity } : {}),
-    showHarmonyDetails: row.show_harmony_details,
-    ...(row.harmony_details_notes
-      ? { harmonyDetailsNotes: sanitizeTextContent(row.harmony_details_notes) }
+    showHarmonyDetails: Boolean(row.showHarmonyDetails),
+    ...(row.harmonyDetailsNotes
+      ? { harmonyDetailsNotes: sanitizeTextContent(row.harmonyDetailsNotes) }
       : {}),
-    createdAt: toEpochMs(row.created_at),
-    updatedAt: toEpochMs(row.updated_at),
-  };
+    createdAt: toEpochMs(row.createdAt),
+    updatedAt: toEpochMs(row.updatedAt),
+  } as Song;
 }
 
 function isDifficulty(v: string): v is Difficulty {
@@ -79,32 +74,33 @@ function byTitleTr(a: Song, b: Song): number {
   return a.title.localeCompare(b.title, "tr");
 }
 
+/** Payload sayfalama yapar; "hepsi" için limit 0 verilir. */
+const ALL = 0;
+
 /* ------------------------------------------------------------------ */
-/*  Raw (uncached) queries                                             */
+/*  Ham (önbelleksiz) sorgular                                         */
 /* ------------------------------------------------------------------ */
 
 async function _getSongBySlugs(artistSlug: string, songSlug: string): Promise<Song | null> {
-  const rows = await directus().request(
-    readItems("songs", {
-      filter: {
-        _and: [APPROVED, { artist_slug: { _eq: artistSlug } }, { slug: { _eq: songSlug } }],
-      },
-      limit: 1,
-    }),
-  );
-
-  return rows[0] ? mapSong(rows[0]) : null;
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: { and: [APPROVED, { artistSlug: { equals: artistSlug } }, { slug: { equals: songSlug } }] },
+    limit: 1,
+    depth: 0,
+  });
+  return docs[0] ? mapSong(docs[0]) : null;
 }
 
 async function _getSongsByArtist(artistSlug: string): Promise<Song[]> {
-  const rows = await directus().request(
-    readItems("songs", {
-      filter: { _and: [APPROVED, { artist_slug: { _eq: artistSlug } }] },
-      limit: -1,
-    }),
-  );
-
-  return rows.map(mapSong).sort(byTitleTr);
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: { and: [APPROVED, { artistSlug: { equals: artistSlug } }] },
+    limit: ALL,
+    depth: 0,
+  });
+  return docs.map(mapSong).sort(byTitleTr);
 }
 
 export type SongFilterParams = {
@@ -120,35 +116,47 @@ export type SongFilterParams = {
 };
 
 async function _getFilteredSongs(params: SongFilterParams): Promise<Song[]> {
-  const conditions: Record<string, unknown>[] = [APPROVED];
+  const conditions: Where[] = [APPROVED];
 
-  if (params.sanatci) conditions.push({ artist_slug: { _eq: params.sanatci } });
-  if (params.ton) conditions.push({ original_key: { _eq: params.ton } });
+  if (params.sanatci) conditions.push({ artistSlug: { equals: params.sanatci } });
+  if (params.ton) conditions.push({ originalKey: { equals: params.ton } });
   if (params.zorluk && isDifficulty(params.zorluk)) {
-    conditions.push({ difficulty: { _eq: params.zorluk } });
+    conditions.push({ difficulty: { equals: params.zorluk } });
   }
-  // Baş harf ve ad araması büyük/küçük harf duyarsız — eski bellek içi davranışın karşılığı.
-  if (params.harf) conditions.push({ title: { _istarts_with: params.harf } });
-  if (params.sarkiAdi) conditions.push({ title: { _icontains: params.sarkiAdi } });
-  if (params.mod) conditions.push({ key_mode: { _eq: params.mod } });
-  if (params.tur) conditions.push({ genre: { _eq: params.tur } });
-  if (params.olcu) conditions.push({ time_signature: { _eq: params.olcu } });
+  // Harf filtresi yazma anında hesaplanan indeksli alandan; Payload'da
+  // "ile başlar" operatörü yok ve bellek içi filtrelemeye dönmek istemiyoruz.
+  if (params.harf) {
+    conditions.push({ titleInitial: { equals: params.harf.toLocaleUpperCase("tr") } });
+  }
+  // Payload'ın `like`'ı Postgres'te ILIKE'a çevrilir — büyük/küçük harf duyarsız.
+  if (params.sarkiAdi) conditions.push({ title: { like: params.sarkiAdi } });
+  if (params.mod) conditions.push({ keyMode: { equals: params.mod } });
+  if (params.tur) conditions.push({ genre: { equals: params.tur } });
+  if (params.olcu) conditions.push({ timeSignature: { equals: params.olcu } });
   if (params.bpm && !Number.isNaN(Number(params.bpm))) {
-    conditions.push({ tempo: { _eq: params.bpm } });
+    conditions.push({ tempo: { equals: params.bpm } });
   }
 
-  const rows = await directus().request(
-    readItems("songs", { filter: { _and: conditions }, limit: -1 }),
-  );
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: { and: conditions },
+    limit: ALL,
+    depth: 0,
+  });
 
-  return rows.map(mapSong).sort(byTitleTr);
+  return docs.map(mapSong).sort(byTitleTr);
 }
 
 async function _getAllApprovedSongs(): Promise<Song[]> {
-  const rows = await directus().request(
-    readItems("songs", { filter: APPROVED, limit: -1 }),
-  );
-  return rows.map(mapSong);
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: APPROVED,
+    limit: ALL,
+    depth: 0,
+  });
+  return docs.map(mapSong);
 }
 
 async function _getFilterFacetOptions() {
@@ -181,10 +189,10 @@ async function _getFilterFacetOptions() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Cached public API                                                  */
+/*  Önbellekli genel API                                               */
 /* ------------------------------------------------------------------ */
 
-/** Tek şarkı — slug çifti ile (ISR cached; throw yerine tagged result döner, build log gürültüsü azalır). */
+/** Tek şarkı — slug çifti ile (ISR cached; throw yerine tagged result döner). */
 export function getSongBySlugs(artistSlug: string, songSlug: string) {
   return unstable_cache(
     async (): Promise<CachedSongLookup> => {
@@ -211,10 +219,11 @@ export async function getSongBySlugsUncached(
 /** Tek şarkı — ID ile (uncached, discover resolver uses its own cache) */
 export async function getSongById(songId: string): Promise<Song | null> {
   try {
-    const row = await directus().request(readItem("songs", songId));
+    const payload = await getPayloadClient();
+    const row = await payload.findByID({ collection: "songs", id: songId, depth: 0 });
     return row ? mapSong(row) : null;
   } catch {
-    // Bulunamayan kayıt Directus'ta 403/404 ile döner — çağıranlar null bekliyor.
+    // Bulunamayan kayıt Payload'da NotFound fırlatır — çağıranlar null bekliyor.
     return null;
   }
 }
@@ -223,17 +232,18 @@ export async function getSongById(songId: string): Promise<Song | null> {
 export async function getSongsByIds(songIds: string[]): Promise<Song[]> {
   if (songIds.length === 0) return [];
 
-  const rows = await directus().request(
-    readItems("songs", {
-      filter: { _and: [APPROVED, { id: { _in: songIds } }] },
-      limit: -1,
-    }),
-  );
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: { and: [APPROVED, { id: { in: songIds } }] },
+    limit: ALL,
+    depth: 0,
+  });
 
   // Çağıran sıralamayı kendisi belirliyor (keşfet blok sırası) — istenen id sırasını koru.
-  const byId = new Map(rows.map((r) => [r.id, r]));
+  const byId = new Map(docs.map((r) => [String(r.id), r]));
   return songIds.flatMap((id) => {
-    const row = byId.get(id);
+    const row = byId.get(String(id));
     return row ? [mapSong(row)] : [];
   });
 }

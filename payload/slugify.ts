@@ -40,3 +40,22 @@ export function slugify(value: string | null | undefined): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, SLUG_MAX_LENGTH);
 }
+
+/** Türkçe alfabe — filtre şeridi ve `titleInitial` bu sırayı kullanır. */
+export const TR_ALPHABET = "ABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ".split("");
+
+/**
+ * Başlığın ilk harfini Türkçe kurallarıyla büyütür.
+ *
+ * Directus'ta harf filtresi `_istarts_with` ile yapılıyordu; Payload'da
+ * karşılığı yok. Bellek içi filtrelemeye dönmemek için bu değer yazma anında
+ * hesaplanıp indeksli bir alana konuyor.
+ *
+ * `toLocaleUpperCase("tr")` şart: varsayılan "i" harfini "I" yapar, oysa
+ * Türkçede "İ" olmalı.
+ */
+export function trInitial(value: string | null | undefined): string {
+  const first = (value ?? "").trim().charAt(0);
+  if (!first) return "";
+  return first.toLocaleUpperCase("tr");
+}

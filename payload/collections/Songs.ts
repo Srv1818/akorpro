@@ -1,6 +1,6 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from "payload";
 import { isModerator, isPublisher, publisherOnlyField, readApprovedOrStaff } from "../access";
-import { slugify } from "../slugify";
+import { slugify, trInitial } from "../slugify";
 
 export const DIFFICULTY_OPTIONS = [
   { label: "Kolay", value: "kolay" },
@@ -34,6 +34,10 @@ const setSlugAndDenormalized: CollectionBeforeValidateHook = async ({
   } else {
     data.slug = slugify(data.slug);
   }
+
+  // Harf filtresi için: Payload'da "ile başlar" operatörü yok. Yazma anında
+  // hesaplanıp indeksleniyor ki filtreleme bellekte değil veritabanında kalsın.
+  data.titleInitial = trInitial(data.title);
 
   if (data.artist) {
     const artistId = typeof data.artist === "object" ? data.artist.id : data.artist;
@@ -86,6 +90,16 @@ export const Songs: CollectionConfig = {
               index: true,
               label: "Slug",
               admin: { readOnly: true, description: "Başlıktan otomatik üretilir." },
+            },
+            {
+              name: "titleInitial",
+              type: "text",
+              index: true,
+              admin: {
+                readOnly: true,
+                hidden: true,
+                description: "Harf filtresi için başlığın ilk harfi (Türkçe büyük).",
+              },
             },
             {
               name: "artist",

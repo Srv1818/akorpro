@@ -1,18 +1,19 @@
-import { aggregate, createItem, readItem, readItems, updateItem } from "@directus/sdk";
-import { directus } from "@/lib/directus/client";
-import { toEpochMs } from "@/lib/directus/serialize";
-import type { ContributionRow } from "@/lib/directus/schema";
+import { getPayloadClient } from "@/lib/payload/client";
+import { relId, toEpochMs } from "@/lib/payload/serialize";
+import type { Contribution as ContributionRow } from "@/payload-types";
 import type { ContributionDoc } from "@/lib/types/contribution";
 
 /**
- * Katkı kuyruğu — Directus.
+ * Katkı kuyruğu — Payload Local API.
  *
- * `moderationStatus` alan adı Directus'ta `status`; `contributorUid` → `contributor`
- * (directus_users FK). Dışa aktarılan imzalar ve camelCase dönüş biçimi korundu.
+ * Dışa aktarılan imzalar ve camelCase dönüş biçimi korundu.
  *
- * Not: Bu modül sunucu token'ıyla çalışır (moderasyon ekranları ve sistem yazmaları).
- * Kullanıcının kendi katkısını göndermesi Directus izinleriyle de kısıtlı —
- * `contributor` ve `status` orada preset olarak zorlanıyor.
+ * Sayımlar Directus'ta `aggregate` ile yapılıyordu; Payload'da `count()` var,
+ * gruplama gerekmediği için doğrudan karşılığı.
+ *
+ * Bu modül erişim denetimini atlar (moderasyon ekranları ve sistem yazmaları).
+ * Kullanıcının kendi katkısını göndermesi koleksiyondaki access kurallarıyla
+ * ayrıca kısıtlı.
  */
 
 type Contribution = ContributionDoc & { id: string };
@@ -37,79 +38,81 @@ type ContributionInput = Pick<
 
 function mapContribution(row: ContributionRow): Contribution {
   return {
-    id: row.id,
-    songTitle: row.song_title,
-    artistName: row.artist_name,
-    chordBody: row.chord_body,
-    originalKey: row.original_key,
-    ...(row.key_mode ? { keyMode: row.key_mode } : {}),
+    id: String(row.id),
+    songTitle: row.songTitle,
+    artistName: row.artistName,
+    chordBody: row.chordBody,
+    originalKey: row.originalKey,
+    ...(row.keyMode ? { keyMode: row.keyMode } : {}),
     genre: row.genre,
     difficulty: row.difficulty,
     ...(row.tempo ? { tempo: row.tempo } : {}),
-    ...(row.time_signature ? { timeSignature: row.time_signature } : {}),
+    ...(row.timeSignature ? { timeSignature: row.timeSignature } : {}),
     ...(row.tuning ? { tuning: row.tuning } : {}),
     ...(row.capo != null ? { capo: row.capo } : {}),
-    ...(row.copyright_source ? { copyrightSource: row.copyright_source } : {}),
-    contributorUid: row.contributor ?? "",
-    contributorDisplayName: row.contributor_display_name,
+    ...(row.copyrightSource ? { copyrightSource: row.copyrightSource } : {}),
+    contributorUid: relId(row.contributor),
+    contributorDisplayName: row.contributorDisplayName,
     status: row.status,
-    ...(row.moderator ? { moderatorUid: row.moderator } : {}),
-    ...(row.moderator_note ? { moderatorNote: row.moderator_note } : {}),
-    ...(row.approved_song ? { approvedSongId: row.approved_song } : {}),
-    createdAt: toEpochMs(row.created_at),
-    updatedAt: toEpochMs(row.updated_at),
-  };
+    ...(row.moderator ? { moderatorUid: relId(row.moderator) } : {}),
+    ...(row.moderatorNote ? { moderatorNote: row.moderatorNote } : {}),
+    ...(row.approvedSong ? { approvedSongId: relId(row.approvedSong) } : {}),
+    createdAt: toEpochMs(row.createdAt),
+    updatedAt: toEpochMs(row.updatedAt),
+  } as Contribution;
 }
 
 export async function createContribution(input: ContributionInput): Promise<string> {
-  const row = await directus().request(
-    createItem("contributions", {
-      song_title: input.songTitle,
-      artist_name: input.artistName,
-      chord_body: input.chordBody,
-      original_key: input.originalKey,
-      key_mode: input.keyMode ?? null,
+  const payload = await getPayloadClient();
+  const doc = await payload.create({
+    collection: "contributions",
+    data: {
+      songTitle: input.songTitle,
+      artistName: input.artistName,
+      chordBody: input.chordBody,
+      originalKey: input.originalKey,
+      keyMode: input.keyMode ?? null,
       genre: input.genre,
       difficulty: input.difficulty,
       tempo: input.tempo != null ? String(input.tempo) : null,
-      time_signature: input.timeSignature ?? null,
+      timeSignature: input.timeSignature ?? null,
       tuning: input.tuning ?? null,
       capo: input.capo ?? null,
-      copyright_source: input.copyrightSource ?? null,
+      copyrightSource: input.copyrightSource ?? null,
       contributor: input.contributorUid,
-      contributor_display_name: input.contributorDisplayName,
+      contributorDisplayName: input.contributorDisplayName,
       status: "pending",
-    } as never),
-  );
+    } as never,
+  });
 
-  return row.id;
+  return String(doc.id);
 }
 
 export async function getPendingContributions(): Promise<Contribution[]> {
-  const rows = await directus().request(
-    readItems("contributions", {
-      filter: { status: { _eq: "pending" } },
-      sort: ["-created_at"],
-      limit: -1,
-    }),
-  );
-  return rows.map(mapContribution);
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "contributions",
+    where: { status: { equals: "pending" } },
+    sort: "-createdAt",
+    limit: 0,
+    depth: 0,
+  });
+  return docs.map(mapContribution);
 }
 
 export async function getPendingContributionsCount(): Promise<number> {
-  const rows = (await directus().request(
-    aggregate("contributions", {
-      aggregate: { count: "*" },
-      query: { filter: { status: { _eq: "pending" } } },
-    }),
-  )) as unknown as { count: string | number }[];
-
-  return Number(rows[0]?.count) || 0;
+  const payload = await getPayloadClient();
+  const { totalDocs } = await payload.count({
+    collection: "contributions",
+    where: { status: { equals: "pending" } },
+  });
+  return totalDocs;
 }
 
 export async function getContributionById(id: string): Promise<Contribution | null> {
   try {
-    const row = await directus().request(readItem("contributions", id));
+    const payload = await getPayloadClient();
+    const row = await payload.findByID({ collection: "contributions", id, depth: 0 });
     return row ? mapContribution(row) : null;
   } catch {
     return null;
@@ -117,14 +120,15 @@ export async function getContributionById(id: string): Promise<Contribution | nu
 }
 
 export async function getContributionsByUser(uid: string): Promise<Contribution[]> {
-  const rows = await directus().request(
-    readItems("contributions", {
-      filter: { contributor: { _eq: uid } },
-      sort: ["-created_at"],
-      limit: -1,
-    }),
-  );
-  return rows.map(mapContribution);
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "contributions",
+    where: { contributor: { equals: uid } },
+    sort: "-createdAt",
+    limit: 0,
+    depth: 0,
+  });
+  return docs.map(mapContribution);
 }
 
 export async function updateContributionStatus(
@@ -134,12 +138,15 @@ export async function updateContributionStatus(
   note?: string,
   approvedSongId?: string,
 ): Promise<void> {
-  await directus().request(
-    updateItem("contributions", id, {
+  const payload = await getPayloadClient();
+  await payload.update({
+    collection: "contributions",
+    id,
+    data: {
       status,
       moderator: moderatorUid,
-      ...(note ? { moderator_note: note } : {}),
-      ...(approvedSongId ? { approved_song: approvedSongId } : {}),
-    } as never),
-  );
+      ...(note ? { moderatorNote: note } : {}),
+      ...(approvedSongId ? { approvedSong: approvedSongId } : {}),
+    } as never,
+  });
 }

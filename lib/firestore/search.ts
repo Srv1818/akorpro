@@ -1,16 +1,16 @@
-import { readItems } from "@directus/sdk";
-import { directus } from "@/lib/directus/client";
+import type { Where } from "payload";
+import { getPayloadClient } from "@/lib/payload/client";
 import { approvedSongCounts } from "./artists";
 import { sanitizePlainField } from "@/lib/security/sanitize";
 import type { Difficulty } from "@/lib/types/content";
 
 /**
- * Şarkı ve sanatçı araması — Directus.
+ * Şarkı ve sanatçı araması — Payload Local API.
  *
- * Firestore sürümü tam metin araması yapamadığı için **tüm onaylı şarkıları ve
- * sanatçıları çekip bellekte** süzüyordu. Postgres `ILIKE` desteklediğinden arama
- * artık veritabanında yapılıyor ve yalnız eşleşen kayıtlar ağdan geçiyor.
- * İleride Meilisearch/Algolia'ya geçilmek istenirse imza aynı kalır.
+ * Arama veritabanında kalıyor: Payload'ın `like` operatörü Postgres adaptöründe
+ * ILIKE'a çevriliyor, yani Directus'taki `_icontains` ile aynı davranış.
+ * Firestore dönemindeki "hepsini çek, bellekte süz" yöntemine dönülmedi.
+ * İleride Meilisearch/Algolia'ya geçilirse imza aynı kalır.
  */
 
 export type SearchResult = {
@@ -26,55 +26,50 @@ export type SearchResult = {
   artists: { id: string; name: string; slug: string; songCount: number }[];
 };
 
-const APPROVED = { moderation_status: { _eq: "approved" } } as const;
+const APPROVED: Where = { moderationStatus: { equals: "approved" } };
 
 export async function searchContent(query: string, limit = 20): Promise<SearchResult> {
   const q = sanitizePlainField(query).trim();
   if (q.length < 2) return { songs: [], artists: [] };
 
-  const [songRows, artistRows] = await Promise.all([
-    directus().request(
-      readItems("songs", {
-        filter: {
-          _and: [
-            APPROVED,
-            { _or: [{ title: { _icontains: q } }, { artist_name: { _icontains: q } }] },
-          ],
-        },
-        sort: ["title"],
-        limit,
-        fields: [
-          "id", "title", "slug", "artist_slug", "artist_name", "original_key", "difficulty",
-        ] as const,
-      }),
-    ),
-    directus().request(
-      readItems("artists", {
-        filter: { name: { _icontains: q } },
-        sort: ["name"],
-        limit,
-        fields: ["id", "name", "slug"] as const,
-      }),
-    ),
+  const payload = await getPayloadClient();
+
+  const [songRes, artistRes] = await Promise.all([
+    payload.find({
+      collection: "songs",
+      where: {
+        and: [APPROVED, { or: [{ title: { like: q } }, { artistName: { like: q } }] }],
+      },
+      sort: "title",
+      limit,
+      depth: 0,
+    }),
+    payload.find({
+      collection: "artists",
+      where: { name: { like: q } },
+      sort: "name",
+      limit,
+      depth: 0,
+    }),
   ]);
 
-  const counts = await approvedSongCounts(artistRows.map((a) => a.slug));
+  const counts = await approvedSongCounts(artistRes.docs.map((a) => a.slug ?? ""));
 
   return {
-    songs: songRows.map((r) => ({
-      id: r.id,
+    songs: songRes.docs.map((r) => ({
+      id: String(r.id),
       title: sanitizePlainField(r.title),
-      slug: r.slug,
-      artistSlug: r.artist_slug,
-      artistName: sanitizePlainField(r.artist_name),
-      originalKey: r.original_key,
-      difficulty: r.difficulty,
+      slug: r.slug ?? "",
+      artistSlug: r.artistSlug ?? "",
+      artistName: sanitizePlainField(r.artistName ?? ""),
+      originalKey: r.originalKey,
+      difficulty: r.difficulty as Difficulty,
     })),
-    artists: artistRows.map((a) => ({
-      id: a.id,
+    artists: artistRes.docs.map((a) => ({
+      id: String(a.id),
       name: sanitizePlainField(a.name),
-      slug: a.slug,
-      songCount: counts.get(a.slug) ?? 0,
+      slug: a.slug ?? "",
+      songCount: counts.get(a.slug ?? "") ?? 0,
     })),
   };
 }
@@ -82,20 +77,20 @@ export async function searchContent(query: string, limit = 20): Promise<SearchRe
 export async function getPopularArtists(
   limit = 6,
 ): Promise<{ id: string; name: string; slug: string; songCount: number }[]> {
-  const rows = await directus().request(
-    readItems("artists", {
-      sort: ["-popularity"],
-      limit,
-      fields: ["id", "name", "slug"] as const,
-    }),
-  );
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "artists",
+    sort: "-popularity",
+    limit,
+    depth: 0,
+  });
 
-  const counts = await approvedSongCounts(rows.map((a) => a.slug));
+  const counts = await approvedSongCounts(docs.map((a) => a.slug ?? ""));
 
-  return rows.map((a) => ({
-    id: a.id,
+  return docs.map((a) => ({
+    id: String(a.id),
     name: sanitizePlainField(a.name),
-    slug: a.slug,
-    songCount: counts.get(a.slug) ?? 0,
+    slug: a.slug ?? "",
+    songCount: counts.get(a.slug ?? "") ?? 0,
   }));
 }

@@ -1,68 +1,66 @@
-import { aggregate, readItems } from "@directus/sdk";
-import { directus } from "@/lib/directus/client";
-import { toEpochMs } from "@/lib/directus/serialize";
+import { getPayloadClient } from "@/lib/payload/client";
+import { toEpochMs } from "@/lib/payload/serialize";
 import type { ContributorProfileDoc } from "@/lib/types/contribution";
 
 /**
- * Katkıcı profilleri — Directus.
+ * Katkıcı profilleri — Payload Local API.
  *
- * İki Firestore kalıntısı burada kapanıyor:
- * - `approvedCount` artık kayıtta tutulan sayaç değil, onaylı katkılardan türetiliyor
- *   (elle güncellenen sayaçtaki tutarsızlık riski kalkıyor).
- * - `songs.contributorIds` + `array-contains` yerine `song_contributors` junction'ı.
+ * İki Firestore kalıntısı kapalı kalmaya devam ediyor:
+ * - `approvedCount` kayıtta tutulan sayaç değil, onaylı katkılardan türetiliyor.
+ * - `songs.contributorIds` yerine `song-contributors` junction koleksiyonu.
  */
 
 type ContributorProfile = ContributorProfileDoc & { id: string };
 
 /** Bir kullanıcının onaylanmış katkı sayısı. */
 async function approvedContributionCount(uid: string): Promise<number> {
-  const rows = (await directus().request(
-    aggregate("contributions", {
-      aggregate: { count: "*" },
-      query: { filter: { contributor: { _eq: uid }, status: { _eq: "approved" } } },
-    }),
-  )) as unknown as { count: string | number }[];
-
-  return Number(rows[0]?.count) || 0;
+  const payload = await getPayloadClient();
+  const { totalDocs } = await payload.count({
+    collection: "contributions",
+    where: { and: [{ contributor: { equals: uid } }, { status: { equals: "approved" } }] },
+  });
+  return totalDocs;
 }
 
 export async function getContributorProfile(uid: string): Promise<ContributorProfile | null> {
-  const rows = await directus().request(
-    readItems("contributor_profiles", {
-      filter: { user: { _eq: uid } },
-      limit: 1,
-    }),
-  );
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "contributor-profiles",
+    where: { user: { equals: uid } },
+    limit: 1,
+    depth: 0,
+  });
 
-  const row = rows[0];
+  const row = docs[0];
   if (!row) return null;
 
   return {
-    id: row.id,
-    uid: row.user,
-    displayName: row.display_name,
+    id: String(row.id),
+    uid,
+    displayName: row.displayName,
     ...(row.bio ? { bio: row.bio } : {}),
-    ...(row.avatar_url ? { avatarUrl: row.avatar_url } : {}),
+    ...(row.avatarUrl ? { avatarUrl: row.avatarUrl } : {}),
     approvedCount: await approvedContributionCount(uid),
-    verified: row.verified,
-    joinedAt: toEpochMs(row.created_at),
-    updatedAt: toEpochMs(row.updated_at),
-  };
+    verified: Boolean(row.verified),
+    joinedAt: toEpochMs(row.createdAt),
+    updatedAt: toEpochMs(row.updatedAt),
+  } as ContributorProfile;
 }
 
-/** Kullanıcının katkıda bulunduğu onaylı şarkı sayısı (junction üzerinden). */
+/**
+ * Kullanıcının katkıda bulunduğu onaylı şarkı sayısı (junction üzerinden).
+ * İlişkili şarkının durumuna göre filtre: Payload nokta gösterimini destekliyor.
+ */
 export async function getContributorSongCount(uid: string): Promise<number> {
-  const rows = (await directus().request(
-    aggregate("song_contributors", {
-      aggregate: { count: "*" },
-      query: {
-        filter: {
-          user: { _eq: uid },
-          song: { moderation_status: { _eq: "approved" } },
-        },
-      },
-    }),
-  )) as unknown as { count: string | number }[];
-
-  return Number(rows[0]?.count) || 0;
+  const payload = await getPayloadClient();
+  const { totalDocs } = await payload.count({
+    collection: "song-contributors",
+    where: {
+      and: [
+        { user: { equals: uid } },
+        { "song.moderationStatus": { equals: "approved" } },
+      ],
+    },
+  });
+  return totalDocs;
 }

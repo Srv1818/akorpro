@@ -1,23 +1,21 @@
 import { unstable_cache } from "next/cache";
-import { readItems } from "@directus/sdk";
-import { directus } from "@/lib/directus/client";
+import type { Where } from "payload";
+import { getPayloadClient } from "@/lib/payload/client";
+import { relId } from "@/lib/payload/serialize";
 import { sanitizePlainField } from "@/lib/security/sanitize";
 import { getSongsByIds } from "./songs";
 import { TAGS, TTL } from "@/lib/cache/tags";
-import type { SongRow } from "@/lib/directus/schema";
+import type { Song as SongRow } from "@/payload-types";
 import type { SongDoc } from "@/lib/types/firestore";
-import type { SongSummary } from "@/lib/types/content";
+import type { SongSummary, Difficulty } from "@/lib/types/content";
 
 /**
- * Keşfet blokları — Directus.
+ * Keşfet blokları — Payload Local API.
  *
- * `discover/{section}` dokümanındaki `songIds[]` dizisi yerine artık
- * `discover_sections` + `discover_items` (sıralı M2M) var; Directus admin'de
- * sürükle-bırak ile yönetilebiliyor (MIGRATION-PLAN.md Faz 1 kararı).
+ * Yapı aynı: `discover-sections` + sıralı `discover-items`. Admin panelinde
+ * sürükle-bırak ile yönetilebiliyor.
  *
- * Firestore'a özgü retry ve composite-index yedekleri kaldırıldı; sıralama
- * doğrudan sorguda yapılıyor. Hata durumunda blok boş döner — ana sayfa
- * tek bir blok yüzünden çökmez.
+ * Hata durumunda blok boş döner — ana sayfa tek bir blok yüzünden çökmez.
  */
 
 const DISCOVER_TARGET_COUNT = 12;
@@ -38,70 +36,79 @@ function toSongSummary(s: SongWithId): SongSummary {
   };
 }
 
-const APPROVED = { moderation_status: { _eq: "approved" } } as const;
+const APPROVED: Where = { moderationStatus: { equals: "approved" } };
 
-/** Kart için gereken alanlar — `chord_body` gibi ağır sütunlar çekilmez. */
-const SUMMARY_FIELDS = [
-  "id", "title", "slug", "artist_slug", "artist_name", "original_key", "difficulty",
-] as const;
+/**
+ * Kart için gereken alanlar. `select` ile `chordBody` gibi ağır sütunlar
+ * sorguya hiç girmiyor — Directus'taki `fields` kısıtlamasının karşılığı.
+ */
+const SUMMARY_SELECT = {
+  id: true,
+  title: true,
+  slug: true,
+  artistSlug: true,
+  artistName: true,
+  originalKey: true,
+  difficulty: true,
+} as const;
 
 type SummaryRow = Pick<
   SongRow,
-  "id" | "title" | "slug" | "artist_slug" | "artist_name" | "original_key" | "difficulty"
+  "id" | "title" | "slug" | "artistSlug" | "artistName" | "originalKey" | "difficulty"
 >;
 
 function rowToSummary(r: SummaryRow): SongSummary {
   return {
-    id: r.id,
+    id: String(r.id),
     title: sanitizePlainField(r.title),
-    slug: r.slug,
-    artistSlug: r.artist_slug,
-    artistName: sanitizePlainField(r.artist_name),
-    originalKey: r.original_key,
-    difficulty: r.difficulty,
+    slug: r.slug ?? "",
+    artistSlug: r.artistSlug ?? "",
+    artistName: sanitizePlainField(r.artistName ?? ""),
+    originalKey: r.originalKey,
+    difficulty: r.difficulty as Difficulty,
   };
 }
 
 /** Popülerlik skoru yüksek onaylı şarkılar; eşitlikte yeni olan öne geçer. */
 async function popularSongs(): Promise<SongSummary[]> {
-  const rows = await directus().request(
-    readItems("songs", {
-      filter: APPROVED,
-      sort: ["-popularity", "-created_at"],
-      limit: DISCOVER_TARGET_COUNT,
-      fields: SUMMARY_FIELDS,
-    }),
-  );
-  return rows.map(rowToSummary);
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: APPROVED,
+    sort: ["-popularity", "-createdAt"],
+    limit: DISCOVER_TARGET_COUNT,
+    depth: 0,
+    select: SUMMARY_SELECT,
+  });
+  return (docs as SummaryRow[]).map(rowToSummary);
 }
 
 /** En yeni onaylı şarkılar. */
 async function newSongs(): Promise<SongSummary[]> {
-  const rows = await directus().request(
-    readItems("songs", {
-      filter: APPROVED,
-      sort: ["-created_at"],
-      limit: DISCOVER_TARGET_COUNT,
-      fields: SUMMARY_FIELDS,
-    }),
-  );
-  return rows.map(rowToSummary);
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: APPROVED,
+    sort: "-createdAt",
+    limit: DISCOVER_TARGET_COUNT,
+    depth: 0,
+    select: SUMMARY_SELECT,
+  });
+  return (docs as SummaryRow[]).map(rowToSummary);
 }
 
-/** Elle seçilmiş blok — sıralama `discover_items.position`'dan gelir. */
+/** Elle seçilmiş blok — sıralama `discover-items.position`'dan gelir. */
 async function getFeaturedCurated(): Promise<SongSummary[]> {
-  const items = await directus().request(
-    readItems("discover_items", {
-      filter: { section: { key: { _eq: "featured" } } },
-      sort: ["position"],
-      limit: MAX_CURATED_IDS_READ,
-      fields: ["song"],
-    }),
-  );
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "discover-items",
+    where: { "section.key": { equals: "featured" } },
+    sort: "position",
+    limit: MAX_CURATED_IDS_READ,
+    depth: 0,
+  });
 
-  const songIds = items
-    .map((i) => (typeof i.song === "string" ? i.song : i.song?.id))
-    .filter((id): id is string => Boolean(id));
+  const songIds = docs.map((i) => relId(i.song)).filter(Boolean);
 
   const songs = await getSongsByIds(songIds);
   return songs.slice(0, DISCOVER_TARGET_COUNT).map(toSongSummary);
@@ -115,7 +122,7 @@ function discoverCatch(label: string, p: Promise<SongSummary[]>): Promise<SongSu
 }
 
 /* ------------------------------------------------------------------ */
-/*  Cached public API                                                  */
+/*  Önbellekli genel API                                               */
 /* ------------------------------------------------------------------ */
 
 export function getDiscoverPopular(): Promise<SongSummary[]> {
