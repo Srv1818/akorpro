@@ -119,28 +119,25 @@ trigger'ına düşmüştü, ve admin ayrı bir servis + ayrı hostname + ayrı o
 | Erişim kuralları | Tek `role` alanı; moderatör düzenler ama yayına alamaz |
 | Veri katmanı | 7 dosya Payload Local API'ye çevrildi; imzalar korundu, HTTP katmanı kalktı |
 | Üretim şeması | `prodMigrations` — taze veritabanında otomatik uygulanıyor |
+| **Auth** | **Bitti.** Google + e-posta/parola. Giriş çalışıyor. |
+| Directus | **Koddan tamamen çıktı** — `lib/directus/*`, SDK, script'ler silindi |
 
 Ölçülen doğrulamalar (varsayım değil):
 
 - Build 0 ile çıkıyor, tip denetimi temiz, 135/135 test geçiyor
 - Lint çıktısı geçiş öncesiyle birebir aynı (20 hata, 6 kural) — yeni sorun yok
 - Türkçe slugify, Postgres fonksiyonuyla 20 vakada birebir aynı sonucu veriyor
-- Taze ve boş Postgres ile Docker imajı: migration 122 ms'de uygulandı,
-  26 tablo oluştu, ana sayfa ve admin paneli 200
+- Veritabanına **hiç erişmeden** derlenen imaj, taze Postgres'e bağlanınca:
+  migration çalıştı (194 ms), 26 tablo oluştu
+- Parola girişi 200 döndü ve çerez yazıldı; `/api/auth/me` doğru kullanıcıyı verdi
+- İkinci kullanıcı, ilkinin çalma listesini ne gördü ne silebildi (403)
 - Build sırasında Directus'a giden istek: **0**
 
 ## Kalan
 
-**Kod:**
+**Kod: bitti.** Directus'a bağlı tek satır kalmadı.
 
-- [ ] **Auth.** `lib/auth/*`, `app/api/auth/*`, `app/giris`, çalma listesi
-      route'ları ve `app/api/takedown` hâlâ Directus oturumuna bakıyor.
-      **Giriş şu an çalışmaz.** En büyük kalan parça.
-- [ ] `lib/directus/*` ve `@directus/sdk` silinecek
-- [ ] `proxy.ts` içindeki CSP hâlâ Directus adresini izinli tutuyor
-- [ ] `.github/workflows/deploy.yml` hâlâ Directus build arg'ları geçiyor
-
-**Altyapı (sırası önemli):**
+**Altyapı (sırası önemli) — bu kısım sende:**
 
 1. [ ] Coolify'da Payload için **ayrı** bir Postgres servisi.
        Directus'un Postgres'i kullanılamaz: o "Directus With Postgresql"
@@ -169,3 +166,28 @@ trigger'ına düşmüştü, ve admin ayrı bir servis + ayrı hostname + ayrı o
 - Payload CLI bu makinede yalnız projenin bulunduğu dizin yüzünden sorun
   çıkarabilir: `Proje Dosyaları` hem boşluk hem Türkçe karakter içeriyor.
   Docker içinde yol `/app` olduğu için orada sorun yok.
+
+## Auth nasıl çalışıyor
+
+- Çerez `payload-token`, uygulamanın kendisi yazıyor. Ayrı servis yok, bu yüzden
+  `SESSION_COOKIE_DOMAIN` ve `admin.akorpro.com.tr` hostname maddeleri kesim
+  listesinden **düştü**.
+- E-posta + parola her zaman açık. Break-glass admin sorunu bununla kapandı:
+  Google tarafında aksilik olursa parolayla girilir.
+- Google yapılandırılmamışsa düğme hiç görünmez, uygulama yine açılır.
+- Rol yükseltme elle: Google ile ilk kez giren herkes `contributor` olur.
+  Aksi halde herkes panele girebilirdi.
+- Payload'ın CSRF koruması `Origin` başlığı istiyor. Tarayıcılar gönderir;
+  `curl` ile test ederken `-H "Origin: <site>"` eklenmezse oturum geçersiz görünür
+  (bu yüzden bir kez yanlış alarm verdi).
+
+## Google Cloud'da yapılacak tek şey
+
+Mevcut OAuth istemcisine izinli redirect URI olarak şunu ekle:
+
+```
+https://akorpro.com/payload-api/users/oauth/callback
+```
+
+Yeni client açmaya gerek yok. Sonra `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+ve `NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=1` tanımlanır.
