@@ -1,8 +1,10 @@
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import withBundleAnalyzerFactory from "@next/bundle-analyzer";
+import { withPayload } from "@payloadcms/next/withPayload";
 
 const withBundleAnalyzer = withBundleAnalyzerFactory({
   enabled: process.env.ANALYZE === "true",
@@ -10,6 +12,9 @@ const withBundleAnalyzer = withBundleAnalyzerFactory({
 
 /** Üst dizinde başka lockfile varken Turbopack’in yanlış kök seçmesini engeller (dev/build). */
 const turbopackRoot = path.dirname(fileURLToPath(import.meta.url));
+
+/** package.json artık "type": "module" — ESM kapsamında `require` tanımsız. */
+const require = createRequire(import.meta.url);
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -131,7 +136,7 @@ const hasSentryEnv =
   Boolean(process.env.SENTRY_ORG) &&
   Boolean(process.env.SENTRY_PROJECT);
 
-export default hasSentryEnv
+const composed = hasSentryEnv
   ? withBundleAnalyzer(withSentryConfig(nextConfig, {
       org: process.env.SENTRY_ORG,
       project: process.env.SENTRY_PROJECT,
@@ -144,3 +149,9 @@ export default hasSentryEnv
       },
     }))
   : withBundleAnalyzer(nextConfig);
+
+/**
+ * withPayload en dışta: admin panelini Next derlemesine bağlar ve Payload'ın
+ * sunucu paketlerini (pg, sharp vb.) bundle dışında tutar.
+ */
+export default withPayload(composed, { devBundleServerPackages: false });

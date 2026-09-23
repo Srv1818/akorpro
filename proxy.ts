@@ -2,7 +2,12 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 
-const AUTH_ROUTES = ["/calma-listeleri", "/admin"];
+/**
+ * `/admin` bilerek listede değil: orası artık Payload admin paneli ve kendi
+ * giriş ekranı var. Buraya eklenirse Payload'ın `/admin/login` sayfası da
+ * `/giris`e yönlendirilir ve panele hiç girilemez.
+ */
+const AUTH_ROUTES = ["/calma-listeleri"];
 
 function isAuthRoute(pathname: string): boolean {
   return AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"));
@@ -86,6 +91,8 @@ function redirectToLogin(request: NextRequest) {
 export const config = {
   matcher: [
     /* API route'ları hariç tut (Next önerisi); aksi halde /api/auth/me vb. 404 veya bozuk yanıt görülebilir. */
-    "/((?!api|_next/static|_next/image|favicon\\.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    /* `admin` ve `payload-api` de hariç: Payload paneli kendi CSP'sini ve
+       oturumunu yönetiyor, buradaki CSP panelin çalışmasını engelliyor. */
+    "/((?!api|payload-api|admin|_next/static|_next/image|favicon\\.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
