@@ -27,6 +27,9 @@ if (process.env.NODE_ENV === "production") {
 }
 
 const nextConfig: NextConfig = {
+  // Docker imajı için: .next/standalone altında kendi kendine yeten sunucu üretir.
+  // node_modules kopyalamaya gerek kalmaz; imaj küçülür, VPS'te build yapılmaz.
+  output: "standalone",
   experimental: {
     inlineCss: true,
     optimizePackageImports: ["lucide-react"],

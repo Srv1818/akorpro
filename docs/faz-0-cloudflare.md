@@ -208,3 +208,85 @@ Kesimden sonra:
 | **Turnstile** | Anonim yazma ucu açılırsa | Şu an yazma uçları giriş istiyor |
 | **Email Routing** | Gerekirse | Mail kapalı; SMTP bilinçli olarak kurulmadı |
 | **`www` hostname'i** | Kesimde | Staging'de kimse www'den gelmiyor |
+
+---
+
+## Build'in VPS'ten çıkarılması (GitHub Actions + GHCR)
+
+**Neden.** Nixpacks build'i Contabo'da, Directus/Postgres/Redis ile aynı 8 GB
+makinede çalışıyordu. Her deploy'da canlı servisler bellek için build ile yarışıyor.
+Payload'a geçilirse admin paneli de Next build'inin parçası olacağı için bu baskı artar.
+
+**Yeni akış.** `feature/directus-migration` dalına push → GitHub Actions imajı derler →
+`ghcr.io/srv1818/akorpro` → Coolify webhook ile hazır imajı çeker. VPS artık derlemiyor,
+yalnız çalıştırıyor.
+
+Doğrulandı (yerel Docker, Node 24 Alpine): imaj 371 MB, konteyner ayakta,
+`/` ve `/gamlar` 200 dönüyor, `DIRECTUS_TOKEN` imaj katmanlarında **yok**.
+
+### Repodaki dosyalar
+
+| Dosya | İş |
+|---|---|
+| `Dockerfile` | Üç aşamalı: deps → builder → runner. `node:24-alpine`. |
+| `.dockerignore` | `node_modules`, `.next`, testler, `.env*` imaja girmez |
+| `.github/workflows/deploy.yml` | Derler, GHCR'a push eder, Coolify'ı tetikler |
+| `next.config.ts` | `output: "standalone"` eklendi |
+
+**Alpine bilinçli seçim:** Next.js self-hosting kılavuzu, glibc tabanlı sistemlerde
+`sharp`'ın aşırı bellek kullanabileceğini söylüyor. Alpine musl kullandığı için bu sorun yok.
+
+**Sırlar ARG ile geçilmiyor.** `ARG` imaj geçmişinde okunabilir kalır. `DIRECTUS_TOKEN` ve
+`SENTRY_AUTH_TOKEN` BuildKit secret mount'u ile veriliyor; yalnız build adımı boyunca var olurlar.
+
+### GitHub'da tanımlanacaklar
+
+Repo → Settings → Secrets and variables → Actions.
+
+**Variables** (gizli değil, bundle'a gömülür):
+
+| Ad | Değer |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | `https://akorpro.com` |
+| `NEXT_PUBLIC_DIRECTUS_URL` | `https://admin.akorpro.com` |
+| `DIRECTUS_URL` | `https://admin.akorpro.com` |
+| `NEXT_PUBLIC_GA4_ID` | varsa |
+| `NEXT_PUBLIC_VITALS_ENDPOINT` | varsa |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | varsa |
+
+**Secrets:**
+
+| Ad | Değer |
+|---|---|
+| `DIRECTUS_TOKEN` | Publisher rollü uygulama token'ı |
+| `SENTRY_AUTH_TOKEN` | varsa |
+| `COOLIFY_WEBHOOK_URL` | Coolify → `akorpro-web` → Webhooks → Deploy |
+| `COOLIFY_TOKEN` | Coolify → Keys & Tokens → API token |
+
+Coolify sırları yoksa akış imajı yükler ve durur; deploy'u Coolify'dan elle başlatırsın.
+
+### Coolify tarafında yapılacaklar (sende)
+
+1. `akorpro-web` kaynağını **Git/Nixpacks → Docker Image**'a çevir.
+   İmaj: `ghcr.io/srv1818/akorpro:staging`, port `3000`.
+2. GHCR paketi private olduğu için **registry kimlik bilgisi** ekle:
+   kullanıcı adın + `read:packages` yetkili bir GitHub PAT.
+3. Çalışma zamanı env'lerini Coolify'da tanımla: `DIRECTUS_URL`, `DIRECTUS_TOKEN`,
+   `NEXT_PUBLIC_*`, `REVALIDATION_SECRET`.
+4. İstersen `/app/.next/cache` için kalıcı volume bağla — yoksa her deploy'da
+   ISR önbelleği sıfırlanır ve sayfalar ilk istekte yeniden üretilir.
+
+### Bilinen sınır
+
+**Tek imaj iki ortama gitmez.** `NEXT_PUBLIC_*` değişkenleri `next build` sırasında
+bundle'a gömülür. `akorpro.com` için derlenen imaj `akorpro.com.tr`'de kullanılamaz;
+kesimde `NEXT_PUBLIC_SITE_URL` değiştirilip **yeniden derlenmesi** gerekir.
+Kesim kontrol listesine eklenmeli.
+
+### Dokunulmayanlar
+
+- `master` dalı ve Vercel'deki `akorpro.com.tr` — akış yalnız
+  `feature/directus-migration` dalını dinliyor.
+- `.github/workflows/ci.yml` — **eski ve ölü**. Tetikleyicisi `main` dalı, o dal yok;
+  ayrıca silinmiş Firebase'e ve `firestore.rules`'a dayanan işler içeriyor.
+  Hiç çalışmıyor. Ayrı bir iş olarak elden geçirilmeli.

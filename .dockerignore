@@ -1,0 +1,42 @@
+# Bağımlılıklar — imaj içinde npm ci ile yeniden kurulur
+node_modules
+.pnp
+.pnp.*
+
+# Build çıktıları
+.next
+out
+build
+
+# Git ve CI
+.git
+.github
+.gitignore
+
+# Testler ve raporlar
+coverage
+test-results
+playwright-report
+.lighthouseci
+tests
+e2e
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Ortam dosyaları — sırlar imaja asla girmemeli
+.env
+.env.*
+!.env.example
+
+# Editör ve işletim sistemi
+.vscode
+.idea
+.DS_Store
+.claude
+
+# Dokümantasyon — çalışma zamanında gereksiz
+*.md
+docs
+data/gsc
