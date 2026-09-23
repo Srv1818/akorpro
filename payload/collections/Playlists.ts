@@ -1,5 +1,12 @@
-import type { CollectionConfig } from "payload";
+import type { Access, CollectionConfig } from "payload";
 import { hasRole, ownedBy } from "../access";
+
+/** Öğeye erişim, bağlı olduğu çalma listesinin sahipliğinden gelir. */
+const ownedViaPlaylist: Access = ({ req }) => {
+  if (!req.user) return false;
+  if (hasRole(req.user, "admin")) return true;
+  return { "playlist.owner": { equals: req.user.id } };
+};
 
 /**
  * Çalma listeleri kullanıcıya özel — herkese açık okuma YOK.
@@ -45,11 +52,18 @@ export const PlaylistItems: CollectionConfig = {
     group: "Kullanıcı",
   },
   access: {
-    // Öğe erişimi listenin sahipliğinden türer; route katmanı zaten doğruluyor.
-    read: ({ req }) => Boolean(req.user),
+    /**
+     * Sahiplik ilişkili listeden türetilir.
+     *
+     * "Giriş yapmış olmak" YETMEZ: o durumda herhangi bir kullanıcı başkasının
+     * listesindeki şarkıyı silebilir veya sırasını değiştirebilirdi. Directus
+     * sürümünde bunu `owner = $CURRENT_USER` filtresi engelliyordu; burada
+     * karşılığı ilişki üzerinden nokta gösterimi.
+     */
+    read: ownedViaPlaylist,
     create: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
+    update: ownedViaPlaylist,
+    delete: ownedViaPlaylist,
   },
   fields: [
     { name: "playlist", type: "relationship", relationTo: "playlists", required: true, index: true },

@@ -110,7 +110,7 @@ export function AuthHeaderActions() {
   const user = useSessionUser();
 
   async function onSignOut() {
-    // Directus oturumunu sonlandırır ve çerezi düşürür; istemcide tutulan
+    // Oturumu sonlandırır ve çerezi düşürür; istemcide tutulan
     // ayrı bir kimlik durumu kalmadı (Firebase Auth SDK kaldırıldı).
     await fetch("/api/auth/session", { method: "DELETE", credentials: "include" });
     startTransition(() => publishSession(null));

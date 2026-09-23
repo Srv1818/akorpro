@@ -1,36 +1,37 @@
 import { NextResponse } from "next/server";
+import { headers as nextHeaders } from "next/headers";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
-import { directusUrl } from "@/lib/directus/client";
+import { getPayloadClient } from "@/lib/payload/client";
 
 export const runtime = "nodejs";
 
 /**
  * Oturum kapatma.
  *
- * Giriş artık burada üretilmiyor: Directus Google SSO oturum çerezini kendisi
- * yazıyor (`session` modu), dolayısıyla eski `POST /api/auth/session`
- * (`createSessionCookie` ile Firebase ID token → çerez) akışı kalktı.
+ * Giriş burada üretilmiyor: parola girişini Payload'ın kendi ucu, Google
+ * girişini OAuth eklentisi karşılıyor. İkisi de çerezi kendileri yazıyor.
  *
- * Çıkışta iki iş var: Directus'ta oturumu geçersiz kıl ve çerezi sil.
+ * Çıkışta iki iş var: Payload'daki oturum kaydını düşür ve çerezi sil.
+ * Payload'ın oturumları veritabanında tutuluyor (`users_sessions`), yani
+ * yalnız çerezi silmek yetmez — token başka yerde hâlâ geçerli kalırdı.
  */
-export async function DELETE(request: Request) {
-  const token = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((c) => c.trim())
-    .find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`))
-    ?.slice(SESSION_COOKIE_NAME.length + 1);
+export async function DELETE() {
+  try {
+    const payload = await getPayloadClient();
+    const headers = await nextHeaders();
+    const { user } = await payload.auth({ headers });
 
-  if (token) {
-    try {
-      await fetch(`${directusUrl()}/auth/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: token, mode: "json" }),
+    if (user) {
+      // Bu kullanıcının tüm oturumlarını sonlandır.
+      await payload.update({
+        collection: "users",
+        id: user.id,
+        data: { sessions: [] } as never,
+        overrideAccess: true,
       });
-    } catch {
-      // Directus'a ulaşılamasa bile çerezi düşürüp kullanıcıyı çıkarmış oluyoruz.
     }
+  } catch {
+    // Oturum zaten geçersizse bir şey yapmaya gerek yok; çerezi yine de düşürüyoruz.
   }
 
   const res = NextResponse.json({ ok: true });

@@ -18,7 +18,7 @@ function check(label, actual, expected) {
 }
 
 // Temiz başlangıç
-for (const c of ["songs", "artists", "users"]) {
+for (const c of ["playlist-items", "playlists", "songs", "artists", "users"]) {
   await payload.delete({ collection: c, where: { id: { exists: true } } });
 }
 
@@ -82,6 +82,54 @@ const contributor = await payload.create({
 const { canAccessAdminPanel } = await import("../payload/access.ts");
 check("katkıcı panel erişimi", canAccessAdminPanel(contributor), false);
 check("yönetici panel erişimi", canAccessAdminPanel(admin), true);
+
+console.log("\n[7] Çalma listesi sahipliği — başkasınınkine erişilemez");
+for (const c of ["playlist-items", "playlists"]) {
+  await payload.delete({ collection: c, where: { id: { exists: true } } });
+}
+const userA = await payload.create({
+  collection: "users",
+  data: { email: "a@akorpro.com", password: "Gecici-Parola-1234", role: "contributor" },
+});
+const userB = await payload.create({
+  collection: "users",
+  data: { email: "b@akorpro.com", password: "Gecici-Parola-1234", role: "contributor" },
+});
+
+const listA = await payload.create({
+  collection: "playlists",
+  data: { name: "A'nın listesi", owner: userA.id },
+  user: userA,
+  overrideAccess: false,
+});
+
+const seenByB = await payload.find({
+  collection: "playlists", user: userB, overrideAccess: false, depth: 0,
+});
+check("B, A'nın listesini göremez", seenByB.totalDocs, 0);
+
+const itemA = await payload.create({
+  collection: "playlist-items",
+  data: { playlist: listA.id, song: song.id, position: 0 },
+  user: userA,
+  overrideAccess: false,
+});
+
+// Asıl kontrol: öğe erişimi "giriş yapmış olmak"a bağlı olsaydı bu geçerdi.
+let bCouldDelete = true;
+try {
+  await payload.delete({
+    collection: "playlist-items", id: itemA.id, user: userB, overrideAccess: false,
+  });
+} catch {
+  bCouldDelete = false;
+}
+check("B, A'nın liste öğesini silemez", bCouldDelete, false);
+
+const stillThere = await payload.find({
+  collection: "playlist-items", user: userA, overrideAccess: false, depth: 0,
+});
+check("A'nın öğesi duruyor", stillThere.totalDocs, 1);
 
 console.log(failed === 0 ? "\n>>> HEPSI GECTI\n" : `\n>>> ${failed} KONTROL BASARISIZ\n`);
 process.exit(failed === 0 ? 0 : 1);

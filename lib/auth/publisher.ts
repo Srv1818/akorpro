@@ -4,10 +4,9 @@ import type { SessionUser } from "@/lib/auth/session-user";
 /**
  * Şarkıların siteye düşmesi (approved) ve yayında içeriğin düzenlenmesi.
  *
- * Eskiden `AKORPRO_PUBLISHER_UIDS` env'indeki Firebase UID listesiyle yönetiliyordu.
- * Artık Directus rolüne bakılıyor: kapı her zaman açık, karar `Publisher` /
- * `Administrator` rolüne sahip olup olmamakta (bkz. scripts/directus-roles.mjs —
- * `Moderator` rolü `moderation_status`'ü `approved` yapamıyor).
+ * Karar rol üzerinden veriliyor: kapı her zaman açık, belirleyici olan
+ * `publisher` / `admin` rolüne sahip olmak. Moderatör `moderationStatus`
+ * alanını değiştiremiyor (bkz. payload/collections/Songs.ts — alan bazlı erişim).
  */
 export function publisherGateActive(): boolean {
   return true;

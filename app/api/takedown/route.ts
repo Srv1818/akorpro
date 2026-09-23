@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createItem } from "@directus/sdk";
-import { directus } from "@/lib/directus/client";
+import { getPayloadClient } from "@/lib/payload/client";
 import { rateLimiter } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
@@ -32,19 +31,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Tüm alanlar zorunludur." }, { status: 400 });
   }
 
-  // Sunucu token'ıyla yazılır: telif bildirimi formu girişsiz kullanılabilmeli,
-  // ama bunun için Directus'ta anonim yazma izni açmaya gerek yok.
+  // Erişim denetimi atlanarak yazılır: telif bildirimi formu girişsiz
+  // kullanılabilmeli. Okuma yine de personele kapalı (kişisel veri içeriyor).
   try {
-    await directus().request(
-      createItem("takedown_requests", {
+    const payload = await getPayloadClient();
+    await payload.create({
+      collection: "takedown-requests",
+      overrideAccess: true,
+      data: {
         name: name.trim().slice(0, 200),
         email: email.trim().slice(0, 200),
-        song_url: songUrl.trim().slice(0, 500),
-        original_work: originalWork.trim().slice(0, 500),
+        songUrl: songUrl.trim().slice(0, 500),
+        originalWork: originalWork.trim().slice(0, 500),
         proof: proof.trim().slice(0, 2000),
         status: "pending",
-      }),
-    );
+      },
+    });
   } catch (e) {
     console.error("[takedown]", e);
     return NextResponse.json({ error: "Talep kaydedilemedi." }, { status: 500 });

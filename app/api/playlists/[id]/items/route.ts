@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { directusAsUser, NotAuthenticatedError } from "@/lib/directus/session";
-import { toEpochMs } from "@/lib/directus/serialize";
+import { payloadErrorResponse, requireUser } from "@/lib/payload/session";
+import { relId, toEpochMs } from "@/lib/payload/serialize";
 
 export const runtime = "nodejs";
 
@@ -20,56 +20,58 @@ export type PlaylistItemPayload = {
   createdAt: number;
 };
 
-type ItemRow = {
-  id: string;
+type ExpandedSong = { id: string | number; title: string; slug?: string | null; artistSlug?: string | null };
+
+type ItemDoc = {
+  id: string | number;
   position: number;
-  transpose_semitones: number | null;
-  created_at: string;
-  song: {
-    id: string;
-    title: string;
-    slug: string;
-    artist_slug: string;
-  } | null;
+  transposeSemitones?: number | null;
+  createdAt: string;
+  song: ExpandedSong | string | number | null;
 };
 
-const ITEM_FIELDS = "id,position,transpose_semitones,created_at,song.id,song.title,song.slug,song.artist_slug";
+function toPayload(row: ItemDoc): PlaylistItemPayload | null {
+  const song = row.song;
+  // Silinmiş şarkıya bağlı kayıtlar listeden düşürülür.
+  if (!song || typeof song !== "object") return null;
 
-function toPayload(row: ItemRow): PlaylistItemPayload | null {
-  if (!row.song) return null;
   return {
-    id: row.id,
-    songId: row.song.id,
-    title: row.song.title,
-    artistSlug: row.song.artist_slug,
-    songSlug: row.song.slug,
+    id: String(row.id),
+    songId: String(song.id),
+    title: song.title,
+    artistSlug: song.artistSlug ?? "",
+    songSlug: song.slug ?? "",
     order: row.position,
-    ...(row.transpose_semitones != null
-      ? { transposeSemitones: row.transpose_semitones }
+    ...(row.transposeSemitones != null
+      ? { transposeSemitones: row.transposeSemitones }
       : {}),
-    createdAt: toEpochMs(row.created_at),
+    createdAt: toEpochMs(row.createdAt),
   };
 }
 
 function handle(err: unknown) {
-  if (err instanceof NotAuthenticatedError) {
-    return NextResponse.json({ error: "Oturum gerekli." }, { status: 401 });
-  }
-  console.error("[playlists/:id/items]", err);
-  return NextResponse.json({ error: "İşlem başarısız." }, { status: 500 });
+  const { body, status } = payloadErrorResponse("playlists/:id/items", err);
+  return NextResponse.json(body, { status });
 }
 
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const rows = await directusAsUser<ItemRow[]>("/items/playlist_items", {
-      query:
-        `filter[playlist][_eq]=${encodeURIComponent(id)}` +
-        `&sort=position&limit=-1&fields=${ITEM_FIELDS}`,
+    const { payload, as } = await requireUser();
+
+    const { docs } = await payload.find({
+      collection: "playlist-items",
+      where: { playlist: { equals: id } },
+      sort: "position",
+      limit: 0,
+      // Şarkı alanları kart için gerekli; tek sorguda genişletiliyor.
+      depth: 1,
+      ...as,
     });
 
-    // Silinmiş şarkıya bağlı kayıtlar listeden düşürülür.
-    return NextResponse.json({ items: rows.map(toPayload).filter(Boolean) });
+    return NextResponse.json({
+      items: (docs as unknown as ItemDoc[]).map(toPayload).filter(Boolean),
+    });
   } catch (err) {
     return handle(err);
   }
@@ -84,14 +86,16 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: "songId gerekli." }, { status: 400 });
     }
 
-    const existing = await directusAsUser<{ id: string; position: number; song: string }[]>(
-      "/items/playlist_items",
-      {
-        query:
-          `filter[playlist][_eq]=${encodeURIComponent(id)}` +
-          `&sort=-position&limit=-1&fields=id,position,song`,
-      },
-    );
+    const { payload, as } = await requireUser();
+
+    const { docs: existing } = await payload.find({
+      collection: "playlist-items",
+      where: { playlist: { equals: id } },
+      sort: "-position",
+      limit: 0,
+      depth: 0,
+      ...as,
+    });
 
     if (existing.length >= MAX_ITEMS_PER_PLAYLIST) {
       return NextResponse.json(
@@ -99,27 +103,30 @@ export async function POST(request: Request, { params }: Params) {
         { status: 400 },
       );
     }
-    if (existing.some((i) => i.song === songId)) {
-      return NextResponse.json({ error: "Şarkı bu listede zaten var.", duplicate: true }, { status: 409 });
+    if (existing.some((i) => relId(i.song) === songId)) {
+      return NextResponse.json(
+        { error: "Şarkı bu listede zaten var.", duplicate: true },
+        { status: 409 },
+      );
     }
 
     const nextPosition = existing.length > 0 ? existing[0].position + 1 : 0;
 
-    await directusAsUser("/items/playlist_items", {
-      method: "POST",
-      body: {
+    await payload.create({
+      collection: "playlist-items",
+      data: {
         playlist: id,
         song: songId,
         position: nextPosition,
         ...(typeof body.transposeSemitones === "number"
-          ? { transpose_semitones: body.transposeSemitones }
+          ? { transposeSemitones: body.transposeSemitones }
           : {}),
-      },
+      } as never,
+      ...as,
     });
 
-    // Listeler `updated_at`'e göre sıralanıyor ve Directus alt kayıt eklenince
-    // üst satıra dokunmuyor. "Son kullanılan üstte" davranışını korumak için
-    // adı kendisiyle yazıp güncellenme zamanını tazeliyoruz.
+    // Listeler `updatedAt`'e göre sıralanıyor ve alt kayıt eklenince üst satıra
+    // dokunulmuyor. "Son kullanılan üstte" davranışını korumak için tazeliyoruz.
     await touchPlaylist(id);
 
     return NextResponse.json({ ok: true }, { status: 201 });
@@ -130,16 +137,15 @@ export async function POST(request: Request, { params }: Params) {
 
 async function touchPlaylist(id: string): Promise<void> {
   try {
-    const row = await directusAsUser<{ name: string }>(
-      `/items/playlists/${encodeURIComponent(id)}`,
-      { query: "fields=name" },
-    );
-    await directusAsUser(`/items/playlists/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      body: { name: row.name },
+    const { payload, as } = await requireUser();
+    const row = await payload.findByID({ collection: "playlists", id, depth: 0, ...as });
+    await payload.update({
+      collection: "playlists",
+      id,
+      data: { name: row.name },
+      ...as,
     });
   } catch {
     // Sıralama tazelenmese de şarkı eklendi; isteği bu yüzden düşürmeyiz.
   }
 }
-

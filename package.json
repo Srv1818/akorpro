@@ -19,11 +19,12 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "lighthouse": "lhci autorun",
-    "directus:schema": "node scripts/directus-schema.mjs",
-    "directus:roles": "node scripts/directus-roles.mjs"
+    "payload:types": "payload generate:types",
+    "payload:importmap": "payload generate:importmap",
+    "payload:migrate:create": "payload migrate:create",
+    "payload:smoke": "tsx --env-file=.env.local scripts/payload-smoke.mjs"
   },
   "dependencies": {
-    "@directus/sdk": "^18.0.3",
     "@payloadcms/db-postgres": "3.90.1",
     "@payloadcms/next": "3.90.1",
     "@payloadcms/plugin-import-export": "3.90.1",
@@ -41,6 +42,7 @@
     "next": "16.3.6",
     "next-themes": "^0.4.6",
     "payload": "3.90.1",
+    "payload-oauth2": "1.0.21",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tonal": "^6.4.3",

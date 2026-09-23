@@ -22,8 +22,9 @@ function isAuthRoute(pathname: string): boolean {
  * Diğer XSS koruma katmanları (input sanitize, escape) korunuyor.
  */
 function buildCsp(): string {
-  const directus = (process.env.NEXT_PUBLIC_DIRECTUS_URL ?? "").replace(/\/$/, "");
   const isDev = process.env.NODE_ENV !== "production";
+  // Yüklenen dosyalar R2'den servis ediliyorsa o kaynak da izinli olmalı.
+  const media = (process.env.NEXT_PUBLIC_MEDIA_URL ?? "").replace(/\/$/, "");
 
   const scriptSrc = [
     "script-src 'self'",
@@ -36,12 +37,12 @@ function buildCsp(): string {
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    // Kullanıcı avatarları Google'dan, dosyalar Directus/R2'den geliyor.
-    `img-src 'self' data: blob: https://*.googleusercontent.com https://www.google-analytics.com${directus ? ` ${directus}` : ""}`,
+    // Kullanıcı avatarları Google'dan, yüklenen dosyalar R2'den geliyor.
+    `img-src 'self' data: blob: https://*.googleusercontent.com https://www.google-analytics.com${media ? ` ${media}` : ""}`,
     "font-src 'self' https://fonts.gstatic.com",
     [
+      // Veri artık aynı origin'den geliyor; ayrı bir API adresi yok.
       "connect-src 'self'",
-      directus,
       "https://www.google-analytics.com",
       "https://analytics.google.com",
       "https://*.sentry.io",
@@ -50,7 +51,7 @@ function buildCsp(): string {
       .join(" "),
     "object-src 'none'",
     "base-uri 'self'",
-    // Google SSO'ya yönlendirme tam sayfa redirect ile olur; form gönderimi yok.
+    // Google'a yönlendirme tam sayfa redirect ile olur; form gönderimi yok.
     "form-action 'self'",
     "frame-ancestors 'none'",
   ];
@@ -62,8 +63,8 @@ const CSP = buildCsp();
 
 /**
  * Korumalı yollarda hızlı bir çerez kontrolü yapar. Asıl doğrulama sunucu
- * bileşenlerinde `getServerSessionUser()` ile Directus'a sorularak yapılıyor;
- * buradaki kontrol yalnız girişsiz kullanıcıyı boş sayfaya düşürmemek için.
+ * bileşenlerinde `getServerSessionUser()` ile yapılıyor; buradaki kontrol
+ * yalnız girişsiz kullanıcıyı boş sayfaya düşürmemek için.
  */
 export async function proxy(request: NextRequest) {
   if (isAuthRoute(request.nextUrl.pathname)) {

@@ -1,29 +1,29 @@
 /**
- * Directus oturum çerezi. Directus SSO `session` modunda bu çerezi kendisi yazar;
- * uygulama kendi çerezini üretmez (Firebase `createSessionCookie` akışı kalktı).
+ * Payload oturum çerezi.
  *
- * ⚠️ Çerezin hem uygulama hem Directus tarafından görülebilmesi için ikisinin
- * **aynı üst alan adı** altında olması gerekir; Directus'ta `SESSION_COOKIE_DOMAIN`
- * buna göre ayarlanır (staging'de `.akorpro.com`). Kesimde uygulama `.com.tr`ye
- * geçtiğinde Directus'a `admin.akorpro.com.tr` hostname'i eklenip bu değer
- * `.akorpro.com.tr` yapılmalı — kesim kontrol listesinde madde olarak duruyor.
+ * Directus döneminden farkı önemli: çerezi artık uygulamanın kendisi yazıyor,
+ * ayrı bir servis değil. Bu yüzden `SESSION_COOKIE_DOMAIN` ayarlama ve admin'i
+ * aynı üst alan adı altında tutma zorunluluğu ortadan kalktı — kesim kontrol
+ * listesindeki "atlanırsa kimse giriş yapamaz" maddesi de bununla kapandı.
+ *
+ * İsim Payload'ın varsayılanı (`<cookiePrefix>-token`).
  */
-export const SESSION_COOKIE_NAME = "directus_session_token";
+export const SESSION_COOKIE_NAME = "payload-token";
 
-/** Directus rolleri — `scripts/directus-roles.mjs` ile aynı adlar. */
+/** Payload `users.role` alanının değerleri. */
 export const ROLES = {
-  ADMINISTRATOR: "Administrator",
-  MODERATOR: "Moderator",
-  PUBLISHER: "Publisher",
-  CONTRIBUTOR: "Contributor",
+  ADMINISTRATOR: "admin",
+  PUBLISHER: "publisher",
+  MODERATOR: "moderator",
+  CONTRIBUTOR: "contributor",
 } as const;
 
 /** Yönetim arayüzüne ve moderasyon uçlarına erişebilen roller. */
 export const STAFF_ROLES: readonly string[] = [
   ROLES.ADMINISTRATOR,
-  ROLES.MODERATOR,
   ROLES.PUBLISHER,
+  ROLES.MODERATOR,
 ];
 
-/** Onaylı içeriği yayına alabilen roller (eski `AKORPRO_PUBLISHER_UIDS` kapısının yerine). */
+/** Onaylı içeriği yayına alabilen roller. */
 export const PUBLISHER_ROLES: readonly string[] = [ROLES.ADMINISTRATOR, ROLES.PUBLISHER];
