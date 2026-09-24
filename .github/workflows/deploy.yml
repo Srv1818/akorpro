@@ -1,9 +1,9 @@
 name: Build & Deploy (akorpro.com)
 
-# YALNIZ Directus dalı. master / akorpro.com.tr (Vercel) bu akışın dışında.
+# YALNIZ Payload dalı. master / akorpro.com.tr (Vercel) bu akışın dışında.
 on:
   push:
-    branches: [feature/directus-migration]
+    branches: [feature/payload-migration]
   workflow_dispatch:
 
 concurrency:

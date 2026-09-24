@@ -127,3 +127,43 @@ Yeni yığında aynı davranış (`www.akorpro.com.tr` → `akorpro.com.tr` 301 
   - `/sanatci/ayten-alpman`
 - **Trafik alıp sitemap'te olmayan: 1 URL.**
   - `/akor/kenan-dogulu/kursun-adres-sormaz-ki`
+
+---
+
+## 2026-09-24 — Dizine eklenmeme sorununun kök sebebi
+
+**Bulgu.** Search Console'a gönderilmiş tek site haritası `https://www.akorpro.com.tr/sitemap.xml`
+idi, yani **www'li**. O adres 301 ile www'siz sürüme yönleniyor. Google en son
+**8 Nisan 2026**'da okumuş ve yalnız **34 sayfa** keşfetmiş.
+
+Dizindeki sayfa sayısının 33'te takılı kalmasının sebebi buydu: canlı site
+haritasında 181 URL var ama Google'ın bunlardan haberi olmadı.
+
+**Yapıldı.** `https://akorpro.com.tr/sitemap.xml` (www'siz) Search Console'a gönderildi.
+
+**Ölçülen durum (aynı gün):**
+
+| Kontrol | Sonuç |
+|---|---|
+| Site haritasındaki URL | 181, tamamı HTTP 200 |
+| `noindex` taşıyan | 0 |
+| Canonical'ı kendini göstermeyen | 0 |
+| Googlebot kimliğiyle site haritası | 200, `application/xml` |
+| `robots.txt` | Taramaya açık, doğru site haritasını bildiriyor |
+
+Yani teknik tarafta düzeltilecek bir şey yoktu; sorun tek bir yanlış adresti.
+
+**Dizine eklenmeyen 48 sayfanın dağılımı:**
+
+| Sebep | Adet | Yorum |
+|---|---|---|
+| Yönlendirmeli sayfa | 20 | Eski ve www'li adresler; beklenen |
+| Tarandı, dizine eklenmemiş | 16 | Asıl iş burada — otorite ve iç bağlantı |
+| `noindex` etiketi | 6 | Bilerek hariç (`/giris`, `/calma-listeleri` vb.) |
+| Kopya, canonical seçilmemiş | 4 | İncelenmeli |
+| Yönlendirme hatası | 1 | Doğrulaması başarılı, kapandı |
+| Bulunamadı (404) | 1 | Doğrulaması başarılı, kapandı |
+
+**Sırada:** Site haritası okunduktan sonra (birkaç gün) dizine eklenen sayfa
+sayısı yeniden ölçülmeli. Eski www'li site haritası kaydı hâlâ listede duruyor;
+zararsız ama istenirse kaldırılabilir.
