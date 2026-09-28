@@ -291,3 +291,45 @@ Kesim kontrol listesine eklenmeli.
 - `.github/workflows/ci.yml` — **eski ve ölü**. Tetikleyicisi `main` dalı, o dal yok;
   ayrıca silinmiş Firebase'e ve `firestore.rules`'a dayanan işler içeriyor.
   Hiç çalışmıyor. Ayrı bir iş olarak elden geçirilmeli.
+
+
+---
+
+## Payload altyapısı (2026-09-28)
+
+Coolify projesi `Akorpro` / ortam `production`. Panel: `xyz.coronstudio.com`.
+
+| Kaynak | Tür | Not |
+|---|---|---|
+| `akorpro-web` | Uygulama (Git + Nixpacks) | Eski Directus yığınını serviyor, `akorpro.com` |
+| `directus-with-postgresql-...` | Servis | Directus + kendi Postgres'i. **Dokunulmadı.** |
+| `akorpro-payload-db` | Veritabanı | Postgres 17 Alpine, db adı `akorpro`. Payload için **ayrı**. |
+| `akorpro-payload` | Uygulama (Docker Image) | `ghcr.io/srv1818/akorpro:staging`, port 3000 |
+
+**Neden ayrı bir uygulama kaynağı:** Coolify'da Git tabanlı bir uygulamanın
+derleme yöntemi Docker Image'a çevrilemiyor (seçenekler yalnız Railpack,
+Nixpacks, Static, Dockerfile, Compose). Hazır imaj çekmek ayrı bir
+"Docker Image" kaynağı gerektiriyor. Bunun yan faydası: `akorpro.com`
+Directus'la ayakta kalırken Payload kendi test adresinde doğrulanabiliyor.
+
+Test adresi (DNS gerektirmez): `http://e3exzpdrcamjrqghikjfgmy2.158.220.96.32.sslip.io`
+
+### Bilinen iki konu
+
+**1. Coolify'ın eylem düğmeleri otomasyona yanıt vermiyor.**
+Veritabanı `Start` ve uygulama `Deploy` düğmeleri tıklanınca hiçbir şey olmuyor.
+Sebep incelendi: düğme `$wire.dispatch('startEvent')` çağırıyor ama bu olayı
+dinleyen bir Livewire bileşeni sayfada yok. Form kaydetme işlemleri (ad,
+ortam değişkeni) sorunsuz çalışıyor. Coolify 4.3.23. Elle tıklayınca çalışıyor.
+
+**2. GHCR paketi herkese açık.**
+GitHub Actions imajı `ghcr.io/srv1818/akorpro` olarak yayımladı ve paket
+**Public** oluştu. Faydası: Coolify kimlik bilgisi olmadan çekebiliyor.
+Bedeli: derlenmiş uygulama herkese açık olarak çekilebilir. Özel yapılırsa
+Coolify'a `read:packages` yetkili bir GitHub token'ı eklemek gerekir.
+
+### Build
+
+GitHub Actions → GHCR. İlk build 9 dk 16 sn sürdü (Payload admin paneli
+derlemeyi ağırlaştırıyor). Repo değişkeni: `NEXT_PUBLIC_SITE_URL`.
+Workflow yalnız `feature/payload-migration` dalını dinliyor.
