@@ -167,3 +167,20 @@ Yani teknik tarafta düzeltilecek bir şey yoktu; sorun tek bir yanlış adresti
 **Sırada:** Site haritası okunduktan sonra (birkaç gün) dizine eklenen sayfa
 sayısı yeniden ölçülmeli. Eski www'li site haritası kaydı hâlâ listede duruyor;
 zararsız ama istenirse kaldırılabilir.
+
+### 2026-09-28 — düzeltmenin ilk ölçümü
+
+| | 24 Eylül | 28 Eylül |
+|---|---|---|
+| Site haritasından keşfedilen sayfa | 34 | **181** |
+| Son okuma | 8 Nisan | **27 Eylül** |
+| Dizine eklenen | 33 | 33 |
+| Dizine eklenmeyen | 48 | 48 |
+
+Keşif 34'ten 181'e çıktı; düzeltme işe yaradı. Dizine ekleme sayısı henüz
+değişmedi ve bu beklenen: site haritası 27 Eylül'de okundu, ayrıca GSC'nin
+dizin raporu bir-iki hafta gecikmeli çalışıyor (grafik hâlâ 15 Eylül'de bitiyor).
+
+**Yeniden ölçüm:** ~10 Ekim. O tarihte de artmadıysa sorun keşif değil,
+içerik ve otoritedir; o zaman "Tarandı, dizine eklenmemiş" grubundaki 16 sayfa
+tek tek incelenmeli.
