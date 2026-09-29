@@ -191,3 +191,55 @@ https://akorpro.com/payload-api/users/oauth/callback
 
 Yeni client açmaya gerek yok. Sonra `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 ve `NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=1` tanımlanır.
+
+---
+
+## 2026-09-29 — Kesim yapıldı: akorpro.com artık Payload'da
+
+`akorpro.com` Directus yığınından Payload'a taşındı. Ölçülen sonuç:
+
+| Kontrol | Sonuç |
+|---|---|
+| `/`, `/gamlar`, `/gitar-akorlari`, `/akor-kutuphanesi` | 200 |
+| `/admin` (Payload paneli) | 200, "ilk kullanıcıyı oluştur" ekranı |
+| `/giris` | Parola alanı var, yani Payload |
+| `www.akorpro.com` | 200 — eskiden 503'tü, açık madde kapandı |
+| Migration | `20260923_141041_initial` 761 ms'de uygulandı |
+| `/payload-api/users/me` | 200 |
+
+`robots.txt` hâlâ `Disallow: /` — staging koruması bilinçli, `.com.tr` ile
+yinelenen içerik olmasın diye.
+
+**Veritabanı boş.** Payload taze bir Postgres'e bağlandı; içerik girişi sıfırdan.
+
+### Kesim nasıl yapıldı
+
+Alan adı `akorpro-web`'den kaldırılıp `akorpro-payload`'a eklendi. Coolify
+`www` kaydını da kendiliğinden ekledi. Eski uygulama silinmedi, geri dönüş
+yolu olarak alan adsız bırakıldı.
+
+### Google girişi
+
+OAuth istemcisi (`akorpro-payload`, eski adıyla `akorpro-directus`) tek bir
+yönlendirme adresi tutuyor: `https://akorpro.com/payload-api/users/oauth/callback`.
+Directus'unki bilerek kaldırıldı — Directus paneline Google ile giriş artık
+çalışmıyor, kullanıcı kararı.
+
+`GOOGLE_CLIENT_ID` ve `GOOGLE_CLIENT_SECRET` Coolify'da tanımlı.
+Düğmenin görünmesi derleme zamanına bağlı olduğu için repo değişkeni
+`NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=1` eklendi ve imaj yeniden derleniyor.
+
+### Öğrenilen: NEXT_PUBLIC_* değişkenleri çalışma zamanında da gerekli
+
+İlk deploy `[env] Eksik: NEXT_PUBLIC_SITE_URL` ile açılmadı. Sebep:
+`lib/security/validate-env.ts` değişkenleri **dinamik anahtarla**
+(`process.env[key]`) okuyor, bu yüzden Next derleme sırasında gömemiyor.
+Yani `NEXT_PUBLIC_*` değişkenleri hem build arg olarak hem de konteyner
+ortamında bulunmalı.
+
+### Öğrenilen: VPS'e doğrudan erişim kapalı
+
+`158.220.96.32` üzerinde 80 ve 443 dışarıdan yanıt vermiyor; trafik yalnız
+Cloudflare üzerinden geçiyor. Bu yüzden Coolify'ın ürettiği `sslip.io` test
+adresi hiçbir zaman çalışmadı. İleride bir şeyi kesim öncesi test etmek
+gerekirse Cloudflare'de proxy'li bir alt alan adı açmak gerekiyor.
