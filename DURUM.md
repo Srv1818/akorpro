@@ -502,3 +502,29 @@ ile idempotent yapıldı.
 `editor_picks` ve `song_views` oluştu, `discover_*` tabloları gitti,
 hiçbir tabloda `popularity` sütunu kalmadı, `copyright_source` varsayılanı
 veritabanına işlendi, `/admin` 200.
+
+## İçerik girişi notları
+
+Panelde içerik girerken işe yarayan, tahmin edilmesi zor birkaç kural.
+
+**Akor gövdesinde bölüm ayırıcı çizgi.** İki boş satır (Enter'a üç kez basmış
+gibi) alt alta gelirse ince bir ayırıcı çizgi çizilir. Tek boş satır yalnız
+boşluk bırakır. `[Chorus]`, `[Verse]` gibi başlıkların önüne iki boş satır
+koymak okunurluğu belirgin artırıyor.
+
+**Gam kimliği boş bırakılabilir**, çoğu zaman bırakılmalı. Boşsa ton modundan
+otomatik seçilir: majör → `maj-ionian`, doğal minör → `nm-aeolian`,
+harmonik → `hm-harmonic`, melodik → `mm-melodic`. Yalnız şarkı Dorian,
+Miksolidyen gibi özel bir mod üzerineyse elle girilir. Geçerli kimlikler
+`data/gamlar-scale-catalog.ts` içinde; geçersiz değer yok sayılıp otomatiğe
+dönülür. (Açık iş: bu alan açılır listeye çevrilebilir, 25 kimlik ezberlemek
+mantıklı değil.)
+
+**Telif kaynağı** otomatik doluyor, dokunmaya gerek yok.
+
+**Popülerlik puanı yok.** Sıralama tıklamadan hesaplanıyor.
+
+**Katkı bölümü (Contributions, Contributor Profiles, Song Contributors)**
+şu an kullanılmıyor, üçü de boş. Dışarıdan şarkı gönderimi açılmadı; katkı
+sayfası yalnız yöneticiye açık. İleride topluluk katkısı istenirse altyapı
+hazır. Karar ertelendi (2026-09-29).
