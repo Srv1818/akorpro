@@ -15,7 +15,6 @@ import {
   getSongBySlugs,
   getSongBySlugsUncached,
   getSongsByArtist,
-  getAllApprovedSongs,
   getFilteredSongs,
 } from "@/lib/firestore/songs";
 import { chordPath } from "@/lib/paths";
@@ -26,25 +25,28 @@ import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
 import { firstParam } from "@/lib/search-params";
 import type { SongSummary } from "@/lib/types/content";
 
-/** ISR: 1 hour (see lib/cache/tags.ts TTL.SONG_DETAIL) */
-export const revalidate = 3600;
-export const dynamicParams = true;
+/**
+ * Bu sayfa BİLEREK dinamik.
+ *
+ * `searchParams` okunuyor (`returnTo`, `transpose`). Next bir sayfayı ISR ile
+ * üretmeye çalışırken `searchParams`'a erişilirse `DYNAMIC_SERVER_USAGE`
+ * fırlatıyor ve sayfa 500 dönüyor.
+ *
+ * Eskiden sorun çıkmıyordu çünkü build veritabanına erişebiliyordu:
+ * `generateStaticParams` gerçek yolları döndürüyor, sayfalar derleme anında
+ * üretiliyordu. Build GitHub Actions'a taşınınca veritabanı erişimi kalmadı,
+ * liste boş döndü ve her istek ISR yolundan geçmeye başladı — orada patlıyordu.
+ * (2026-09-29; sanatçı sayfası `searchParams` okumadığı için etkilenmedi.)
+ *
+ * Önbellek kaybolmuyor: okuma katmanı `unstable_cache` ile 1 saat tutuyor
+ * (lib/cache/tags.ts TTL.SONG_DETAIL).
+ */
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ sanatciSlug: string; sarkiSlug: string }>;
   searchParams: Promise<{ returnTo?: string | string[]; transpose?: string | string[] }>;
 };
-
-export async function generateStaticParams() {
-  try {
-    const songs = await getAllApprovedSongs();
-    return songs.map((s) => ({ sanatciSlug: s.artistSlug, sarkiSlug: s.slug }));
-  } catch {
-    // CI/build environments may not provide Firestore admin credentials.
-    // Returning an empty set keeps build green; ISR still serves pages at runtime.
-    return [];
-  }
-}
 
 function keyModeLabel(mode: string | undefined, originalKey: string): string {
   if (!mode) return originalKey.trim().toLowerCase().endsWith("m") ? "Doğal Minör" : "Majör";

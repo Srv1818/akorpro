@@ -284,3 +284,37 @@ korumasız kalmaz, Bearer token zorunlu olmaya devam eder. O zaman workflow'daki
 **Bilinçli kabul edilen risk:** build yeşil olup deploy unutulabilir, kod ile
 yayındaki sürüm sessizce ayrışır. Bu yüzden workflow her çalıştırmada özet
 sayfasına "İmaj hazır, Coolify'dan Deploy'a bas" satırı yazıyor.
+
+### 2026-09-29 — Şarkı sayfası 500 veriyordu (düzeltildi)
+
+**Belirti.** `/akor/<sanatci>/<sarki>` her istekte 500. Olmayan bir şarkı bile
+404 yerine 500 dönüyordu. Loglarda `DYNAMIC_SERVER_USAGE`.
+
+**Sebep kodda değil, build ortamındaydı.** Sayfa hem `searchParams` okuyor
+(`returnTo`, `transpose`) hem de `revalidate` + `generateStaticParams` ile ISR
+kullanıyordu. Next bir sayfayı ISR ile üretirken `searchParams`'a erişilirse
+bu hatayı fırlatıyor.
+
+Directus döneminde sorun çıkmamasının sebebi: build Coolify'da yapılıyordu ve
+`DIRECTUS_URL` + `DIRECTUS_TOKEN` mevcuttu, `generateStaticParams` gerçek
+yolları döndürüyor, sayfalar derleme anında üretiliyordu. Build GitHub
+Actions'a taşınınca veritabanı erişimi kalmadı, liste boş döndü ve her istek
+ISR yolundan geçmeye başladı.
+
+Karşılaştırma, sebebi tek başına gösteriyor:
+
+| Sayfa | searchParams | ISR | Sonuç |
+|---|---|---|---|
+| `/akor/[sanatci]/[sarki]` | var | var | **500** |
+| `/sanatci/[slug]` | yok | var | 200 |
+| `/gitar-akorlari` | var | yok | 200 |
+
+**Çözüm.** Şarkı sayfası `export const dynamic = "force-dynamic"` ile açıkça
+dinamik yapıldı; `revalidate` ve `generateStaticParams` kaldırıldı.
+Önbellek kaybolmadı: okuma katmanı `unstable_cache` ile 1 saat tutuyor.
+
+Doğrulama, üretim koşulu birebir taklit edilerek yapıldı — **veritabanısız
+derlenip veritabanıyla çalıştırıldı**: şarkı sayfası 200.
+
+**Açık kalan küçük madde:** olmayan şarkı 404 yerine 200 dönüyor (soft 404).
+Çökme değil, ama arama motoru açısından düzeltilmeli.
