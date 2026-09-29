@@ -351,3 +351,44 @@ Hangi yazma neyi tazeliyor:
 
 Slug veya sanatçı değişirse **eski** adresin etiketi de düşürülüyor; yoksa
 eski URL bayat içerikle ayakta kalırdı.
+
+### 2026-09-29 — SEO eklentisi kaldırıldı
+
+Panel "0/3 kontrol geçiyor" diye kırmızı uyarı gösteriyordu ama o alanları
+hiçbir sayfa okumuyordu. Sayfalar metadata'yı `generateMetadata` içinde
+veriden üretiyor ve ürettiği daha iyi:
+
+| | Değer |
+|---|---|
+| Eklentinin alanı | `Ömrüm \| AkorPro` |
+| Sayfanın verdiği | `Ömrüm Akor — Eypio \| AkorPro` |
+
+Açıklama da otomatik doluyor: ton, mod, solo gam, transpoze ve diyagram.
+Alan doldurulsaydı daha iyi olanı ezme riski vardı.
+
+`@payloadcms/plugin-seo` bağımlılıktan çıkarıldı. Şema değişikliği için
+`20260929_072717_drop_seo_meta` migration'ı üretildi (`songs` ve `artists`
+tablolarındaki `meta_title`, `meta_description`, `meta_image_id` sütunları).
+
+Doğrulama üretim koşuluyla: veritabanısız derlenip **taze** Postgres'e
+bağlandı, iki migration sırayla uygulandı, meta sütunu sayısı 0, sayfalar 200.
+
+### İki siteyi karşılaştıran SEO ölçümü (2026-09-29)
+
+`akorpro.com.tr` ile `akorpro.com` aynı şarkı sayfasında:
+
+| Sinyal | .com.tr | .com |
+|---|---|---|
+| Başlık | aynı | aynı |
+| Açıklama | aynı kalıp | aynı kalıp |
+| Yapısal veri | 8 tip | aynı 8 tip |
+| Kelime | 15.287 | 14.893 |
+| H2 | 7 | 0 |
+| İç bağlantı (`/akor/`) | 5 | 0 |
+
+Teknik SEO birebir aynı — zaten aynı kod. Son iki satırdaki fark içerik
+kaynaklı: tek şarkı olduğu için benzer şarkılar, önceki/sonraki ve aynı
+türden öneri bölümleri boş kalıyor. İkinci şarkıda dolmaya başlar.
+
+`.com.tr`'nin iyi sonuç almasının sebebi özel bir SEO çalışması değil,
+181 sayfalık içerik ve birikmiş otorite.

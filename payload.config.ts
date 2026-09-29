@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { importExportPlugin } from "@payloadcms/plugin-import-export";
 import { sentryPlugin } from "@payloadcms/plugin-sentry";
-import { seoPlugin } from "@payloadcms/plugin-seo";
 import { s3Storage } from "@payloadcms/storage-s3";
 import { OAuth2Plugin } from "payload-oauth2";
 import { buildConfig } from "payload";
@@ -186,17 +185,19 @@ export default buildConfig({
         ]
       : []),
 
-    // Şarkı ve sanatçı sayfalarında kod üretimi var; bu eklenti editöre
-    // kayıt başına override imkânı veriyor.
-    seoPlugin({
-      collections: ["songs", "artists"],
-      uploadsCollection: "media",
-      generateTitle: ({ doc }) => {
-        const d = doc as { title?: string; name?: string; artistName?: string };
-        if (d.title && d.artistName) return `${d.title} Akor — ${d.artistName} | AkorPro`;
-        return `${d.title ?? d.name ?? ""} | AkorPro`;
-      },
-    }),
+    /**
+     * SEO eklentisi BİLEREK kullanılmıyor (2026-09-29'da kaldırıldı).
+     *
+     * Sayfalar metadata'yı `generateMetadata` içinde veriden üretiyor ve
+     * ürettiği başlık eklentinin istediğinden daha iyi:
+     *   üretilen : "Ömrüm Akor — Eypio | AkorPro"
+     *   eklenti  : "Ömrüm | AkorPro"
+     * Açıklama da ton, gam ve transpoze bilgisiyle otomatik doluyor.
+     *
+     * Eklenti panelde "0/3 kontrol geçiyor" diye kırmızı uyarı gösteriyor ama
+     * o alanları hiçbir sayfa okumuyordu. Doldurulsaydı daha iyi olan
+     * otomatik başlığı ezme riski vardı.
+     */
 
     // İçerik girişi kalan asıl iş; toplu CSV alma/verme bunun için.
     importExportPlugin({
