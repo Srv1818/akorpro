@@ -78,6 +78,7 @@ export interface Config {
     'discover-items': DiscoverItem;
     playlists: Playlist;
     'playlist-items': PlaylistItem;
+    'song-views': SongView;
     'takedown-requests': TakedownRequest;
     media: Media;
     users: User;
@@ -102,6 +103,7 @@ export interface Config {
     'discover-items': DiscoverItemsSelect<false> | DiscoverItemsSelect<true>;
     playlists: PlaylistsSelect<false> | PlaylistsSelect<true>;
     'playlist-items': PlaylistItemsSelect<false> | PlaylistItemsSelect<true>;
+    'song-views': SongViewsSelect<false> | SongViewsSelect<true>;
     'takedown-requests': TakedownRequestsSelect<false> | TakedownRequestsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -198,7 +200,6 @@ export interface Song {
    */
   moderationStatus: 'draft' | 'pending' | 'approved' | 'rejected';
   copyrightSource?: string | null;
-  popularity?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -403,6 +404,23 @@ export interface PlaylistItem {
   song: number | Song;
   position: number;
   transposeSemitones?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Otomatik doldurulur; elle düzenlenmesi gerekmez.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "song-views".
+ */
+export interface SongView {
+  id: number;
+  song: number | Song;
+  /**
+   * YYYY-MM-DD (UTC)
+   */
+  day: string;
+  count: number;
   updatedAt: string;
   createdAt: string;
 }
@@ -678,6 +696,10 @@ export interface PayloadLockedDocument {
         value: number | PlaylistItem;
       } | null)
     | ({
+        relationTo: 'song-views';
+        value: number | SongView;
+      } | null)
+    | ({
         relationTo: 'takedown-requests';
         value: number | TakedownRequest;
       } | null)
@@ -756,7 +778,6 @@ export interface SongsSelect<T extends boolean = true> {
   harmonyDetailsNotes?: T;
   moderationStatus?: T;
   copyrightSource?: T;
-  popularity?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -892,6 +913,17 @@ export interface PlaylistItemsSelect<T extends boolean = true> {
   song?: T;
   position?: T;
   transposeSemitones?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "song-views_select".
+ */
+export interface SongViewsSelect<T extends boolean = true> {
+  song?: T;
+  day?: T;
+  count?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1114,6 +1146,7 @@ export interface TaskCreateCollectionExport {
       | 'discover-items'
       | 'playlists'
       | 'playlist-items'
+      | 'song-views'
       | 'takedown-requests'
       | 'media'
       | 'users'

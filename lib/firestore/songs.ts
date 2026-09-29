@@ -55,7 +55,6 @@ export function mapSong(row: SongRow): Song {
     ...(row.copyrightSource
       ? { copyrightSource: sanitizePlainField(row.copyrightSource) }
       : {}),
-    ...(row.popularity != null ? { popularity: row.popularity } : {}),
     showHarmonyDetails: Boolean(row.showHarmonyDetails),
     ...(row.harmonyDetailsNotes
       ? { harmonyDetailsNotes: sanitizeTextContent(row.harmonyDetailsNotes) }

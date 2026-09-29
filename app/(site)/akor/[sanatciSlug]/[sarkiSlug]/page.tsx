@@ -9,6 +9,7 @@ import { SongCard } from "@/components/content/song-card";
 import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
 import { ClientErrorBoundary } from "@/components/common/client-error-boundary";
+import { ViewBeacon } from "@/components/analytics/view-beacon";
 import { JsonLd } from "@/components/seo/json-ld";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import {
@@ -146,7 +147,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
       const byGenre = await getFilteredSongs({ tur: song.genre });
       crossArtistSongs = byGenre
         .filter((s) => s.artistSlug !== sanatciSlug)
-        .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+        .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0) || a.slug.localeCompare(b.slug, "tr"))
         .slice(0, 4)
         .map((s) => ({
           id: s.id,
@@ -165,6 +166,8 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
 
   return (
     <>
+      {/* Görüntülenme sayacı: Popüler bloğu bunu kullanıyor. */}
+      <ViewBeacon songId={song.id} />
       <JsonLd data={songJsonLd(song, gamScaleName)} />
       <Breadcrumbs
         visuallyHidden

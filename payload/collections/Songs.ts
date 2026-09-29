@@ -200,7 +200,6 @@ export const Songs: CollectionConfig = {
               },
             },
             { name: "copyrightSource", type: "text", label: "Telif kaynağı" },
-            { name: "popularity", type: "number", defaultValue: 0, label: "Popülerlik" },
           ],
         },
       ],

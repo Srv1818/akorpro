@@ -420,3 +420,43 @@ arasında yarıçap farkı kalmıyor.
 `favicon.ico` elle kuruldu: `sharp` .ico yazamıyor, biçim de basit olduğu için
 PNG'ler ICO kapsayıcısına gömüldü. Doğrulama: 512 pikselde üst kenarda ilk
 opak piksel 172, `rx=240` için beklenen 181 (aradaki fark kenar yumuşatma).
+
+### 2026-09-29 — Keşfet blokları netleşti, elle puan kaldırıldı
+
+**Sorun.** Şarkı girerken verilen "Popülerlik" puanının neyi etkilediği belli
+değildi. Üç yere etki ediyordu: ana sayfadaki Popüler bloğu, şarkı
+sayfasındaki aynı türden öneriler, sanatçı sıralaması. Hiçbiri gerçek
+ilgiyle bağlantılı değildi.
+
+**Şimdi üç blok da net:**
+
+| Blok | Kaynak |
+|---|---|
+| Popüler | **Son 30 günün gerçek tıklaması**, otomatik |
+| Yeni eklenen | Eklenme tarihi, otomatik |
+| Editör seçimi | Panelden, `discover-items` ile sürükle-bırak sıralı |
+
+`songs.popularity` alanı kaldırıldı. Elle puan verilmiyor.
+
+**Nasıl sayılıyor.** `song_views` koleksiyonu: şarkı başına **günlük** bir
+satır. Her görüntülenme için ayrı satır tutulsaydı popüler bir şarkı günde
+binlerce satır üretirdi; günlük kova satır sayısını şarkı × gün ile sınırlıyor.
+
+Üç bilinçli karar:
+
+- **Tarayıcıdan sayılıyor**, sunucu render'ında değil. Sunucuda sayılsaydı
+  arama motoru botları popülerliği belirlerdi.
+- **Kayan 30 günlük pencere.** Toplam sayaç olsaydı ilk giren şarkılar
+  sonsuza kadar tepede kalırdı.
+- **Tek `INSERT ... ON CONFLICT DO UPDATE`.** Payload Local API'si atomik
+  artırma yapamıyor; oku-artır-yaz üç adımı eşzamanlı isteklerde sayım
+  kaybederdi.
+
+Aynı sekmede aynı şarkıya dönmek tekrar saymıyor (`sessionStorage`), yoksa
+ileri-geri gezinmek sayacı şişirirdi. Uçta dakikada 30 istek sınırı var.
+
+Henüz tıklanmamışsa liste boş kalmasın diye en yeni şarkılarla tamamlanıyor.
+
+**Uçtan uca doğrulandı** (taze Postgres, üretim imajı davranışı): üç migration
+uygulandı, iki şarkı girildi, birine 5 birine 1 tıklama gönderildi, sayaç
+tablosu 5 ve 1 gösterdi, ana sayfadaki Popüler bloğu çok tıklananı öne aldı.

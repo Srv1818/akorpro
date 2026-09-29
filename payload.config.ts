@@ -19,6 +19,7 @@ import { Media } from "./payload/collections/Media";
 import { PlaylistItems, Playlists } from "./payload/collections/Playlists";
 import { Scales } from "./payload/collections/Scales";
 import { SongContributors } from "./payload/collections/SongContributors";
+import { SongViews } from "./payload/collections/SongViews";
 import { Songs } from "./payload/collections/Songs";
 import { TakedownRequests } from "./payload/collections/TakedownRequests";
 import { Users } from "./payload/collections/Users";
@@ -67,6 +68,7 @@ export default buildConfig({
     DiscoverItems,
     Playlists,
     PlaylistItems,
+    SongViews,
     TakedownRequests,
     Media,
     Users,

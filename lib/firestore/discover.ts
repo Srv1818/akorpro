@@ -1,5 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { Where } from "payload";
+import { sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getPayloadClient } from "@/lib/payload/client";
 import { relId } from "@/lib/payload/serialize";
 import { sanitizePlainField } from "@/lib/security/sanitize";
@@ -69,18 +71,76 @@ function rowToSummary(r: SummaryRow): SongSummary {
   };
 }
 
-/** Popülerlik skoru yüksek onaylı şarkılar; eşitlikte yeni olan öne geçer. */
+/**
+ * Son 30 günde en çok görüntülenen onaylı şarkılar.
+ *
+ * Eskiden elle girilen `popularity` alanına göre sıralanıyordu; editörün
+ * verdiği not neyi etkiliyor belli olmadığı için kaldırıldı. Artık gerçek
+ * tıklama sayılıyor (`song_views`, günlük kova).
+ *
+ * Kayan 30 günlük pencere bilinçli: toplam sayaç kullanılsaydı ilk giren
+ * şarkılar sonsuza kadar tepede kalırdı.
+ *
+ * Ham SQL, çünkü Payload Local API'si gruplu toplama yapamıyor; şarkı başına
+ * ayrı sorgu N+1 olurdu.
+ *
+ * Henüz hiç görüntülenme yoksa liste boş kalmasın diye en yeni şarkılarla
+ * tamamlanıyor — sitenin ilk günlerinde ana sayfa boş görünmesin.
+ */
 async function popularSongs(): Promise<SongSummary[]> {
   const payload = await getPayloadClient();
+  const db = payload.db.drizzle as NodePgDatabase<Record<string, never>>;
+
+  const result = await db.execute(sql`
+    SELECT s.id
+      FROM songs s
+      JOIN song_views v ON v.song_id = s.id
+     WHERE s.moderation_status = 'approved'
+       AND v.day >= to_char(now() - interval '30 days', 'YYYY-MM-DD')
+     GROUP BY s.id
+     ORDER BY SUM(v.count) DESC, MAX(s.created_at) DESC
+     LIMIT ${DISCOVER_TARGET_COUNT}
+  `);
+
+  const rankedIds = ((result.rows ?? []) as { id: number | string }[]).map((r) => String(r.id));
+
+  const ranked = rankedIds.length > 0 ? await songSummariesByIds(rankedIds) : [];
+  if (ranked.length >= DISCOVER_TARGET_COUNT) return ranked;
+
+  // Görüntülenmesi olmayanlarla tamamla.
+  const seen = new Set(ranked.map((r) => r.id));
   const { docs } = await payload.find({
     collection: "songs",
     where: APPROVED,
-    sort: ["-popularity", "-createdAt"],
+    sort: "-createdAt",
     limit: DISCOVER_TARGET_COUNT,
     depth: 0,
     select: SUMMARY_SELECT,
   });
-  return (docs as SummaryRow[]).map(rowToSummary);
+
+  for (const row of docs as SummaryRow[]) {
+    if (ranked.length >= DISCOVER_TARGET_COUNT) break;
+    if (seen.has(String(row.id))) continue;
+    ranked.push(rowToSummary(row));
+  }
+  return ranked;
+}
+
+/** Verilen id sırasını koruyarak kart alanlarını getirir. */
+async function songSummariesByIds(ids: string[]): Promise<SongSummary[]> {
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "songs",
+    where: { and: [APPROVED, { id: { in: ids } }] },
+    limit: ids.length,
+    depth: 0,
+    select: SUMMARY_SELECT,
+  });
+  const byId = new Map((docs as SummaryRow[]).map((d) => [String(d.id), d]));
+  return ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [rowToSummary(row)] : [];
+  });
 }
 
 /** En yeni onaylı şarkılar. */
