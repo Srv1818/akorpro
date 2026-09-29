@@ -261,22 +261,26 @@ Repo değişkeni `NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=1` eklendi ve yeni imaj
 derlendi (2 dk 58 sn). Google düğmesinin giriş sayfasında görünmesi için
 Coolify'dan bir Deploy daha gerekiyor. Parola girişi şu an da çalışıyor.
 
-### Otomatik deploy kuruldu (2026-09-29)
+### Deploy elle yapılıyor — otomatik tetikleme neden olmadı
 
-`feature/payload-migration` dalına push → GitHub Actions imajı derler →
-GHCR'a yükler → Coolify webhook ile tetiklenir → yeni sürüm yayına girer.
-Coolify'da düğmeye basmak gerekmiyor.
+Akış: `feature/payload-migration` dalına push → GitHub Actions imajı derler →
+GHCR'a yükler. **Yayına alma Coolify'dan elle** (akorpro-payload → Actions → Deploy).
 
-| Tanım | Yer | Değer |
-|---|---|---|
-| `COOLIFY_WEBHOOK_URL` | Repo değişkeni | Coolify deploy webhook adresi |
-| `COOLIFY_TOKEN` | Repo sırrı | Coolify API token'ı |
+Otomatik tetikleme denendi ve çalışmadı. Coolify ayarlarında
+**Settings → Advanced → Allowed API IPs** listesi var ve yalnız iki sabit IP'yi
+kabul ediyor (`91.93.226.103`, `91.93.229.79`). GitHub Actions her çalıştırmada
+başka bir IP'den geldiği için webhook **403** dönüyor. GitHub'ın IP aralıkları
+binlerce CIDR ve sürekli değişiyor, o alana sığmaz.
 
-Token yetkileri: **Deploy + Read**. Önce yalnız Deploy verilmişti ve webhook
-**403** döndü; Coolify'ın deploy akışı okuma yetkisini de istiyor
-(bkz. coolify.io/docs/api-reference/authorization). Root ve Write verilmedi.
+Yol boyunca ikinci bir sorun daha çıktı ve düzeltildi: token'a yalnız `deploy`
+yetkisi verilmişti, Coolify'ın deploy akışı `read` yetkisini de istiyor
+(bkz. coolify.io/docs/api-reference/authorization). Ama asıl engel IP listesiydi.
 
-Süresi **1 yıl** (varsayılan 30 gündü — dolduğunda otomatik deploy sessizce
-durur, bu yüzden uzatıldı). Yenileme tarihi: 2027-09-29.
+**Otomatiğe dönmek istenirse:** IP listesini boşaltmak yeterli. API yine
+korumasız kalmaz, Bearer token zorunlu olmaya devam eder. O zaman workflow'daki
+"Deploy talimatı" adımının yerine Coolify deploy webhook'u çağrılır:
+`https://xyz.coronstudio.com/api/v1/deploy?uuid=e3exzpdrcamjrqghikjfgmy2&force=false`
 
-Adres gizli değil, o yüzden sır değil değişken; token olmadan işe yaramıyor.
+**Bilinçli kabul edilen risk:** build yeşil olup deploy unutulabilir, kod ile
+yayındaki sürüm sessizce ayrışır. Bu yüzden workflow her çalıştırmada özet
+sayfasına "İmaj hazır, Coolify'dan Deploy'a bas" satırı yazıyor.

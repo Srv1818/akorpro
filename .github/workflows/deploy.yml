@@ -68,23 +68,17 @@ jobs:
             database_uri=${{ secrets.DATABASE_URI }}
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
 
-  deploy:
-    name: Trigger Coolify
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      # Webhook adresi değişken, token sır: adres tek başına işe yaramıyor.
-      - name: Call Coolify deploy webhook
-        env:
-          WEBHOOK: ${{ vars.COOLIFY_WEBHOOK_URL }}
-          TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      # Deploy bilerek elle yapılıyor. Otomatik tetikleme denendi ve Coolify
+      # 403 döndü: ayarlarda "Allowed API IPs" listesi var ve yalnız sabit iki
+      # IP'yi kabul ediyor; GitHub Actions her çalıştırmada başka bir IP'den
+      # geliyor. Liste kaldırılırsa otomatiğe dönülebilir — o zaman bu adımın
+      # yerine Coolify deploy webhook'u çağrılır.
+      - name: Deploy talimatı
         run: |
-          if [ -z "$WEBHOOK" ] || [ -z "$TOKEN" ]; then
-            echo "COOLIFY_WEBHOOK_URL veya COOLIFY_TOKEN tanımlı değil."
-            echo "İmaj GHCR'a yüklendi; Coolify'dan elle Deploy edin."
-            exit 0
-          fi
-          # --fail: Coolify reddederse iş kırmızı olsun, sessizce geçmesin.
-          curl --fail --silent --show-error \
-            --request GET "$WEBHOOK" \
-            --header "Authorization: Bearer $TOKEN"
+          {
+            echo "### İmaj hazır"
+            echo ""
+            echo '`${{ steps.meta.outputs.tags }}`'
+            echo ""
+            echo "Yayına almak için Coolify'da **akorpro-payload** → Actions → Deploy."
+          } >> "$GITHUB_STEP_SUMMARY"
