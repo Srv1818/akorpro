@@ -260,3 +260,20 @@ içerik girişi zaten sıfırdan planlanıyordu ve Payload'ın veritabanı da bo
 Repo değişkeni `NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=1` eklendi ve yeni imaj
 derlendi (2 dk 58 sn). Google düğmesinin giriş sayfasında görünmesi için
 Coolify'dan bir Deploy daha gerekiyor. Parola girişi şu an da çalışıyor.
+
+### Otomatik deploy kuruldu (2026-09-29)
+
+`feature/payload-migration` dalına push → GitHub Actions imajı derler →
+GHCR'a yükler → Coolify webhook ile tetiklenir → yeni sürüm yayına girer.
+Coolify'da düğmeye basmak gerekmiyor.
+
+| Tanım | Yer | Değer |
+|---|---|---|
+| `COOLIFY_WEBHOOK_URL` | Repo değişkeni | Coolify deploy webhook adresi |
+| `COOLIFY_TOKEN` | Repo sırrı | Coolify API token'ı |
+
+Token bilerek dar tutuldu: yalnız **Deploy** yetkisi, okuma bile yok.
+Süresi **1 yıl** (varsayılan 30 gündü — dolduğunda otomatik deploy sessizce
+durur, bu yüzden uzatıldı). Yenileme tarihi: 2027-09-29.
+
+Adres gizli değil, o yüzden sır değil değişken; token olmadan işe yaramıyor.

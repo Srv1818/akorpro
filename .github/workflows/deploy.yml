@@ -73,9 +73,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      # Webhook adresi değişken, token sır: adres tek başına işe yaramıyor.
       - name: Call Coolify deploy webhook
         env:
-          WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          WEBHOOK: ${{ vars.COOLIFY_WEBHOOK_URL }}
           TOKEN: ${{ secrets.COOLIFY_TOKEN }}
         run: |
           if [ -z "$WEBHOOK" ] || [ -z "$TOKEN" ]; then
@@ -83,6 +84,7 @@ jobs:
             echo "İmaj GHCR'a yüklendi; Coolify'dan elle Deploy edin."
             exit 0
           fi
+          # --fail: Coolify reddederse iş kırmızı olsun, sessizce geçmesin.
           curl --fail --silent --show-error \
             --request GET "$WEBHOOK" \
             --header "Authorization: Bearer $TOKEN"
