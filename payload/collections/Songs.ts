@@ -1,4 +1,10 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from "payload";
+import type { KeyMode } from "../../lib/types/content";
+import {
+  gamlarScaleOptionsForKeyMode,
+  normalizeGamlarScaleIdForKeyMode,
+  realignGamlarScaleIdToKeyMode,
+} from "../../lib/music/key-mode-gamlar";
 import { isModerator, isPublisher, publisherOnlyField, readApprovedOrStaff } from "../access";
 import { slugify, trInitial } from "../slugify";
 import { revalidateSong, revalidateSongAfterDelete } from "../revalidate";
@@ -39,6 +45,19 @@ const setSlugAndDenormalized: CollectionBeforeValidateHook = async ({
   // Harf filtresi için: Payload'da "ile başlar" operatörü yok. Yazma anında
   // hesaplanıp indeksleniyor ki filtreleme bellekte değil veritabanında kalsın.
   data.titleInitial = trInitial(data.title);
+
+  /**
+   * Gam kimliği yazma anında onarılıyor. İki eski durum var:
+   * - kısayol yazımı ("phrygian") → kanonik kimlik ("maj-phrygian")
+   * - ton moduyla uyumsuz aile ("maj-phrygian" + doğal minör) → "nm-phrygian"
+   *
+   * Onarılamayan değer olduğu gibi bırakılıyor; alanın `validate`'i onu
+   * anlaşılır bir mesajla reddediyor. Sessizce varsayılana düşmüyor.
+   */
+  if (typeof data.gamlarScaleId === "string") {
+    const raw = data.gamlarScaleId.trim();
+    data.gamlarScaleId = raw ? (realignGamlarScaleIdToKeyMode(raw, data.keyMode) ?? raw) : "";
+  }
 
   if (data.artist) {
     const artistId = typeof data.artist === "object" ? data.artist.id : data.artist;
@@ -146,7 +165,34 @@ export const Songs: CollectionConfig = {
               options: KEY_MODE_OPTIONS,
               label: "Ton modu",
             },
-            { name: "gamlarScaleId", type: "text", label: "Gam kimliği" },
+            {
+              name: "gamlarScaleId",
+              type: "text",
+              label: "Gam kimliği",
+              /**
+               * Sunucu tarafı doğrulama. Panel açılır liste sunuyor ama API ve
+               * içe aktarma aynı alana serbest metin yazabiliyor; geçersiz bir
+               * değer eskiden sessizce varsayılana düşüyor ve "Phrygian yazdım"
+               * sanılıyordu. Artık kayıt reddediliyor.
+               */
+              validate: (value: unknown, { siblingData }: { siblingData: unknown }) => {
+                const raw = typeof value === "string" ? value.trim() : "";
+                if (!raw) return true;
+                const mode = (siblingData as { keyMode?: KeyMode } | undefined)?.keyMode;
+                if (normalizeGamlarScaleIdForKeyMode(raw, mode ?? "major")) return true;
+                const izinli = gamlarScaleOptionsForKeyMode(mode)
+                  .map((o) => `${o.label} (${o.value})`)
+                  .join(", ");
+                return `"${raw}" seçili ton moduna uymuyor. Geçerli modlar: ${izinli}`;
+              },
+              admin: {
+                description:
+                  "Şarkı sayfasında ✦ ile gösterilen mod. Boş bırakılırsa ton modunun varsayılanı kullanılır.",
+                components: {
+                  Field: "@/payload/components/GamlarScaleIdField#GamlarScaleIdField",
+                },
+              },
+            },
             {
               name: "difficulty",
               type: "select",

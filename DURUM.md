@@ -512,13 +512,28 @@ gibi) alt alta gelirse ince bir ayırıcı çizgi çizilir. Tek boş satır yaln
 boşluk bırakır. `[Chorus]`, `[Verse]` gibi başlıkların önüne iki boş satır
 koymak okunurluğu belirgin artırıyor.
 
-**Gam kimliği boş bırakılabilir**, çoğu zaman bırakılmalı. Boşsa ton modundan
-otomatik seçilir: majör → `maj-ionian`, doğal minör → `nm-aeolian`,
-harmonik → `hm-harmonic`, melodik → `mm-melodic`. Yalnız şarkı Dorian,
-Miksolidyen gibi özel bir mod üzerineyse elle girilir. Geçerli kimlikler
-`data/gamlar-scale-catalog.ts` içinde; geçersiz değer yok sayılıp otomatiğe
-dönülür. (Açık iş: bu alan açılır listeye çevrilebilir, 25 kimlik ezberlemek
-mantıklı değil.)
+**Gam kimliği artık açılır liste** (2026-09-29). Şarkı sayfasında başlığın
+altında ✦ ile görünen mod adı bu alandan geliyor, "Ton modu"ndan değil.
+İkisi farklı seviyeler: ton modu aileyi seçer (dört seçenek), gam kimliği o
+ailenin içindeki modu seçer (aile başına yedi mod).
+
+Boş bırakılabilir, çoğu zaman bırakılmalı; boşsa ton modunun varsayılanı
+kullanılır: majör → `maj-ionian`, doğal minör → `nm-aeolian`, harmonik →
+`hm-harmonic`, melodik → `mm-melodic`. Yalnız şarkı Dorian, Phrygian gibi özel
+bir mod üzerineyse seçilir.
+
+Alan veritabanında `text` kaldı. `select` alan tipine **bilerek** çevrilmedi:
+`select` Postgres'te enum sütunu açar, kataloğa eklenen her mod migration
+gerektirir ve asıl istenen "ton moduna göre daralan liste" enum ile zaten
+yapılamaz. Panel girişi `payload/components/GamlarScaleIdField.tsx` özel
+bileşeni; seçenekler `gamlarScaleOptionsForKeyMode` ile seçili aileden geliyor.
+
+**Eskiden sessiz başarısızlık vardı:** serbest metne yanlış bir kimlik
+yazıldığında uyarı çıkmıyor, sayfa varsayılana düşüyor ve "Phrygian yazdım"
+sanılıyordu. Artık iki katman var. Yazma anında `realignGamlarScaleIdToKeyMode`
+kısayolu (`phrygian` → `maj-phrygian`) ve aile uyumsuzluğunu (`maj-phrygian` +
+doğal minör → `nm-phrygian`, aynı gamın öbür perspektifi) onarıyor. Onarılamayan
+değeri alanın `validate`'i geçerli modları sayarak reddediyor.
 
 **Telif kaynağı** otomatik doluyor, dokunmaya gerek yok.
 

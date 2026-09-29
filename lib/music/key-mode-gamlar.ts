@@ -1,6 +1,10 @@
-import type { GamlarFamilyId } from "@/data/gamlar-scale-catalog";
-import { gamlarScaleById, normalizeGamlarScaleId } from "@/data/gamlar-scale-catalog";
-import type { KeyMode } from "@/lib/types/content";
+import type { GamlarFamilyId } from "../../data/gamlar-scale-catalog";
+import {
+  gamlarModesForFamily,
+  gamlarScaleById,
+  normalizeGamlarScaleId,
+} from "../../data/gamlar-scale-catalog";
+import type { KeyMode } from "../types/content";
 
 /** Orijinal ton metninden (ör. Am, Em) ton modu tahmini — API ve geriye dönük uyumluluk. */
 export function inferKeyModeFromOriginalKey(originalKey: string): KeyMode {
@@ -53,4 +57,47 @@ export function normalizeGamlarScaleIdForKeyMode(
   const entry = gamlarScaleById(normalized);
   if (!entry || entry.category !== keyModeToGamlarFamily(keyMode)) return undefined;
   return normalized;
+}
+
+/**
+ * Panelde "Gam kimliği" açılır listesini dolduran seçenekler.
+ *
+ * Yalnız seçili ton modunun ailesindeki modlar dönüyor: liste kısalıyor ve
+ * `normalizeGamlarScaleIdForKeyMode` ile aynı kuralı paylaştığı için panelden
+ * aile uyumsuz bir değer seçmek mümkün olmuyor.
+ */
+export function gamlarScaleOptionsForKeyMode(
+  mode: KeyMode | undefined,
+): { label: string; value: string }[] {
+  return gamlarModesForFamily(keyModeToGamlarFamily(mode)).map((e) => ({
+    label: e.name,
+    value: e.id,
+  }));
+}
+
+/** Ton modu boş bırakıldığında panelde gösterilecek varsayılan modun adı. */
+export function defaultGamlarScaleLabelForKeyMode(mode: KeyMode | undefined): string {
+  const id = keyModeToGamlarCatalogScaleId(mode);
+  return gamlarScaleById(id)?.name ?? id;
+}
+
+/**
+ * Yazma anında aile uyumunu onarır.
+ *
+ * `tonalType` aileler arasında ortak: `maj-phrygian` ile `nm-phrygian` aynı
+ * gamın iki perspektifi. Ton modu değişince kaydı reddetmek yerine karşılığına
+ * çeviriyoruz. Harmonik/melodik ailelerde karşılık yoksa `undefined` döner ve
+ * çağıran taraf varsayılana düşer.
+ */
+export function realignGamlarScaleIdToKeyMode(
+  raw: string | undefined,
+  keyMode: KeyMode | undefined,
+): string | undefined {
+  const normalized = normalizeGamlarScaleId(typeof raw === "string" ? raw.trim() : "");
+  if (!normalized) return undefined;
+  const entry = gamlarScaleById(normalized);
+  if (!entry) return undefined;
+  const family = keyModeToGamlarFamily(keyMode);
+  if (entry.category === family) return normalized;
+  return gamlarModesForFamily(family).find((e) => e.tonalType === entry.tonalType)?.id;
 }

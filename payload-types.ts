@@ -184,6 +184,9 @@ export interface Song {
   chordBody: string;
   originalKey: string;
   keyMode?: ('major' | 'natural' | 'harmonic' | 'melodic') | null;
+  /**
+   * Şarkı sayfasında ✦ ile gösterilen mod. Boş bırakılırsa ton modunun varsayılanı kullanılır.
+   */
   gamlarScaleId?: string | null;
   difficulty: 'kolay' | 'orta' | 'zor';
   genre: string;
