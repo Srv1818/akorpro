@@ -45,7 +45,6 @@ export interface SongDoc {
 
   /* Keşfet sıralama --------------------------------------------------- */
   /** Popülerlik skoru (sayısal — indeks için) */
-  popularity?: number;
 
   /** Önizlemede "Meraklısına daha fazla detay" (armoni özeti) gösterilsin mi. Yoksa veya true ise gösterilir. */
   showHarmonyDetails?: boolean;
@@ -73,7 +72,6 @@ export interface ArtistDoc {
   /** Toplam şarkı sayısı (denormalize — seed/admin günceller) */
   songCount: number;
   /** Popülerlik skoru (indeks için) */
-  popularity?: number;
 
   /** @deprecated Firestore kalıntısı — Directus şemasında yok, yeni kayıtlarda yazılmaz. */
   schemaVersion?: number;

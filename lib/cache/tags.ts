@@ -61,7 +61,7 @@ export const TTL = {
   /** Discover sections — stale after 5 minutes */
   DISCOVER: 300,
 
-  /** Popüler keşfet — `popularity` sıralı liste; yaklaşık 23 saatte bir yeniden hesaplanır */
+  /** Popüler keşfet — son 30 günün görüntülenmesinden; yaklaşık 23 saatte bir yeniden hesaplanır */
   DISCOVER_POPULAR: 23 * 3600,
 
   /** All-songs list & facets — stale after 10 minutes */

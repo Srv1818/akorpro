@@ -460,3 +460,45 @@ Henüz tıklanmamışsa liste boş kalmasın diye en yeni şarkılarla tamamlan�
 **Uçtan uca doğrulandı** (taze Postgres, üretim imajı davranışı): üç migration
 uygulandı, iki şarkı girildi, birine 5 birine 1 tıklama gönderildi, sayaç
 tablosu 5 ve 1 gösterdi, ana sayfadaki Popüler bloğu çok tıklananı öne aldı.
+
+### 2026-09-29 — Editör seçimi tek listeye indi, elle puan tamamen kalktı
+
+**Discover Sections + Discover Items kaldırıldı**, yerine tek koleksiyon:
+`editor-picks` (Editör Seçimi). Şarkı seç, sıra ver, bitti.
+
+Eski yapının asıl sorunu kullanılamaz olmasıydı: kod yalnızca `key` alanı tam
+olarak `featured` olan bölümü okuyordu ve bu kelime panelde hiçbir yerde
+yazmıyordu. Üretimde iki tablo da boştu; blok hiç çalışmamıştı.
+
+**`popularity` alanı hem şarkıdan hem sanatçıdan kalktı.** Artık elle puan
+verilmiyor:
+
+| Yer | Eski | Yeni |
+|---|---|---|
+| Ana sayfa Popüler | elle puan | son 30 günün tıklaması |
+| Arama sayfası popüler sanatçılar | elle puan | sanatçının şarkılarının tıklaması |
+| Şarkı sayfası benzer öneriler | elle puan | en yeni önce |
+
+Görüntülenmesi olmayan durumda listeler boş kalmıyor: Popüler en yeni
+şarkılarla, popüler sanatçılar en çok şarkısı olanlarla tamamlanıyor.
+
+**Telif kaynağı** alanına varsayılan değer verildi:
+`Topluluk Katkısı/Eğitim amaçlı`. Her şarkıda elle yazmaya gerek yok.
+
+### Migration üretiminde iki tuzak
+
+**1. İnteraktif soru.** `payload migrate:create`, aynı anda hem tablo silinip
+hem tablo eklendiğinde "bu yeni mi yoksa yeniden adlandırma mı" diye soruyor
+ve otomasyondan cevaplanamıyor. Çözüm: değişikliği **iki adımda** üretmek —
+önce yalnız silmeler, sonra yalnız eklemeler. O zaman soru hiç çıkmıyor.
+
+**2. Üretilen SQL kendi kendini kırıyordu.** `DROP TABLE ... CASCADE`
+kısıtlamayı da götürüyor, ardından gelen `DROP CONSTRAINT` "does not exist"
+ile patlıyordu. Taze veritabanı testinde yakalandı; üretimde de patlardı.
+Bütün migration'larda `DROP CONSTRAINT/INDEX/COLUMN` ifadeleri `IF EXISTS`
+ile idempotent yapıldı.
+
+**Doğrulama (taze Postgres):** beş migration sıfır hatayla uygulandı,
+`editor_picks` ve `song_views` oluştu, `discover_*` tabloları gitti,
+hiçbir tabloda `popularity` sütunu kalmadı, `copyright_source` varsayılanı
+veritabanına işlendi, `/admin` 200.

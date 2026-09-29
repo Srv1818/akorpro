@@ -2,18 +2,18 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
 
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
-   ALTER TABLE "songs" DROP CONSTRAINT "songs_meta_image_id_media_id_fk";
+   ALTER TABLE "songs" DROP CONSTRAINT IF EXISTS "songs_meta_image_id_media_id_fk";
   
-  ALTER TABLE "artists" DROP CONSTRAINT "artists_meta_image_id_media_id_fk";
+  ALTER TABLE "artists" DROP CONSTRAINT IF EXISTS "artists_meta_image_id_media_id_fk";
   
-  DROP INDEX "songs_meta_meta_image_idx";
-  DROP INDEX "artists_meta_meta_image_idx";
-  ALTER TABLE "songs" DROP COLUMN "meta_title";
-  ALTER TABLE "songs" DROP COLUMN "meta_description";
-  ALTER TABLE "songs" DROP COLUMN "meta_image_id";
-  ALTER TABLE "artists" DROP COLUMN "meta_title";
-  ALTER TABLE "artists" DROP COLUMN "meta_description";
-  ALTER TABLE "artists" DROP COLUMN "meta_image_id";`)
+  DROP INDEX IF EXISTS "songs_meta_meta_image_idx";
+  DROP INDEX IF EXISTS "artists_meta_meta_image_idx";
+  ALTER TABLE "songs" DROP COLUMN IF EXISTS "meta_title";
+  ALTER TABLE "songs" DROP COLUMN IF EXISTS "meta_description";
+  ALTER TABLE "songs" DROP COLUMN IF EXISTS "meta_image_id";
+  ALTER TABLE "artists" DROP COLUMN IF EXISTS "meta_title";
+  ALTER TABLE "artists" DROP COLUMN IF EXISTS "meta_description";
+  ALTER TABLE "artists" DROP COLUMN IF EXISTS "meta_image_id";`)
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {

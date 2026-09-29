@@ -74,8 +74,7 @@ export interface Config {
     'song-contributors': SongContributor;
     'chord-library': ChordLibrary;
     scales: Scale;
-    'discover-sections': DiscoverSection;
-    'discover-items': DiscoverItem;
+    'editor-picks': EditorPick;
     playlists: Playlist;
     'playlist-items': PlaylistItem;
     'song-views': SongView;
@@ -99,8 +98,7 @@ export interface Config {
     'song-contributors': SongContributorsSelect<false> | SongContributorsSelect<true>;
     'chord-library': ChordLibrarySelect<false> | ChordLibrarySelect<true>;
     scales: ScalesSelect<false> | ScalesSelect<true>;
-    'discover-sections': DiscoverSectionsSelect<false> | DiscoverSectionsSelect<true>;
-    'discover-items': DiscoverItemsSelect<false> | DiscoverItemsSelect<true>;
+    'editor-picks': EditorPicksSelect<false> | EditorPicksSelect<true>;
     playlists: PlaylistsSelect<false> | PlaylistsSelect<true>;
     'playlist-items': PlaylistItemsSelect<false> | PlaylistItemsSelect<true>;
     'song-views': SongViewsSelect<false> | SongViewsSelect<true>;
@@ -216,7 +214,6 @@ export interface Artist {
   slug?: string | null;
   imageUrl?: string | null;
   genre?: string | null;
-  popularity?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -360,25 +357,17 @@ export interface Scale {
   createdAt: string;
 }
 /**
+ * Ana sayfadaki Editör seçimi bloğu. Sıra küçükten büyüğe dizilir; boş bırakılırsa sona eklenir.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "discover-sections".
+ * via the `definition` "editor-picks".
  */
-export interface DiscoverSection {
+export interface EditorPick {
   id: number;
-  key: string;
-  title?: string | null;
-  sortOrder?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "discover-items".
- */
-export interface DiscoverItem {
-  id: number;
-  section: number | DiscoverSection;
   song: number | Song;
+  /**
+   * Küçük olan önce gösterilir.
+   */
   position: number;
   updatedAt: string;
   createdAt: string;
@@ -680,12 +669,8 @@ export interface PayloadLockedDocument {
         value: number | Scale;
       } | null)
     | ({
-        relationTo: 'discover-sections';
-        value: number | DiscoverSection;
-      } | null)
-    | ({
-        relationTo: 'discover-items';
-        value: number | DiscoverItem;
+        relationTo: 'editor-picks';
+        value: number | EditorPick;
       } | null)
     | ({
         relationTo: 'playlists';
@@ -790,7 +775,6 @@ export interface ArtistsSelect<T extends boolean = true> {
   slug?: T;
   imageUrl?: T;
   genre?: T;
-  popularity?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -874,21 +858,9 @@ export interface ScalesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "discover-sections_select".
+ * via the `definition` "editor-picks_select".
  */
-export interface DiscoverSectionsSelect<T extends boolean = true> {
-  key?: T;
-  title?: T;
-  sortOrder?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "discover-items_select".
- */
-export interface DiscoverItemsSelect<T extends boolean = true> {
-  section?: T;
+export interface EditorPicksSelect<T extends boolean = true> {
   song?: T;
   position?: T;
   updatedAt?: T;
@@ -1142,8 +1114,7 @@ export interface TaskCreateCollectionExport {
       | 'song-contributors'
       | 'chord-library'
       | 'scales'
-      | 'discover-sections'
-      | 'discover-items'
+      | 'editor-picks'
       | 'playlists'
       | 'playlist-items'
       | 'song-views'

@@ -199,7 +199,13 @@ export const Songs: CollectionConfig = {
                 description: "Yalnız yayıncı ve yönetici değiştirebilir.",
               },
             },
-            { name: "copyrightSource", type: "text", label: "Telif kaynağı" },
+            {
+              name: "copyrightSource",
+              type: "text",
+              label: "Telif kaynağı",
+              // Neredeyse her şarkı için aynı; elle yazdırmanın anlamı yok.
+              defaultValue: "Topluluk Katkısı/Eğitim amaçlı",
+            },
           ],
         },
       ],

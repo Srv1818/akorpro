@@ -14,8 +14,8 @@ import type { SongSummary, Difficulty } from "@/lib/types/content";
 /**
  * Keşfet blokları — Payload Local API.
  *
- * Yapı aynı: `discover-sections` + sıralı `discover-items`. Admin panelinde
- * sürükle-bırak ile yönetilebiliyor.
+ * Üç blok üç ayrı kaynaktan: Popüler son 30 günün tıklamasından, Yeni
+ * eklenme tarihinden, Editör seçimi `editor-picks` tablosundan.
  *
  * Hata durumunda blok boş döner — ana sayfa tek bir blok yüzünden çökmez.
  */
@@ -157,12 +157,17 @@ async function newSongs(): Promise<SongSummary[]> {
   return (docs as SummaryRow[]).map(rowToSummary);
 }
 
-/** Elle seçilmiş blok — sıralama `discover-items.position`'dan gelir. */
+/**
+ * Editör seçimi — elle seçilen şarkılar, `editor-picks.position` sırasıyla.
+ *
+ * Eskiden `discover-sections` + `discover-items` ikilisiyle tutuluyordu ve
+ * kod yalnızca `key = "featured"` bölümünü okuyordu. O anahtar panelde hiçbir
+ * yerde yazmadığı için blok pratikte hiç kullanılamamıştı; tek tabloya indirildi.
+ */
 async function getFeaturedCurated(): Promise<SongSummary[]> {
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
-    collection: "discover-items",
-    where: { "section.key": { equals: "featured" } },
+    collection: "editor-picks",
     sort: "position",
     limit: MAX_CURATED_IDS_READ,
     depth: 0,
@@ -170,6 +175,7 @@ async function getFeaturedCurated(): Promise<SongSummary[]> {
 
   const songIds = docs.map((i) => relId(i.song)).filter(Boolean);
 
+  // getSongsByIds onaylı olmayanı eler ve verilen sırayı korur.
   const songs = await getSongsByIds(songIds);
   return songs.slice(0, DISCOVER_TARGET_COUNT).map(toSongSummary);
 }

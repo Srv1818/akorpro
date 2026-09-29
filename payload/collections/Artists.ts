@@ -51,7 +51,7 @@ export const Artists: CollectionConfig = {
   slug: "artists",
   admin: {
     useAsTitle: "name",
-    defaultColumns: ["name", "slug", "genre", "popularity"],
+    defaultColumns: ["name", "slug", "genre"],
     group: "İçerik",
   },
   access: {
@@ -80,6 +80,5 @@ export const Artists: CollectionConfig = {
     },
     { name: "imageUrl", type: "text", label: "Görsel adresi" },
     { name: "genre", type: "text", label: "Tür" },
-    { name: "popularity", type: "number", label: "Popülerlik", defaultValue: 0 },
   ],
 };

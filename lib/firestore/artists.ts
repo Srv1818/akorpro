@@ -26,7 +26,6 @@ function mapArtist(row: ArtistRow, songCount: number): Artist {
     ...(row.imageUrl ? { imageUrl: row.imageUrl } : {}),
     ...(row.genre ? { genre: row.genre } : {}),
     songCount,
-    ...(row.popularity != null ? { popularity: row.popularity } : {}),
     createdAt: toEpochMs(row.createdAt),
     updatedAt: toEpochMs(row.updatedAt),
   } as Artist;

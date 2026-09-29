@@ -40,7 +40,6 @@ export const IMPORT_SONG_SCHEMA = {
     "tuning",
     "capo",
     "copyrightSource",
-    "popularity",
     "keyMode",
     "gamlarScaleId",
     "showHarmonyDetails",

@@ -14,7 +14,7 @@ import { Artists } from "./payload/collections/Artists";
 import { ChordLibrary } from "./payload/collections/ChordLibrary";
 import { Contributions } from "./payload/collections/Contributions";
 import { ContributorProfiles } from "./payload/collections/ContributorProfiles";
-import { DiscoverItems, DiscoverSections } from "./payload/collections/Discover";
+import { EditorPicks } from "./payload/collections/EditorPicks";
 import { Media } from "./payload/collections/Media";
 import { PlaylistItems, Playlists } from "./payload/collections/Playlists";
 import { Scales } from "./payload/collections/Scales";
@@ -64,8 +64,7 @@ export default buildConfig({
     SongContributors,
     ChordLibrary,
     Scales,
-    DiscoverSections,
-    DiscoverItems,
+    EditorPicks,
     Playlists,
     PlaylistItems,
     SongViews,

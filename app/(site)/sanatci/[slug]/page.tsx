@@ -81,7 +81,6 @@ export default async function SanatciPage({ params }: Props) {
       imageUrl: undefined,
       genre: first.genre,
       songCount: songs.length,
-      popularity: undefined,
 
       // Tip uyumu için placeholder (UI tarafında kullanılmıyor)
       schemaVersion: 1,
