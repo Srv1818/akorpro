@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { anyone, isModerator, isPublisher } from "../access";
+import { revalidateDiscover, revalidateDiscoverAfterDelete } from "../revalidate";
 
 /** Ana sayfadaki keşfet blokları (popüler, yeni, öne çıkan). */
 export const DiscoverSections: CollectionConfig = {
@@ -11,6 +12,10 @@ export const DiscoverSections: CollectionConfig = {
     group: "Keşfet",
   },
   access: { read: anyone, create: isModerator, update: isModerator, delete: isPublisher },
+  hooks: {
+    afterChange: [revalidateDiscover],
+    afterDelete: [revalidateDiscoverAfterDelete],
+  },
   fields: [
     { name: "key", type: "text", required: true, unique: true, index: true, label: "Anahtar" },
     { name: "title", type: "text", label: "Başlık" },
@@ -27,6 +32,10 @@ export const DiscoverItems: CollectionConfig = {
     group: "Keşfet",
   },
   access: { read: anyone, create: isModerator, update: isModerator, delete: isModerator },
+  hooks: {
+    afterChange: [revalidateDiscover],
+    afterDelete: [revalidateDiscoverAfterDelete],
+  },
   fields: [
     {
       name: "section",

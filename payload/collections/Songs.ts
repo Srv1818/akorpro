@@ -1,6 +1,7 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from "payload";
 import { isModerator, isPublisher, publisherOnlyField, readApprovedOrStaff } from "../access";
 import { slugify, trInitial } from "../slugify";
+import { revalidateSong, revalidateSongAfterDelete } from "../revalidate";
 
 export const DIFFICULTY_OPTIONS = [
   { label: "Kolay", value: "kolay" },
@@ -71,6 +72,8 @@ export const Songs: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [setSlugAndDenormalized],
+    afterChange: [revalidateSong],
+    afterDelete: [revalidateSongAfterDelete],
   },
   // songs(artistSlug, slug) bileşik unique indeksi — Directus'ta elle eklenmişti.
   indexes: [

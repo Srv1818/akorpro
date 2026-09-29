@@ -318,3 +318,36 @@ derlenip veritabanıyla çalıştırıldı**: şarkı sayfası 200.
 
 **Açık kalan küçük madde:** olmayan şarkı 404 yerine 200 dönüyor (soft 404).
 Çökme değil, ama arama motoru açısından düzeltilmeli.
+
+### 2026-09-29 — İçerik artık anında yayına düşüyor
+
+**Sorun.** Payload'da kaydedilen içerik siteye ancak TTL dolunca düşüyordu:
+ana sayfa 5 dakika, şarkı ve sanatçı sayfaları 1 saat. Editör kaydedip
+siteye bakınca eski hâli görüyor, yanlış kaydettiğini sanıyordu.
+
+**Çözüm.** `payload/revalidate.ts` — koleksiyon hook'ları yazma sonrası
+ilgili önbellek etiketlerini düşürüyor. `app/api/revalidate` ucuna ve
+`REVALIDATION_SECRET`'e gerek kalmadı: Payload aynı Next süreci içinde
+çalıştığı için `revalidateTag` doğrudan çağrılıyor, HTTP turu yok.
+
+İki bilinçli karar:
+
+- **`{ expire: 0 }`, `"max"` değil.** `"max"` bayat içeriği arka planda
+  tazelerken göstermeye devam eder, yani kaydeden kişi yine eskisini görür.
+  Sıfır, sonraki isteği bloklayıp taze veriyi getiriyor.
+- **Hook'lar hata yutuyor.** Migration, seed script'i ve toplu içe aktarma
+  istek bağlamı dışında çalışıyor; orada `revalidateTag` hata fırlatıyor.
+  Yutulmasaydı içerik yazma işlemi düşerdi. Doğrulandı: doğrulama script'i
+  16/16 kontrolle geçiyor.
+
+Hangi yazma neyi tazeliyor:
+
+| Koleksiyon | Düşen etiketler |
+|---|---|
+| `songs` | `songs:all`, facets, üç keşfet bloğu, şarkının ve sanatçısının etiketleri |
+| `artists` | `artists:all`, `songs:all`, sanatçı ve şarkı listesi etiketleri |
+| `chord-library` | `chord_library:all` |
+| `discover-*` | Üç keşfet bloğu |
+
+Slug veya sanatçı değişirse **eski** adresin etiketi de düşürülüyor; yoksa
+eski URL bayat içerikle ayakta kalırdı.

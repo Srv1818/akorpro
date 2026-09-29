@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { anyone, isModerator, isPublisher } from "../access";
+import { revalidateChordLibrary, revalidateChordLibraryAfterDelete } from "../revalidate";
 
 export const ChordLibrary: CollectionConfig = {
   slug: "chord-library",
@@ -10,6 +11,10 @@ export const ChordLibrary: CollectionConfig = {
     group: "Referans",
   },
   access: { read: anyone, create: isModerator, update: isModerator, delete: isPublisher },
+  hooks: {
+    afterChange: [revalidateChordLibrary],
+    afterDelete: [revalidateChordLibraryAfterDelete],
+  },
   fields: [
     { name: "name", type: "text", required: true, label: "Ad", index: true },
     { name: "root", type: "text", required: true, label: "Kök", index: true },

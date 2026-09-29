@@ -1,6 +1,7 @@
 import type { CollectionAfterChangeHook, CollectionBeforeValidateHook, CollectionConfig } from "payload";
 import { anyone, isModerator, isPublisher } from "../access";
 import { slugify } from "../slugify";
+import { revalidateArtist, revalidateArtistAfterDelete } from "../revalidate";
 
 /**
  * INSERT'te slug her zaman isimden türetilir, alana ne yazılmış olursa olsun.
@@ -61,7 +62,8 @@ export const Artists: CollectionConfig = {
   },
   hooks: {
     beforeValidate: [setSlug],
-    afterChange: [propagateToSongs],
+    afterChange: [propagateToSongs, revalidateArtist],
+    afterDelete: [revalidateArtistAfterDelete],
   },
   fields: [
     { name: "name", type: "text", required: true, label: "Ad", index: true },
