@@ -537,6 +537,15 @@ yapısal veriden (`MusicGroup`) alındı, Türkçe karakterler korundu.
 Dosya: `data/import/sanatcilar.csv` (ad + tür). Slug sütunu **bilerek yok**:
 Payload adı slug'a kendi çeviriyor.
 
+**Asıl taşıma migration ile yapıldı**, panelin içe aktarma eklentisiyle değil:
+eklenti "Something went wrong" ile takıldı ve sunucu logunda karşılığı yoktu.
+`20260929_090000_seed_artists` dosya yüklemeye, eklentiye ve kimlik bilgisine
+ihtiyaç duymuyor, deploy'da kendiliğinden çalışıyor, sürüm kontrolünde duruyor.
+`ON CONFLICT (slug) DO NOTHING` sayesinde tekrar çalışsa kopya üretmez.
+
+Sitemap 70 satır veriyordu ama üç sanatçı iki kez geçiyor
+(`riza-tamer`, `seksendort`, `umut-kaya`). Benzersiz sayı: **67**.
+
 **Slug denetimi yapıldı — URL'ler korunmalı.** 70 addan 69'u bizim
 üreticimizle birebir aynı slug'ı veriyordu. Bir tanesi tutmuyordu:
 

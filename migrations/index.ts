@@ -3,6 +3,7 @@ import * as migration_20260929_072717_drop_seo_meta from './20260929_072717_drop
 import * as migration_20260929_074806_song_views from './20260929_074806_song_views';
 import * as migration_20260929_082319_drop_discover from './20260929_082319_drop_discover';
 import * as migration_20260929_082339_editor_picks from './20260929_082339_editor_picks';
+import * as migration_20260929_090000_seed_artists from './20260929_090000_seed_artists';
 
 export const migrations = [
   {
@@ -29,5 +30,10 @@ export const migrations = [
     up: migration_20260929_082339_editor_picks.up,
     down: migration_20260929_082339_editor_picks.down,
     name: '20260929_082339_editor_picks'
+  },
+  {
+    up: migration_20260929_090000_seed_artists.up,
+    down: migration_20260929_090000_seed_artists.down,
+    name: '20260929_090000_seed_artists'
   },
 ];
