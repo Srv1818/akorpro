@@ -8,7 +8,7 @@ import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { GoogleAnalytics } from "@/components/analytics/ga4";
 import { ClientOnlyProviders } from "@/components/layout/client-only-providers";
 import { Analytics } from "@vercel/analytics/react";
-import "./globals.css";
+import "../globals.css";
 
 const inter = Inter({
   variable: "--font-inter",

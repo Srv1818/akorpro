@@ -392,3 +392,31 @@ türden öneri bölümleri boş kalıyor. İkinci şarkıda dolmaya başlar.
 
 `.com.tr`'nin iyi sonuç almasının sebebi özel bir SEO çalışması değil,
 181 sayfalık içerik ve birikmiş otorite.
+
+### 2026-09-29 — Panelde site başlığı görünüyordu (düzeltildi)
+
+Payload admin panelinin üstünde sitenin kendi navbar'ı çıkıyordu.
+
+**Sebep.** `app/layout.tsx` kök layout'tu ve `<html>`, `<body>`, navbar,
+footer render ediyordu. Next'te route grubu kök layout'tan kaçamaz; Payload'ın
+kendi `RootLayout`'u bunun içine gömülüyordu. İki `<html>` iç içe.
+
+**Çözüm.** Next'in "birden çok kök layout" düzenine geçildi. Site sayfaları
+`app/(site)/` altına taşındı ve kök layout oraya indi. Artık iki bağımsız kök
+var: `(site)` ve `(payload)`. Kökte yalnız gruplardan bağımsız olanlar kaldı:
+`api`, `globals.css`, `global-error.tsx`, `icon.svg`, `robots.ts`, `sitemap.ts`.
+
+Doğrulama taze Postgres ile: `/admin` 200 ve Payload paneli, içinde site
+navbar'ı yok; site sayfaları 200.
+
+### 2026-09-29 — İkonlar yuvarlatıldı
+
+Köşe yarıçapı %22'den %35'e çıkarıldı (680 birimlik kutuda `rx` 150 → 240).
+
+Bütün raster varlıklar **tek kaynaktan**, SVG'den yeniden üretildi:
+6 boy PNG (32–512) ve `favicon.ico` (32 + 48). Böylece SVG ile raster
+arasında yarıçap farkı kalmıyor.
+
+`favicon.ico` elle kuruldu: `sharp` .ico yazamıyor, biçim de basit olduğu için
+PNG'ler ICO kapsayıcısına gömüldü. Doğrulama: 512 pikselde üst kenarda ilk
+opak piksel 172, `rx=240` için beklenen 181 (aradaki fark kenar yumuşatma).
