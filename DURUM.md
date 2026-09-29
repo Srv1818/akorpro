@@ -272,7 +272,10 @@ Coolify'da düğmeye basmak gerekmiyor.
 | `COOLIFY_WEBHOOK_URL` | Repo değişkeni | Coolify deploy webhook adresi |
 | `COOLIFY_TOKEN` | Repo sırrı | Coolify API token'ı |
 
-Token bilerek dar tutuldu: yalnız **Deploy** yetkisi, okuma bile yok.
+Token yetkileri: **Deploy + Read**. Önce yalnız Deploy verilmişti ve webhook
+**403** döndü; Coolify'ın deploy akışı okuma yetkisini de istiyor
+(bkz. coolify.io/docs/api-reference/authorization). Root ve Write verilmedi.
+
 Süresi **1 yıl** (varsayılan 30 gündü — dolduğunda otomatik deploy sessizce
 durur, bu yüzden uzatıldı). Yenileme tarihi: 2027-09-29.
 
