@@ -333,3 +333,13 @@ Coolify'a `read:packages` yetkili bir GitHub token'ı eklemek gerekir.
 GitHub Actions → GHCR. İlk build 9 dk 16 sn sürdü (Payload admin paneli
 derlemeyi ağırlaştırıyor). Repo değişkeni: `NEXT_PUBLIC_SITE_URL`.
 Workflow yalnız `feature/payload-migration` dalını dinliyor.
+
+
+## 2026-09-29 — Directus kaldırıldı
+
+Coolify'da `akorpro-web` ve `directus-with-postgresql` servisleri silindi.
+`akorpro.com` artık `akorpro-payload` (GHCR imajı) tarafından, veri
+`akorpro-payload-db` (Postgres 17) üzerinden servis ediliyor.
+
+`admin.akorpro.com` 503 dönüyor; Cloudflare'deki `admin` A kaydı öksüz.
+Bu bölümdeki Directus kurulum adımları artık tarihsel kayıt niteliğinde.

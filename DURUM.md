@@ -243,3 +243,20 @@ ortamında bulunmalı.
 Cloudflare üzerinden geçiyor. Bu yüzden Coolify'ın ürettiği `sslip.io` test
 adresi hiçbir zaman çalışmadı. İleride bir şeyi kesim öncesi test etmek
 gerekirse Cloudflare'de proxy'li bir alt alan adı açmak gerekiyor.
+
+### Directus tamamen kaldırıldı (2026-09-29)
+
+`akorpro-web` uygulaması ve `directus-with-postgresql` servisi Coolify'dan
+silindi. Kalan iki kaynak: `akorpro-payload` ve `akorpro-payload-db`.
+
+`admin.akorpro.com` artık 503 dönüyor. Cloudflare'deki `admin` A kaydı
+öksüz kaldı, istenirse silinebilir — zararsız.
+
+**Directus'taki test içeriği (1 sanatçı, 1 şarkı) gitti.** Kayıp sayılmaz:
+içerik girişi zaten sıfırdan planlanıyordu ve Payload'ın veritabanı da boştu.
+
+### Kalan kurulum adımı
+
+Repo değişkeni `NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=1` eklendi ve yeni imaj
+derlendi (2 dk 58 sn). Google düğmesinin giriş sayfasında görünmesi için
+Coolify'dan bir Deploy daha gerekiyor. Parola girişi şu an da çalışıyor.
