@@ -35,6 +35,9 @@ export function slugify(value: string | null | undefined): string {
   }
 
   return mapped
+    // "&" sessizce düşerse eski adresler kırılır: .com.tr'de
+    // "İkilem & Tuğba" → "ikilem-ve-tugba". Kelime olarak yazılıyor.
+    .replace(/&/g, " ve ")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")

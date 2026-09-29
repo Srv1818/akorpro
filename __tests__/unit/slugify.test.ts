@@ -23,7 +23,8 @@ describe("slugify", () => {
 
   it("alfanumerik olmayanları tek tireye indirger", () => {
     expect(slugify("Bir  İki --- Üç")).toBe("bir-iki-uc");
-    expect(slugify("A & B / C")).toBe("a-b-c");
+    // "&" istisna: düşmüyor, "ve" olarak yazılıyor (bir alttaki teste bakın).
+    expect(slugify("A / B / C")).toBe("a-b-c");
   });
 
   it("baştaki ve sondaki tireleri kırpar", () => {
@@ -40,6 +41,13 @@ describe("slugify", () => {
   it("120 karakterde keser", () => {
     const long = "a".repeat(200);
     expect(slugify(long)).toHaveLength(SLUG_MAX_LENGTH);
+  });
+
+  // .com.tr'de "İkilem & Tuğba" adresi ikilem-ve-tugba; "&" düşerse o URL kırılır.
+  it("& işaretini 've' olarak yazar", () => {
+    expect(slugify("İkilem & Tuğba")).toBe("ikilem-ve-tugba");
+    expect(slugify("Rock & Roll")).toBe("rock-ve-roll");
+    expect(slugify("A&B")).toBe("a-ve-b");
   });
 
   it("zaten slug olan değeri değiştirmez (idempotent)", () => {

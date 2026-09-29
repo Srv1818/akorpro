@@ -528,3 +528,29 @@ mantıklı değil.)
 şu an kullanılmıyor, üçü de boş. Dışarıdan şarkı gönderimi açılmadı; katkı
 sayfası yalnız yöneticiye açık. İleride topluluk katkısı istenirse altyapı
 hazır. Karar ertelendi (2026-09-29).
+
+### 2026-09-29 — .com.tr sanatçıları çıkarıldı
+
+`akorpro.com.tr` sitemap'inden 70 sanatçı çekildi; ad ve tür, sayfalardaki
+yapısal veriden (`MusicGroup`) alındı, Türkçe karakterler korundu.
+
+Dosya: `data/import/sanatcilar.csv` (ad + tür). Slug sütunu **bilerek yok**:
+Payload adı slug'a kendi çeviriyor.
+
+**Slug denetimi yapıldı — URL'ler korunmalı.** 70 addan 69'u bizim
+üreticimizle birebir aynı slug'ı veriyordu. Bir tanesi tutmuyordu:
+
+| Ad | .com.tr | Bizim (eski hâl) |
+|---|---|---|
+| İkilem & Tuğba | `ikilem-ve-tugba` | `ikilem-tugba` |
+
+Eski site `&` işaretini "ve" olarak yazıyormuş. `slugify` buna göre
+güncellendi ve test eklendi. Sonuç: **70/70 birebir aynı.**
+
+Not: Directus dönemindeki Postgres `akorpro_slugify()` fonksiyonu `&`
+işaretini düşürüyordu, yani o dönemki davranış Firebase dönemiyle zaten
+ayrışmıştı. Gerçek URL'ler Firebase döneminden geldiği için o taraf esas alındı.
+
+**Şarkılar çekilmedi** — yalnız sanatçılar istendi. Şarkı gövdesi `<pre>`
+içinde ve boşluklar akor hizalamasını belirlediği için ayrı bir dikkat
+gerektirir; istenirse sonra yapılır.
