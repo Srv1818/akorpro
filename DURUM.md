@@ -640,3 +640,46 @@ yedi yer de bilinçli istemci deseni (yol değişince menü kapatma, çerez
 okuma, hidrasyon bayrağı), ama gözden kaçmasın diye uyarı olarak duruyor.
 
 Sonuç: 0 hata, 22 uyarı. Testler 172/172.
+
+### 2026-09-30 — İkonlar bazen köşeli görünüyordu
+
+Belirti: logo ve sekme ikonu kare çıkıyor, üst üste birkaç hard refresh
+sonunda düzeliyordu. İki ayrı kusur üst üste binmiş.
+
+**1. Masaüstü başlık tek başına farklı bir dosya kullanıyordu.**
+`site-navbar.tsx` masaüstü satırında `/assets/logo/akorpro_ap_logo.svg`
+vardı; mobil satır, footer, favicon ve manifest ise `/icons/icon.svg`
+kullanıyor. 29 Eylül'de köşe yarıçapı %22'den %35'e (rx 150 → 240)
+çıkarılırken `assets/logo` altındaki kopya atlanmış. Yani masaüstü rozeti
+kalıcı olarak diğer her yerden daha köşeliydi.
+
+Çözüm: masaüstü de `/icons/icon.svg` kullanıyor. Artık bütün yüzeyler tek
+dosyadan besleniyor, bir daha ayrışamaz. `public/assets/logo/` klasörüne
+hiçbir yerden referans kalmadı; dışarıdan bağlanmış olabileceği için
+silinmedi, kullanılmıyor.
+
+**2. Service worker görselleri sonsuza kadar saklıyordu.**
+`public/sw.js` görseller için CacheFirst kullanıyordu ve hiçbir son kullanma
+tarihi yoktu — yorumda "7 gün" yazıyordu ama kodda karşılığı yoktu. Üstelik
+`CACHE_NAME` sabit `akorpro-v1` idi ve hiç artırılmamıştı. `activate` eski
+adı taşıyan önbellekleri siliyor, yani sürüm hiç değişmeyince hiçbir şey
+temizlenmiyordu. Bir kez saklanan ikon ömür boyu servis ediliyordu; hard
+refresh ara sıra service worker'ı atlattığı için "birkaç denemede düzeliyor"
+davranışı buradan geliyordu.
+
+Çözüm:
+- `CACHE_VERSION` eklendi (`v2-2026-09-30`). Sürüm artışı kullanıcıdaki eski
+  dosyaları temizlemenin tek garantili yolu; dosyanın başına bunu hatırlatan
+  bir not yazıldı.
+- Görseller StaleWhileRevalidate oldu: önbellekten anında veriliyor, arka
+  planda tazeleniyor. Değişen bir varlık en geç bir sonraki ziyarette geliyor.
+- Arka plan tazelemesi `event.waitUntil` ile sarıldı; yoksa yanıt dönünce
+  tarayıcı worker'ı uyutup güncellemeyi yarıda kesebiliyor.
+- Ölü Firebase/analytics koşulları silindi (zaten hepsi çapraz kaynak,
+  `origin` kontrolü kapsıyor). `/admin` ve `/payload-api/` önbelleğe hiç
+  girmiyor.
+
+**Yan düzeltme:** `globals.css` içindeki `prefers-reduced-data` kuralı
+`img:not([loading="eager"])` olan her görseli gizliyor. Üç logo da bu
+niteliğe sahip değildi, yani veri tasarrufu açık bir kullanıcıda logo hiç
+görünmüyordu. Üçüne de `loading="eager"` eklendi — toplam 445 bayt.

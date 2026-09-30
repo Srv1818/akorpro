@@ -16,6 +16,7 @@ export function SiteFooter() {
               height={18}
               className="size-[18px] shrink-0 opacity-80"
               decoding="async"
+              loading="eager"
             />
             <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">
               AkorPro

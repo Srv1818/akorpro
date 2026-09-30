@@ -1,18 +1,23 @@
 /// <reference lib="webworker" />
 
 /**
- * AkorPro Service Worker (Faz 8)
+ * AkorPro Service Worker
  *
- * Strategy:
- * - App shell (JS, CSS, fonts): StaleWhileRevalidate
- * - Page navigations: NetworkFirst → offline fallback
- * - Chord/song content is NOT cached offline (copyright consideration)
- * - Images: CacheFirst with 7-day expiry
+ * Strateji:
+ * - Uygulama kabuğu (JS, CSS, font): StaleWhileRevalidate
+ * - Sayfa gezinmeleri: NetworkFirst → çevrimdışı yedeği
+ * - Akor/şarkı içeriği çevrimdışı saklanmıyor (telif)
+ * - Görseller: StaleWhileRevalidate
+ *
+ * ⚠️ Görsel veya ikon değiştirdiğinizde CACHE_VERSION'ı artırın.
+ * `activate` eski adı taşıyan bütün önbellekleri siliyor, yani sürüm artışı
+ * kullanıcıdaki eski dosyaları temizlemenin tek garantili yolu.
  */
-
-const CACHE_NAME = "akorpro-v1";
+const CACHE_VERSION = "v2-2026-09-30";
+const CACHE_NAME = `akorpro-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline";
 
+// Ana sayfa da duruyor: çevrimdışıyken "/" isteği buradan karşılanıyor.
 const PRECACHE_URLS = ["/", "/offline"];
 
 self.addEventListener("install", (event) => {
@@ -35,74 +40,75 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+/**
+ * Önce önbellekten ver, arka planda tazele.
+ *
+ * Görseller eskiden CacheFirst idi ve hiçbir son kullanma tarihi yoktu
+ * ("7 gün" yazan yorum gerçekte uygulanmıyordu). Bir kez saklanan ikon
+ * sonsuza kadar servis ediliyordu: logonun köşe yarıçapı değiştiğinde
+ * kullanıcılar eski kare ikonu görmeye devam etti ve ancak üst üste hard
+ * refresh service worker'ı atlattığında yeni hali geldi. (2026-09-30)
+ */
+function staleWhileRevalidate(event) {
+  const { request } = event;
+  return caches.open(CACHE_NAME).then((cache) =>
+    cache.match(request).then((cached) => {
+      const network = fetch(request)
+        .then((response) => {
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        })
+        .catch(() => cached);
+      // Önbellekte varsa anında ver, tazeleme arka planda sürsün.
+      // waitUntil şart: aksi halde yanıt dönünce tarayıcı worker'ı
+      // uyutabiliyor ve arka plandaki tazeleme yarıda kalıyor — önbellek
+      // hiç güncellenmiyordu.
+      if (cached) event.waitUntil(network);
+      return cached || network;
+    }),
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   if (request.method !== "GET") return;
 
-  // Skip: API routes, Firebase, analytics, external origins
-  if (
-    url.pathname.startsWith("/api/") ||
-    url.hostname.includes("firebaseio.com") ||
-    url.hostname.includes("googleapis.com") ||
-    url.hostname.includes("google-analytics.com") ||
-    url.origin !== self.location.origin
-  ) {
+  // API ve dış kaynaklar service worker'a girmiyor.
+  if (url.pathname.startsWith("/api/") || url.origin !== self.location.origin) {
     return;
   }
 
-  // Skip caching chord/song pages offline (copyright)
+  // Panel ve Payload API'si asla önbelleğe alınmaz: oturum ve yazma yolları.
+  if (url.pathname.startsWith("/admin") || url.pathname.startsWith("/payload-api/")) {
+    return;
+  }
+
   const isSongPage =
     url.pathname.startsWith("/akor/") || url.pathname.startsWith("/preview/");
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() => {
+      fetch(request).catch(async () => {
         if (isSongPage) {
-          return caches.match(OFFLINE_URL) || new Response("Çevrimdışı", { status: 503 });
+          return (await caches.match(OFFLINE_URL)) ?? new Response("Çevrimdışı", { status: 503 });
         }
-        return caches.match(request).then(
-          (cached) => cached || caches.match(OFFLINE_URL) || new Response("Çevrimdışı", { status: 503 }),
+        return (
+          (await caches.match(request)) ??
+          (await caches.match(OFFLINE_URL)) ??
+          new Response("Çevrimdışı", { status: 503 })
         );
       }),
     );
     return;
   }
 
-  // Static assets — StaleWhileRevalidate
   if (
     url.pathname.startsWith("/_next/static/") ||
-    url.pathname.match(/\.(js|css|woff2?)$/)
+    url.pathname.match(/\.(js|css|woff2?)$/) ||
+    url.pathname.match(/\.(png|jpg|jpeg|webp|avif|svg|gif|ico)$/)
   ) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) =>
-        cache.match(request).then((cached) => {
-          const networkFetch = fetch(request).then((response) => {
-            if (response.ok) cache.put(request, response.clone());
-            return response;
-          });
-          return cached || networkFetch;
-        }),
-      ),
-    );
-    return;
-  }
-
-  // Images — CacheFirst (7 days)
-  if (url.pathname.match(/\.(png|jpg|jpeg|webp|avif|svg|gif|ico)$/)) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) =>
-        cache.match(request).then(
-          (cached) =>
-            cached ||
-            fetch(request).then((response) => {
-              if (response.ok) cache.put(request, response.clone());
-              return response;
-            }),
-        ),
-      ),
-    );
-    return;
+    event.respondWith(staleWhileRevalidate(event));
   }
 });

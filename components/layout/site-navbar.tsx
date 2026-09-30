@@ -34,6 +34,7 @@ export function SiteNavbar() {
               height={32}
               className="h-8 w-8 shrink-0 select-none"
               decoding="async"
+              loading="eager"
             />
           </Link>
 
@@ -57,13 +58,21 @@ export function SiteNavbar() {
             aria-label="AkorPro ana sayfa"
             className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-display"
           >
+            {/*
+              Mobil başlık, footer, favicon ve manifest'in kullandığı dosyanın
+              aynısı. Eskiden burası /assets/logo/akorpro_ap_logo.svg idi ve o
+              dosya rx=150 ile kalmıştı; diğerleri rx=240'a geçerken atlanmış.
+              Sonuç: masaüstü rozeti diğer her yerden gözle görülür biçimde
+              daha köşeliydi. Tek dosya = bir daha ayrışamaz.
+            */}
             <img
-              src="/assets/logo/akorpro_ap_logo.svg"
+              src="/icons/icon.svg"
               alt=""
               width={40}
               height={40}
               className="h-10 w-10 shrink-0 select-none"
               decoding="async"
+              loading="eager"
             />
             <span aria-hidden>AkorPro</span>
           </Link>
