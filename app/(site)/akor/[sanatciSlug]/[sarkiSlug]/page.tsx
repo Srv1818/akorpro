@@ -22,6 +22,7 @@ import { chordPath } from "@/lib/paths";
 import { safeInternalReturnPath } from "@/lib/nav/safe-return-to";
 import { songJsonLd } from "@/lib/seo/structured-data";
 import { resolveSongGamlarScaleId } from "@/lib/music/key-mode-gamlar";
+import { songTonality } from "@/lib/music/song-tonality";
 import { gamlarScaleById } from "@/data/gamlar-scale-catalog";
 import { firstParam } from "@/lib/search-params";
 import type { SongSummary } from "@/lib/types/content";
@@ -49,25 +50,14 @@ type Props = {
   searchParams: Promise<{ returnTo?: string | string[]; transpose?: string | string[] }>;
 };
 
-function keyModeLabel(mode: string | undefined, originalKey: string): string {
-  if (!mode) return originalKey.trim().toLowerCase().endsWith("m") ? "Doğal Minör" : "Majör";
-  const map: Record<string, string> = {
-    major: "Majör", natural: "Doğal Minör",
-    harmonic: "Harmonik Minör", melodic: "Melodik Minör",
-  };
-  return map[mode] ?? "Majör";
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { sanatciSlug, sarkiSlug } = await params;
   const song = await getSongBySlugs(sanatciSlug, sarkiSlug);
   if (!song) return { title: "Şarkı bulunamadı" };
   const titleAbsolute = `${song.title} Akor — ${song.artistName} | AkorPro`;
-  const modLabel = keyModeLabel(song.keyMode, song.originalKey);
-  const metaScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
-  const metaScaleName = gamlarScaleById(metaScaleId)?.name;
-  const scalePart = metaScaleName ? `, solo gam: ${metaScaleName}` : "";
-  const description = `${song.title} gitar akorları — ${song.artistName}. ${song.originalKey} ${modLabel}${scalePart}. Transpoze, akor diyagramları ve gam analizi.`;
+  const tonality = songTonality(song.originalKey, song.keyMode, song.gamlarScaleId);
+  const keyPart = tonality ? `${tonality.label}, solo gam: ${tonality.tonic} ${tonality.scaleName}` : song.originalKey;
+  const description = `${song.title} gitar akorları — ${song.artistName}. ${keyPart}. Transpoze, akor diyagramları ve gam analizi.`;
   const url = chordPath(sanatciSlug, sarkiSlug);
   return {
     title: { absolute: titleAbsolute },
@@ -107,6 +97,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
 
   const initialGamlarScaleId = resolveSongGamlarScaleId(song.keyMode, song.gamlarScaleId);
   const gamScaleName = gamlarScaleById(initialGamlarScaleId)?.name;
+  const tonality = songTonality(song.originalKey, song.keyMode, song.gamlarScaleId);
 
   let artistSongs: Awaited<ReturnType<typeof getSongsByArtist>> = [];
   try {
@@ -202,10 +193,10 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
                 <span className="text-foreground">{song.capo}. perde</span>
               </>
             ) : null}
-            {song.keyMode ? (
+            {tonality ? (
               <>
                 <span className="text-muted"> · Mod: </span>
-                <span className="text-foreground">{keyModeLabel(song.keyMode, song.originalKey)}</span>
+                <span className="text-foreground">{tonality.quality}</span>
               </>
             ) : null}
             {song.timeSignature ? (
@@ -304,6 +295,31 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
           </div>
         ) : null}
 
+        {tonality ? (
+          <section id="solo-gam" className="mt-4 rounded-lg border border-border bg-surface p-4">
+            <h2 className="mb-2 text-sm font-semibold text-foreground">{song.title} solo gamı</h2>
+            <p className="text-sm text-foreground">
+              {song.title}, <strong>{tonality.label}</strong> tonunda. Solo ve doğaçlama için{" "}
+              <strong>{tonality.tonic} {tonality.scaleName}</strong> gamı:
+            </p>
+            <ScaleNoteList notes={tonality.scaleNotes} />
+            {tonality.pentatonic ? (
+              <>
+                <p className="mt-3 text-sm text-foreground">
+                  Daha kolay başlangıç için <strong>{tonality.tonic} {tonality.pentatonic.name}</strong>:
+                </p>
+                <ScaleNoteList notes={tonality.pentatonic.notes} />
+              </>
+            ) : null}
+            <p className="mt-3 text-xs text-muted">
+              Sap üzerindeki pozisyonlar için akorların üstündeki <strong>Solo/Gam</strong> düğmesine bas.{" "}
+              <Link href="/gamlar" className="text-accent hover:underline">
+                Tüm gamlar
+              </Link>
+            </p>
+          </section>
+        ) : null}
+
         {related.length > 0 && (
           <section className="mt-12">
             <h2 className="text-lg font-semibold">
@@ -349,5 +365,17 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
         </nav>
       </div>
     </>
+  );
+}
+
+function ScaleNoteList({ notes }: { notes: string[] }) {
+  return (
+    <ol className="mt-2 flex flex-wrap gap-1.5" aria-label="Gam notaları">
+      {notes.map((n, i) => (
+        <li key={`${n}-${i}`} className="rounded-md border border-border px-2 py-0.5 font-mono text-sm text-foreground">
+          {n}
+        </li>
+      ))}
+    </ol>
   );
 }

@@ -1,4 +1,5 @@
 import { SITE_URL, chordPath, artistPath } from "@/lib/paths";
+import { songTonality } from "@/lib/music/song-tonality";
 import type { SongDoc } from "@/lib/types/firestore";
 import type { ArtistDoc } from "@/lib/types/firestore";
 
@@ -14,7 +15,7 @@ export function songJsonLd(song: SongWithId, gamScaleName?: string): Record<stri
     name: song.title,
     url,
     inLanguage: "tr",
-    musicalKey: song.originalKey,
+    musicalKey: songTonality(song.originalKey, song.keyMode, song.gamlarScaleId)?.label ?? song.originalKey,
     composer: {
       "@type": "MusicGroup",
       name: song.artistName,

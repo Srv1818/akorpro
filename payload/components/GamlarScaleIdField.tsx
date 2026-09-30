@@ -8,13 +8,13 @@ import {
   useField,
   useFormFields,
 } from "@payloadcms/ui";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import type { KeyMode } from "../../lib/types/content";
 import {
   defaultGamlarScaleLabelForKeyMode,
-  gamlarScaleOptionsForKeyMode,
-  realignGamlarScaleIdToKeyMode,
+  gamlarScaleOptionsAll,
+  keyModeScaleMismatch,
 } from "../../lib/music/key-mode-gamlar";
 
 const KEY_MODES: readonly string[] = ["major", "natural", "harmonic", "melodic"];
@@ -33,41 +33,23 @@ function siblingKeyModePath(path: string): string {
  * "Gam kimliği" alanı — serbest metin yerine açılır liste.
  *
  * Alan veritabanında `text` kalıyor; yalnız panel girişi değişiyor. Bilerek
- * `select` alan tipine çevrilmedi: `select` Postgres'te enum sütunu açar,
- * kataloğa eklenen her mod migration gerektirir ve asıl istenen "ton moduna
- * göre daralan liste" enum ile zaten yapılamaz.
+ * `select` alan tipine çevrilmedi: `select` Postgres'te enum sütunu açar ve
+ * kataloğa eklenen her mod migration gerektirir.
  *
- * Aynı aile kuralı sunucu tarafında alanın `validate` fonksiyonunda da var;
- * bu bileşen kolaylık, doğrulama değil.
+ * Liste bütün aileleri gösteriyor; ton modu listeyi daraltmıyor. Eskiden
+ * daraltıyordu ve Aeolian'a ulaşmak için ton modu "Majör" seçiliyordu.
+ * Ton moduyla gam karakteri çelişirse yalnız uyarı çıkıyor.
  */
 export const GamlarScaleIdField: TextFieldClientComponent = ({ field, path }) => {
   const { disabled, errorMessage, setValue, showError, value } = useField<string>({ path });
 
   const keyModePath = siblingKeyModePath(path);
-  /** String tutuluyor: `undefined` bağımlılık dizisinde kararsız davranıyor. */
-  const keyModeKey = useFormFields(
-    ([fields]) => asKeyMode(fields?.[keyModePath]?.value) ?? "",
-  ) as KeyMode | "";
-  const keyMode = keyModeKey || undefined;
+  const keyMode = useFormFields(([fields]) => asKeyMode(fields?.[keyModePath]?.value));
 
-  const options = useMemo(() => gamlarScaleOptionsForKeyMode(keyMode), [keyMode]);
+  const options = useMemo(() => gamlarScaleOptionsAll(), []);
   const defaultLabel = defaultGamlarScaleLabelForKeyMode(keyMode);
   const current = typeof value === "string" ? value : "";
-
-  /**
-   * Ton modu değişince eldeki mod başka aileye düşüyordu ve sayfa sessizce
-   * varsayılana dönüyordu. Burada sunucudaki `beforeValidate` ile birebir aynı
-   * onarım yapılıyor: Phrygian seçiliyken majörden doğal minöre geçince seçim
-   * silinmiyor, `nm-phrygian` oluyor. Karşılığı yoksa temizleniyor.
-   *
-   * Bağımlılıklar bilerek yalnız ilkel değer: `options` her render'da yeni bir
-   * dizi ve React'ın bağımlılık karşılaştırmasını her seferinde tetikliyordu.
-   */
-  useEffect(() => {
-    if (!current) return;
-    const next = realignGamlarScaleIdToKeyMode(current, keyModeKey || undefined) ?? "";
-    if (next !== current) setValue(next);
-  }, [current, keyModeKey, setValue]);
+  const warning = current ? keyModeScaleMismatch(keyMode, current) : null;
 
   return (
     <div className="field-type text">
@@ -88,6 +70,11 @@ export const GamlarScaleIdField: TextFieldClientComponent = ({ field, path }) =>
         showError={showError}
         value={current}
       />
+      {warning ? (
+        <p role="status" style={{ color: "var(--theme-warning-600)", marginTop: 6 }}>
+          ⚠ {warning}
+        </p>
+      ) : null}
     </div>
   );
 };

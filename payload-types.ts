@@ -182,6 +182,9 @@ export interface Song {
    * Akor + söz gövdesi. Sunucuda render edilir.
    */
   chordBody: string;
+  /**
+   * Yalnız kök nota: C#, Bb, E… Majör/minör bilgisi ton modunda seçilir.
+   */
   originalKey: string;
   keyMode?: ('major' | 'natural' | 'harmonic' | 'melodic') | null;
   /**

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultGamlarScaleLabelForKeyMode,
+  gamlarScaleOptionsAll,
   gamlarScaleOptionsForKeyMode,
   inferKeyModeFromOriginalKey,
+  keyModeScaleMismatch,
   normalizeGamlarScaleIdForKeyMode,
   realignGamlarScaleIdToKeyMode,
   resolveSongGamlarScaleId,
+  splitOriginalKey,
 } from "@/lib/music/key-mode-gamlar";
 
 describe("resolveSongGamlarScaleId", () => {
@@ -118,5 +121,48 @@ describe("realignGamlarScaleIdToKeyMode", () => {
       const out = realignGamlarScaleIdToKeyMode("phrygian", mode);
       if (out) expect(normalizeGamlarScaleIdForKeyMode(out, mode)).toBe(out);
     }
+  });
+});
+
+describe("splitOriginalKey", () => {
+  it("minör eki ayırır", () => {
+    expect(splitOriginalKey("C#m")).toEqual({ tonic: "C#", impliedMode: "natural" });
+  });
+
+  it("maj eki ayırır", () => {
+    expect(splitOriginalKey("Bbmaj")).toEqual({ tonic: "Bb", impliedMode: "major" });
+  });
+
+  it("yalnız kökte mod önermez", () => {
+    expect(splitOriginalKey(" E ")).toEqual({ tonic: "E" });
+  });
+});
+
+describe("gamlarScaleOptionsAll", () => {
+  it("bütün aileleri aile önekiyle listeler", () => {
+    const opts = gamlarScaleOptionsAll();
+    expect(opts.find((o) => o.value === "nm-aeolian")?.label).toBe("Doğal minör · Aeolian (Natural Minor)");
+    expect(opts.some((o) => o.value === "maj-aeolian")).toBe(true);
+    expect(opts.some((o) => o.value === "blues-min-pent")).toBe(true);
+  });
+});
+
+describe("keyModeScaleMismatch", () => {
+  it("majör ton + minör gam uyarır (75 şarkının durumu)", () => {
+    expect(keyModeScaleMismatch("major", "maj-aeolian")).toMatch(/minör karakterli/);
+    expect(keyModeScaleMismatch(undefined, "maj-phrygian")).toMatch(/minör karakterli/);
+  });
+
+  it("uyumlu çiftte sessiz", () => {
+    expect(keyModeScaleMismatch("natural", "nm-aeolian")).toBeNull();
+    expect(keyModeScaleMismatch("major", "maj-mixolydian")).toBeNull();
+  });
+
+  it("minör ton + majör gam uyarır", () => {
+    expect(keyModeScaleMismatch("harmonic", "hm-phrygian-dom")).toMatch(/majör karakterli/);
+  });
+
+  it("gam yoksa sessiz", () => {
+    expect(keyModeScaleMismatch("major", undefined)).toBeNull();
   });
 });

@@ -1,10 +1,7 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from "payload";
 import type { KeyMode } from "../../lib/types/content";
-import {
-  gamlarScaleOptionsForKeyMode,
-  normalizeGamlarScaleIdForKeyMode,
-  realignGamlarScaleIdToKeyMode,
-} from "../../lib/music/key-mode-gamlar";
+import { normalizeGamlarScaleId } from "../../data/gamlar-scale-catalog";
+import { splitOriginalKey } from "../../lib/music/key-mode-gamlar";
 import { isModerator, isPublisher, publisherOnlyField, readApprovedOrStaff } from "../access";
 import { slugify, trInitial } from "../slugify";
 import { revalidateSong, revalidateSongAfterDelete } from "../revalidate";
@@ -32,6 +29,7 @@ export const KEY_MODE_OPTIONS = [
 const setSlugAndDenormalized: CollectionBeforeValidateHook = async ({
   data,
   operation,
+  originalDoc,
   req,
 }) => {
   if (!data) return data;
@@ -47,16 +45,26 @@ const setSlugAndDenormalized: CollectionBeforeValidateHook = async ({
   data.titleInitial = trInitial(data.title);
 
   /**
-   * Gam kimliği yazma anında onarılıyor. İki eski durum var:
-   * - kısayol yazımı ("phrygian") → kanonik kimlik ("maj-phrygian")
-   * - ton moduyla uyumsuz aile ("maj-phrygian" + doğal minör) → "nm-phrygian"
-   *
-   * Onarılamayan değer olduğu gibi bırakılıyor; alanın `validate`'i onu
-   * anlaşılır bir mesajla reddediyor. Sessizce varsayılana düşmüyor.
+   * Orijinal ton yalnız kök nota tutuyor ("C#"); majör/minör ton modunda.
+   * "C#m" yazılırsa ek atılıyor, ton modu boşsa ekten dolduruluyor.
+   * Böylece ton filtresi "C#" ve "C#m" diye ikiye bölünmüyor.
+   */
+  if (typeof data.originalKey === "string") {
+    const { tonic, impliedMode } = splitOriginalKey(data.originalKey);
+    data.originalKey = tonic;
+    // Kısmi güncellemede `data` ton modunu taşımayabilir; kayıttakine bak.
+    const currentMode = data.keyMode ?? (originalDoc as { keyMode?: KeyMode } | undefined)?.keyMode;
+    if (!currentMode && impliedMode) data.keyMode = impliedMode;
+  }
+
+  /**
+   * Gam kimliği ton modundan bağımsız. Yalnız kısayol yazımı ("phrygian")
+   * kanonik kimliğe çevriliyor; geçersiz değer olduğu gibi bırakılıyor ki
+   * alanın `validate`'i anlaşılır bir mesajla reddetsin.
    */
   if (typeof data.gamlarScaleId === "string") {
     const raw = data.gamlarScaleId.trim();
-    data.gamlarScaleId = raw ? (realignGamlarScaleIdToKeyMode(raw, data.keyMode) ?? raw) : "";
+    data.gamlarScaleId = raw ? (normalizeGamlarScaleId(raw) ?? raw) : "";
   }
 
   if (data.artist) {
@@ -158,7 +166,15 @@ export const Songs: CollectionConfig = {
         {
           label: "Müzikal",
           fields: [
-            { name: "originalKey", type: "text", required: true, label: "Orijinal ton" },
+            {
+              name: "originalKey",
+              type: "text",
+              required: true,
+              label: "Orijinal ton",
+              admin: {
+                description: "Yalnız kök nota: C#, Bb, E… Majör/minör bilgisi ton modunda seçilir.",
+              },
+            },
             {
               name: "keyMode",
               type: "select",
@@ -173,17 +189,13 @@ export const Songs: CollectionConfig = {
                * Sunucu tarafı doğrulama. Panel açılır liste sunuyor ama API ve
                * içe aktarma aynı alana serbest metin yazabiliyor; geçersiz bir
                * değer eskiden sessizce varsayılana düşüyor ve "Phrygian yazdım"
-               * sanılıyordu. Artık kayıt reddediliyor.
+               * sanılıyordu. Artık kayıt reddediliyor. Ton moduyla aile uyumu
+               * aranmıyor: gam bağımsız seçim, çelişki panelde uyarı olarak çıkıyor.
                */
-              validate: (value: unknown, { siblingData }: { siblingData: unknown }) => {
+              validate: (value: unknown) => {
                 const raw = typeof value === "string" ? value.trim() : "";
-                if (!raw) return true;
-                const mode = (siblingData as { keyMode?: KeyMode } | undefined)?.keyMode;
-                if (normalizeGamlarScaleIdForKeyMode(raw, mode ?? "major")) return true;
-                const izinli = gamlarScaleOptionsForKeyMode(mode)
-                  .map((o) => `${o.label} (${o.value})`)
-                  .join(", ");
-                return `"${raw}" seçili ton moduna uymuyor. Geçerli modlar: ${izinli}`;
+                if (!raw || normalizeGamlarScaleId(raw)) return true;
+                return `"${raw}" gam kataloğunda yok. Listeden bir gam seç.`;
               },
               admin: {
                 description:

@@ -745,7 +745,11 @@ export function PreviewClient({
 
   const transposeNoteTable = preferFlatsForNaturalRoots ? PC_TO_NAME_FLAT : PC_TO_NAME;
   const originalTonic = parseTonicFromOriginalKey(originalKey);
-  const modeSuffix = originalKey.trim().slice(originalTonic.length).trim();
+  // Orijinal ton artık yalnız kök ("C#"); "m" eki ton modundan geliyor.
+  // Eski kayıtlarda ek alanın içinde durabiliyor, o zaman onu kullan.
+  const modeSuffix =
+    originalKey.trim().slice(originalTonic.length).trim() || (originalMode === "major" ? "" : "m");
+  const originalKeyDisplay = originalTonic + modeSuffix;
   const currentKeyDisplay =
     transposedTonicPc !== null
       ? (transposeNoteTable[transposedTonicPc] ?? originalTonic) + modeSuffix
@@ -1571,7 +1575,7 @@ export function PreviewClient({
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-stone-200">{songTitle}</p>
                   <p className="truncate text-xs text-white/60">
-                    {originalKey}
+                    {originalKeyDisplay}
                     {playlistPosition ? (
                       <>
                         <span className="mx-2 text-white/30">•</span>
@@ -2048,7 +2052,7 @@ export function PreviewClient({
             <Link href={`/sanatci/${artistSlug}`} className="text-foreground hover:text-accent hover:underline underline-offset-2 transition-colors">{artistName}</Link>
           </h1>
           <p className="mt-1 flex items-center gap-x-2 overflow-hidden text-xs font-light text-muted/70 tracking-wide">
-            <span className="inline-flex shrink-0 items-center gap-1"><span className="opacity-60">🎵</span><span className="font-semibold text-foreground tracking-normal">{originalKey}</span></span>
+            <span className="inline-flex shrink-0 items-center gap-1"><span className="opacity-60">🎵</span><span className="font-semibold text-foreground tracking-normal">{originalKeyDisplay}</span></span>
             <span className="shrink-0 opacity-20">·</span>
             <span className="inline-flex shrink-0 items-center gap-1"><span className="opacity-60">♩</span><span className="font-semibold text-foreground tracking-normal">{tempo ?? "-"}</span></span>
             <span className="shrink-0 opacity-20">·</span>
