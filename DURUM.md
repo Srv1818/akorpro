@@ -760,6 +760,36 @@ olmaması engelden değil, Google'ın henüz almamasından.
 ve kalıp metin var. Teknik sorun değil, içerik derinliği sorunu; `.com`'a da
 aynen taşınır.
 
+**Araç sayfaları dizine girmiyor ve hiç gösterim almıyor.** Altı aylık durum:
+
+| Sayfa | Dizinde | Gösterim |
+|---|---|---|
+| `/akor-kutuphanesi` | Evet | 21 |
+| `/gamlar` | Hayır | 0 |
+| `/besli-cember` | Hayır | 0 |
+| `/gitar-akorlari` | Hayır | 0 |
+| `/iletisim` | Hayır | 0 |
+
+Teknik engel yok: beşi de 200 dönüyor, `noindex` taşımıyor, sunucudan gelen
+gerçek metinleri var. `/gamlar` içinde "Gam nedir", "Modlar", "Pentatonik ve
+blues gamları" gibi başlıklı ~1.800 karakterlik açıklama bile duruyor.
+
+İki gözlem:
+
+- **Aracın kendisi sunucuda çizilmiyor.** Google o bölümde yalnız
+  "Yükleniyor…" görüyor; fretboard, gam seçici ve çember tarayıcıda
+  çalışıyor. İndekslemeyi engellemiyor ama sayfayı rakiplerinden ayıran tek
+  şey tarayıcıya görünmüyor. Google yalnız metni değerlendiriyor, o metin de
+  benzer yüzlerce "gam nedir" yazısından ayrışmıyor.
+- **En pahalısı `/gitar-akorlari`.** 105 şarkının hepsine bağlanan merkez
+  sayfa ve "gitar akorları" gibi hacimli bir arama için doğal iniş noktası.
+  Keşfi engellemiyor (Google oradan şarkılara geçebiliyor) ama kendisi
+  sonuçlarda yer almıyor.
+
+Kırık bir şey olmadığı için acil değil. İki gerçek seçenek: aracın varsayılan
+halini sunucuda çizmek, ya da metni gerçekten ayırt edici hale getirmek.
+İkisi de dizine girmemiş 77 şarkı sorunundan daha düşük öncelikli.
+
 **Yumuşak 404 `.com.tr`'de hâlâ var.** Olmayan şarkı adresi 200 dönüp içine
 `noindex` koyuyor. `.com`'da 30 Eylül'de düzeltildi (`app/(site)/loading.tsx`
 kaldırılarak). `.com.tr` master dalından besleniyor ve ona dokunulmuyor;
