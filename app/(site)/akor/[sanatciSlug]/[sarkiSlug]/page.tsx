@@ -56,7 +56,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!song) return { title: "Şarkı bulunamadı" };
   const titleAbsolute = `${song.title} Akor — ${song.artistName} | AkorPro`;
   const tonality = songTonality(song.originalKey, song.keyMode, song.gamlarScaleId);
-  const keyPart = tonality ? `${tonality.label}, solo gam: ${tonality.tonic} ${tonality.scaleName}` : song.originalKey;
+  const keyPart = !tonality
+    ? song.originalKey
+    : tonality.scaleIsKeyScale
+      ? tonality.label
+      : `${tonality.label}, solo gam: ${tonality.tonic} ${tonality.scaleName}`;
   const description = `${song.title} gitar akorları — ${song.artistName}. ${keyPart}. Transpoze, akor diyagramları ve gam analizi.`;
   const url = chordPath(sanatciSlug, sarkiSlug);
   return {
@@ -299,8 +303,14 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
           <section id="solo-gam" className="mt-4 rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-2 text-sm font-semibold text-foreground">{song.title} solo gamı</h2>
             <p className="text-sm text-foreground">
-              {song.title}, <strong>{tonality.label}</strong> tonunda. Solo ve doğaçlama için{" "}
-              <strong>{tonality.tonic} {tonality.scaleName}</strong> gamı:
+              {song.title}, <strong>{tonality.label}</strong> tonunda.{" "}
+              {tonality.scaleIsKeyScale ? (
+                <>Solo ve doğaçlama için bu tonun gamı:</>
+              ) : (
+                <>
+                  Solo ve doğaçlama için <strong>{tonality.tonic} {tonality.scaleName}</strong> gamı:
+                </>
+              )}
             </p>
             <ScaleNoteList notes={tonality.scaleNotes} />
             {tonality.pentatonic ? (

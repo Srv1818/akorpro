@@ -7,6 +7,14 @@ describe("songTonality", () => {
     expect(t?.label).toBe("C# Doğal Minör");
     expect(t?.scaleNotes).toEqual(["C#", "D#", "E", "F#", "G#", "A", "B"]);
     expect(t?.pentatonic).toEqual({ name: "Minör Pentatonik", notes: ["C#", "E", "F#", "G#", "B"] });
+    expect(t?.scaleIsKeyScale).toBe(true);
+  });
+
+  it("tondan farklı gamı ayrı sayar", () => {
+    expect(songTonality("E", "natural", "nm-phrygian")?.scaleIsKeyScale).toBe(false);
+    expect(songTonality("D", "major", "maj-mixolydian")?.scaleIsKeyScale).toBe(false);
+    expect(songTonality("G", "major", undefined)?.scaleIsKeyScale).toBe(true);
+    expect(songTonality("A", "harmonic", "hm-harmonic")?.scaleIsKeyScale).toBe(true);
   });
 
   it("Phrygian'ı minör sayar ama doğal minör demez", () => {

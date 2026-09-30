@@ -13,8 +13,22 @@ export type SongTonality = {
   isMinor: boolean;
   scaleName: string;
   scaleNotes: string[];
+  /**
+   * Gam tonun kendi gamı mı (doğal minörde Aeolian, majörde Ionian…)?
+   * Öyleyse metinde ikinci kez adı geçmiyor: "G# Doğal Minör tonunda,
+   * solo için G# Aeolian" aynı şeyi iki kez söylüyordu.
+   */
+  scaleIsKeyScale: boolean;
   /** Gam zaten pentatonik/blues ise ya da hesaplanamazsa yok. */
   pentatonic?: { name: string; notes: string[] };
+};
+
+/** Nitelik → o tonun kendi gamının tonal adı. */
+const KEY_SCALE_TYPE: Record<string, string> = {
+  Majör: "ionian",
+  "Doğal Minör": "aeolian",
+  "Harmonik Minör": "harmonic minor",
+  "Melodik Minör": "melodic minor",
 };
 
 const EXPLICIT_MINOR_LABELS: Partial<Record<KeyMode, string>> = {
@@ -60,6 +74,7 @@ export function songTonality(
     isMinor,
     scaleName: entry.name,
     scaleNotes: scale.notes,
+    scaleIsKeyScale: KEY_SCALE_TYPE[quality] === entry.tonalType,
     ...(penta && !penta.empty
       ? {
           pentatonic: {
