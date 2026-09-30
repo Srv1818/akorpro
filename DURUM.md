@@ -578,3 +578,65 @@ ayrışmıştı. Gerçek URL'ler Firebase döneminden geldiği için o taraf esa
 **Şarkılar çekilmedi** — yalnız sanatçılar istendi. Şarkı gövdesi `<pre>`
 içinde ve boşluklar akor hizalamasını belirlediği için ayrı bir dikkat
 gerektirir; istenirse sonra yapılır.
+
+### 2026-09-30 — Deploy sonrası boş sayfa, yumuşak 404 ve ölü CI
+
+**1. Deploy'dan sonra ilk ziyaretçi boş sayfa görüyordu.**
+
+Belirti: ana sayfada üç blok da 0 gösteriyordu, site haritasında hiç şarkı
+yoktu. Veri kaybı sanıldı; kayıp yoktu, üretim veritabanında 67 sanatçı ve
+8 şarkı duruyordu.
+
+Sebep: ana sayfa, akor kütüphanesi ve site haritası ISR ile derleme anında
+üretiliyordu. Derleme GitHub Actions'a taşınınca veritabanı erişimi kalmadı,
+okumalar boş döndü ve imaja BOŞ sayfalar gömüldü. Deploy'dan sonraki ilk
+istek o boş kopyayı alıyor, yeniden üretimi yalnız arka planda tetikliyordu.
+İlk istek Googlebot ise site haritasını boş görüyordu — daha önce incelenen
+indeksleme sorununun bir parçası büyük olasılıkla bu.
+
+Canlıda gözlendi: site haritası art arda iki istekte önce 0, sonra 8 şarkı
+döndü (`x-nextjs-cache: STALE` sonra `HIT`).
+
+Çözüm: üçü de `force-dynamic`. Şarkı sayfasında aynı sorun 29 Eylül'de böyle
+çözülmüştü. Veri önbelleği kaybolmuyor, `unstable_cache` katmanı yerinde
+duruyor; dinamik olan yalnız HTML üretimi.
+
+Doğrulama: veritabanısız derleme (`DATABASE_URI` ölü adrese çevrilerek)
+sıfır hatayla geçti ve rota tablosunda üçü de `ƒ` oldu. Veriye bağlı başka
+statik sayfa kalmadı; `/sanatci/[slug]` SSG ama `generateStaticParams`
+derlemede boş döndüğü için önceden üretilmiyor, ilk istekte canlı çiziliyor.
+
+**2. Olmayan sayfalar 404 yerine 200 dönüyordu.**
+
+`app/(site)/loading.tsx` bütün grubu örtük bir Suspense sınırına alıyordu.
+Next yedek arayüzü çizer çizmez yanıtı akıtmaya başlıyor, 200 gönderilmiş
+oluyor ve sonradan `notFound()` çalışsa bile durum kodu değişemiyor. İçerik
+doğruydu ama HTTP 200'dü — Google'ın "yumuşak 404" dediği durum.
+
+Çözüm: `app/(site)/loading.tsx` silindi. Gerekçe `not-found.tsx` başına
+yazıldı ki geri eklenmesin. Sayfalar zaten hızlı (sanatçı sayfası ~30 ms) ve
+şarkı sayfasının kendi `<Suspense>`'i var, o da var oluş kontrolünden sonra
+geldiği için durum kodunu bozmuyor.
+
+Ölçüm: olmayan şarkı ve sanatçı 404, var olan şarkı ve sanatçı 200.
+
+**3. `ci.yml` hiç çalışmamıştı.**
+
+`main` dalında tetikleniyordu, böyle bir dal hiç olmadı; yalnız `master` var.
+Tetikleyici `master` ve `feature/**` dallarına çevrildi.
+
+Firebase'e bağlı her şey silindi: emülatörlü entegrasyon testi, E2E,
+Lighthouse ve smoke adımları. Proje Payload + Postgres'e geçtiğinden hepsi
+ölü koddu. İmaj derlemesi de çıkarıldı, o iş `deploy.yml`de.
+
+Kalan: lint, `tsc --noEmit`, birim testleri ve bilgi amaçlı `npm audit`.
+
+**Lint'i yeşile çekmek gerekti.** 20 hata birikmişti, öyle bırakılsa CI ilk
+günden kırmızı olurdu. `prefer-const` ikilisi düzeltildi.
+`react/no-unescaped-entities` kapatıldı: Türkçe metin kesme işaretiyle dolu
+("5'li Çember", "Payload'ın"), kural tamamen biçimsel.
+`react-hooks/set-state-in-effect` uyarıya düşürüldü, kapatılmadı — yakaladığı
+yedi yer de bilinçli istemci deseni (yol değişince menü kapatma, çerez
+okuma, hidrasyon bayrağı), ama gözden kaçmasın diye uyarı olarak duruyor.
+
+Sonuç: 0 hata, 22 uyarı. Testler 172/172.

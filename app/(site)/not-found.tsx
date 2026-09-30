@@ -1,5 +1,21 @@
 import Link from "next/link";
 
+/**
+ * Bu grupta BİLEREK `loading.tsx` yok — geri eklemeyin.
+ *
+ * Bir `loading.tsx` segmentin tamamını örtük bir Suspense sınırına alıyor.
+ * Next yedek arayüzü çizer çizmez yanıtı akıtmaya başlıyor ve 200 durum kodu
+ * gönderilmiş oluyor; sonrasında `notFound()` çalışsa bile durum 404'e
+ * çevrilemiyor. Sonuç: içeriği "bulunamadı" olan ama HTTP 200 dönen yumuşak
+ * 404 sayfaları. Google bunları düşük kaliteli kopya sayfa sayıyor.
+ * (Next dokümanı: loading#status-codes.)
+ *
+ * Kaldırıldıktan sonra ölçüldü: olmayan şarkı ve sanatçı 404, var olan
+ * şarkı 200. Sayfalar hızlı (sanatçı sayfası ~30 ms), yükleme animasyonuna
+ * ihtiyaç yok. Bir sayfanın gerçekten yavaş bir bölümü olursa, var oluş
+ * kontrolünden SONRA gelen bir `<Suspense>` ile çözün — şarkı sayfasında
+ * böyle yapılıyor.
+ */
 export default function NotFound() {
   return (
     <div className="mx-auto flex min-h-[50vh] max-w-lg flex-col items-center justify-center px-4 py-16 text-center">

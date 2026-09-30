@@ -19,8 +19,20 @@ export const metadata: Metadata = {
   },
 };
 
-/** ISR: 1 hour (TTL.CHORD_LIBRARY). Admin write'ları tag invalidation ile anlık yansıtır. */
-export const revalidate = 3600;
+/**
+ * BİLEREK dinamik, ISR değil.
+ *
+ * Derleme GitHub Actions'ta çalışıyor ve orada veritabanı yok. ISR ile bu
+ * sayfa derleme anında üretiliyordu, okuma boş dönüyordu ve imaja BOŞ bir
+ * sayfa gömülüyordu. Deploy'dan sonraki ilk istek o boş kopyayı alıyor,
+ * yeniden üretimi ancak arka planda tetikliyordu; yani her deploy'dan sonra
+ * ilk ziyaretçi -- Googlebot olabilir -- veriyi göremiyordu.
+ * (2026-09-30; canlıda gözlendi: site haritası bir istekte 0, sonra 8 döndü.)
+ *
+ * Önbellek kaybolmuyor: okuma katmanı `unstable_cache` ile tutuyor
+ * (lib/cache/tags.ts). Dinamik olan yalnız HTML üretimi.
+ */
+export const dynamic = "force-dynamic";
 
 export default async function AkorKutuphanesiPage() {
   let customShapes: Array<{

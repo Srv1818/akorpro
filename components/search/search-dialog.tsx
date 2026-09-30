@@ -120,8 +120,8 @@ export function SearchDialog({
 
   const hasArtists = (results?.artists.length ?? 0) > 0;
   const hasSongs = (results?.songs.length ?? 0) > 0;
-  let artistOffset = 0;
-  let songOffset = results?.artists.length ?? 0;
+  const artistOffset = 0;
+  const songOffset = results?.artists.length ?? 0;
 
   return (
     <div className="relative w-full min-w-0">

@@ -5,8 +5,20 @@ import { DiscoverTabs } from "@/components/content/discover-tabs";
 import { PageHeader } from "@/components/content/page-header";
 import { getDiscoverFeatured, getDiscoverNew, getDiscoverPopular } from "@/lib/firestore/discover";
 
-/** ISR: ana sayfa iskeleti; popüler bloğu ayrıca ~23s TTL (lib/cache/tags.ts TTL.DISCOVER_POPULAR). */
-export const revalidate = 300;
+/**
+ * BİLEREK dinamik, ISR değil.
+ *
+ * Derleme GitHub Actions'ta çalışıyor ve orada veritabanı yok. ISR ile bu
+ * sayfa derleme anında üretiliyordu, okuma boş dönüyordu ve imaja BOŞ bir
+ * sayfa gömülüyordu. Deploy'dan sonraki ilk istek o boş kopyayı alıyor,
+ * yeniden üretimi ancak arka planda tetikliyordu; yani her deploy'dan sonra
+ * ilk ziyaretçi -- Googlebot olabilir -- veriyi göremiyordu.
+ * (2026-09-30; canlıda gözlendi: site haritası bir istekte 0, sonra 8 döndü.)
+ *
+ * Önbellek kaybolmuyor: okuma katmanı `unstable_cache` ile tutuyor
+ * (lib/cache/tags.ts). Dinamik olan yalnız HTML üretimi.
+ */
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Keşfet",
