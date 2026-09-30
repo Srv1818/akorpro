@@ -683,3 +683,84 @@ davranışı buradan geliyordu.
 `img:not([loading="eager"])` olan her görseli gizliyor. Üç logo da bu
 niteliğe sahip değildi, yani veri tasarrufu açık bir kullanıcıda logo hiç
 görünmüyordu. Üçüne de `loading="eager"` eklendi — toplam 445 bayt.
+
+## Search Console — kalan işler (.com geçişinde yapılacak)
+
+30 Eylül 2026'da yapılan tarama. `akorpro.com` henüz staging olduğu için
+maddelerin çoğu geçiş anına bağlı.
+
+### Geçiş anında, sırasıyla
+
+**1. `robots.ts` içindeki alan adı kapısı.** `PRODUCTION_HOST` sabiti
+`"akorpro.com.tr"` yazıyor. Bu yüzden `akorpro.com` staging sayılıyor ve
+`Disallow: /` dönüyor — şu an doğru olan davranış. Geçişte bu sabit
+`akorpro.com` olacak, yoksa yeni site Google'a tamamen kapalı kalır.
+
+**2. Üretim kuralına `/admin` eklenmeli.** Dosyanın ürettiği üretim kuralı
+`/api/*`, `/giris`, `/calma-listeleri`, `/preview/*` engelliyor ama Payload
+paneli listede yok. `.com.tr`'nin canlı robots.txt'sinde var, bu dosyada yok.
+
+**3. Sosyal medya görseli adresleri engellenmeli.** `.com.tr` taramasında
+sekiz adet `/opengraph-image?...` adresi "taranmış ama dizine eklenmemiş"
+kutusuna düşmüş. Next bunları rota olarak üretiyor, Google sayfa sanıp
+tarıyor ve tarama bütçesi boşa gidiyor. Üretim kuralına bir satır yeter.
+
+**4. `akorpro.com` mülkü Search Console'a eklenmeli.** Bugün hesapta böyle
+bir mülk yok, yalnız `akorpro.com.tr` var (alan adı mülkü). Doğrulama
+DNS ile yapılıyor.
+
+**5. Site haritası gönderilmeli:** `https://akorpro.com/sitemap.xml`.
+
+**6. İki alan adı arasındaki ilişkiye karar verilmeli.** Bu en büyük karar
+ve teknik değil stratejik. İkisi de aynı içeriği yayınlarsa birbirleriyle
+yarışırlar ve `.com.tr`'de birikmiş dizin kaybolur. Seçenekler: `.com.tr`'yi
+`.com`'a 301 ile yönlendirmek, ya da birini kanonik ilan edip diğerinde
+`rel=canonical` kullanmak. Karar verilmeden geçiş yapılmamalı.
+
+### Geçişten bağımsız, ölçüm
+
+**7. `.com.tr` dizine ekleme raporu ~10 Ekim'de tekrar okunmalı.** Bugünkü
+rapor 21 Eylül tarihli, site haritası ise 27 Eylül'de okundu; yani raporun
+kendisi haritadan eski ve sayfaların çoğu henüz değerlendirilmemiş.
+
+### Bugünkü tarama — tespit edilen durum
+
+`akorpro.com.tr`, alan adı mülkü. Tek site haritası, 24 Eylül'de gönderilmiş,
+27 Eylül'de okunmuş, durum başarılı, 181 URL keşfedilmiş. Canlı dosyayla
+birebir uyuşuyor.
+
+| | Sayı |
+|---|---|
+| Dizine eklenmiş | 33 |
+| Dizine eklenmemiş | 48 |
+| Henüz hiç değerlendirilmemiş | ~97 |
+
+Dizine girenler: 28 şarkı (105 içinden), 3 sanatçı (70 içinden), 2 statik.
+Dizine girmeyen statikler: `/gitar-akorlari`, `/gamlar`, `/besli-cember`,
+`/iletisim`.
+
+48 sayfanın sebep dağılımı ve yorumu:
+
+| Sebep | Sayı | Yorum |
+|---|---|---|
+| Yönlendirmeli sayfa | 20 | Hepsi www/http varyantı, 301 dönüyor. Sorun değil. |
+| Tarandı, eklenmedi | 16 | Yalnız 5'i gerçek içerik; 8'i opengraph adresi, 2'si www, 1'i site haritası. |
+| noindex ile hariç | 6 | 4'ü var olmayan hayalet adres (yumuşak 404), 2'si www'li statik. |
+| Kanoniksiz kopya | 4 | Hepsi www varyantı. |
+| Yönlendirme hatası | 1 | |
+| Bulunamadı (404) | 1 | |
+
+**Şarkı sayfalarında teknik engel yok.** 105'inin tamamı tarandı: hepsi 200
+dönüyor, hiçbirinde `noindex` yok, hepsinde kendini gösteren kanonik etiket
+var. `/gitar-akorlari` 105 bağlantının hepsini sunucu tarafında tek sayfada
+basıyor, sayfalama yok. Yani keşif de engellenmiş değil. 77'sinin dizinde
+olmaması engelden değil, Google'ın henüz almamasından.
+
+**Sanatçı sayfaları zayıf: 70'te 3.** Sayfalarda birer ikişer şarkı bağlantısı
+ve kalıp metin var. Teknik sorun değil, içerik derinliği sorunu; `.com`'a da
+aynen taşınır.
+
+**Yumuşak 404 `.com.tr`'de hâlâ var.** Olmayan şarkı adresi 200 dönüp içine
+`noindex` koyuyor. `.com`'da 30 Eylül'de düzeltildi (`app/(site)/loading.tsx`
+kaldırılarak). `.com.tr` master dalından besleniyor ve ona dokunulmuyor;
+`.com.tr` yönlendirmeye alınırsa sorun kendiliğinden kapanır.
