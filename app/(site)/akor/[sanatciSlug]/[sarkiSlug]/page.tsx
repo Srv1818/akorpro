@@ -8,6 +8,7 @@ import { ChordReturnLink } from "@/components/content/chord-return-link";
 import { SongCard } from "@/components/content/song-card";
 import { PreviewClient } from "@/components/preview/preview-client";
 import { PreviewShell } from "@/components/preview/preview-shell";
+import { OpenGamlarButton } from "@/components/preview/open-gamlar-button";
 import { ClientErrorBoundary } from "@/components/common/client-error-boundary";
 import { ViewBeacon } from "@/components/analytics/view-beacon";
 import { JsonLd } from "@/components/seo/json-ld";
@@ -321,12 +322,12 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
                 <ScaleNoteList notes={tonality.pentatonic.notes} />
               </>
             ) : null}
-            <p className="mt-3 text-xs text-muted">
-              Sap üzerindeki pozisyonlar için akorların üstündeki <strong>Solo/Gam</strong> düğmesine bas.{" "}
-              <Link href="/gamlar" className="text-accent hover:underline">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <OpenGamlarButton />
+              <Link href="/gamlar" className="text-xs text-accent hover:underline">
                 Tüm gamlar
               </Link>
-            </p>
+            </div>
           </section>
         ) : null}
 

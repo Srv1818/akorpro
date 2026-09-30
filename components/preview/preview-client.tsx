@@ -1,5 +1,6 @@
 "use client";
 
+import { OPEN_GAMLAR_EVENT } from "@/components/preview/open-gamlar-button";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -949,6 +950,13 @@ export function PreviewClient({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [chordStripOpen]);
+
+  // Sayfanın altındaki solo gam bölümü paneli buradan açtırıyor.
+  useEffect(() => {
+    const open = () => setOpenWidgets((w) => ({ ...w, gamlar: true }));
+    window.addEventListener(OPEN_GAMLAR_EVENT, open);
+    return () => window.removeEventListener(OPEN_GAMLAR_EVENT, open);
+  }, []);
 
   useEffect(() => {
     if (!openWidgets.gamlar) return;
