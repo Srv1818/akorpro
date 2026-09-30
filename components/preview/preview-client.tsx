@@ -62,6 +62,12 @@ type Props = {
   timeSignature?: string;
   /** Firestore `showHarmonyDetails`; false değilse armoni özeti gösterilir. */
   showHarmonyDetails?: boolean;
+  /**
+   * Sayfanın altında `#solo-gam` bölümü var mı. Varsa Solo/Gam düğmesi pencere
+   * açmak yerine oraya kaydırıyor. Sunucudan geliyor ki ilk çizimde düğme
+   * değişmesin; `/preview` gibi o bölümün olmadığı yerlerde varsayılan false.
+   */
+  hasSoloGamSection?: boolean;
   /** Firestore `harmonyDetailsNotes` — düzenleyici notu, modalın üstünde. */
   harmonyDetailsNotes?: string;
   prevSong?: { title: string; href: string } | null;
@@ -543,6 +549,7 @@ export function PreviewClient({
   tempo,
   timeSignature,
   showHarmonyDetails = true,
+  hasSoloGamSection = false,
   harmonyDetailsNotes = "",
   prevSong = null,
   nextSong = null,
@@ -2277,10 +2284,18 @@ export function PreviewClient({
               className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${sceneMode ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
               <Mic className="size-3.5 shrink-0" strokeWidth={2} aria-hidden /> Tam ekran
             </button>
-            <button type="button" onClick={() => setOpenWidgets((w) => { const o = !w.gamlar; if (o) tryLockGamlarLandscape(); return { ...w, gamlar: o }; })} aria-pressed={openWidgets.gamlar}
-              className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${openWidgets.gamlar ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
-              <Music2 className="size-3.5 shrink-0" strokeWidth={1.75} /> Solo/Gam
-            </button>
+            {hasSoloGamSection ? (
+              <button type="button"
+                onClick={() => document.getElementById("solo-gam")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-foreground transition hover:bg-white/10">
+                <Music2 className="size-3.5 shrink-0" strokeWidth={1.75} /> Solo/Gam
+              </button>
+            ) : (
+              <button type="button" onClick={() => setOpenWidgets((w) => { const o = !w.gamlar; if (o) tryLockGamlarLandscape(); return { ...w, gamlar: o }; })} aria-pressed={openWidgets.gamlar}
+                className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${openWidgets.gamlar ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
+                <Music2 className="size-3.5 shrink-0" strokeWidth={1.75} /> Solo/Gam
+              </button>
+            )}
             <button type="button" id="chord-strip-trigger" onClick={() => setChordStripOpen((o) => !o)} aria-expanded={chordStripOpen} aria-controls="chord-strip-panel"
               className={`snap-start lyrics-size-btn inline-flex shrink-0 h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition ${chordStripOpen ? "bg-accent text-accent-foreground" : "text-foreground hover:bg-white/10"}`}>
               <ListMusic className="size-3.5 shrink-0" strokeWidth={1.75} /> Akorlar

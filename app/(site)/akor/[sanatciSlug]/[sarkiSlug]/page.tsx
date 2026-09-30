@@ -275,6 +275,7 @@ export default async function AkorSongPage({ params, searchParams }: Props) {
                 tempo={song.tempo}
                 timeSignature={song.timeSignature}
                 showHarmonyDetails={song.showHarmonyDetails !== false}
+                hasSoloGamSection={Boolean(tonality)}
                 harmonyDetailsNotes={song.harmonyDetailsNotes}
                 prevSong={
                   prevSong
