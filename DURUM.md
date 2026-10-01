@@ -847,9 +847,15 @@ etiketler `.com.tr`, sayfalar 200, olmayan sayfa 404.
 3. **`.com` yönlendirmesi.** Cloudflare'de `akorpro.com` → `akorpro.com.tr`,
    yolu koruyarak 301. Geçiş doğrulanmadan kurulmamalı, `.com` şu an test
    yüzeyimiz.
-4. **Gmail posta yönlendirmesi.** Bölge aktif olunca Cloudflare Email
-   Routing'den hedef adres `akorprotr@gmail.com` eklenip doğrulanacak,
-   sonra catch-all kuralı. MX ve SPF kayıtlarını Cloudflare kendisi ekler.
+4. **Gmail posta yönlendirmesi — büyük kısmı yapıldı.** Cloudflare Email
+   Routing'de `akorprotr@gmail.com` hedef adres olarak eklendi ve doğrulandı.
+   Catch-all kuralı bu adrese bağlandı ve etkinleştirildi (Active).
+
+   **Kalan tek adım:** Email Routing → Settings → DNS records altındaki
+   "Add missing records" düğmesi. Üç MX (`route1/2/3.mx.cloudflare.net`),
+   bir DKIM TXT ve bir SPF TXT eklenecek. Şu an basılamıyor, Cloudflare
+   "This zone must be active before you can enable Email Service" diyor.
+   Nameserver yayılıp bölge aktif olunca tek tıkla bitiyor.
 5. **Vercel.** Birkaç gün geri dönüş yolu olarak bırakılacak, silinmeyecek.
 
 ### Açık kalan küçük konu
