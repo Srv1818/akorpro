@@ -7,8 +7,10 @@
 # Lighthouse ve smoke adımları hep Firebase gizli anahtarlarına bağlıydı,
 # proje Payload + Postgres'e geçtiğinden hepsi ölü koddu.
 #
-# İmaj derlemesi burada YOK, `deploy.yml` içinde. İkisini birden yapmak aynı
-# derlemeyi iki kez çalıştırmak olurdu.
+# İmaj derlemesi burada YOK, `deploy.yml` içinde. Deploy dalı da bu akışın
+# dışında: oradaki kontroller deploy.yml'in `kontrol` işinde, imaj
+# derlemesinden önce koşuyor ve build ona bağlı. Böylece her push'ta tek
+# koşu oluyor ve testler geçmeden imaj üretilmiyor.
 #
 # E2E ve smoke testleri ayağa kalkmış bir sunucu ve veritabanı istiyor; CI'da
 # ikisi de yok, o yüzden yerelde çalıştırılıyorlar (`npm run test:e2e`,
@@ -18,7 +20,13 @@ name: CI
 
 on:
   push:
-    branches: [master, "feature/**"]
+    branches:
+      - master
+      # Deploy dalı bilerek dışarıda: aynı kontroller deploy.yml içinde,
+      # imaj derlemesinden önce koşuyor. Burada da koşsaydı her push'ta
+      # iki ayrı akış görünürdü.
+      - "feature/**"
+      - "!feature/payload-migration"
   pull_request:
     branches: [master]
   workflow_dispatch:

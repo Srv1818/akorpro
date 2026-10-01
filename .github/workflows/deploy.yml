@@ -14,8 +14,38 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  # İmaj derlemesinden ÖNCE kod sağlığı. Eskiden bu kontroller ayrı bir akışta
+  # (ci.yml) paralel koşuyordu; testler kırmızıyken bile imaj üretilip yayına
+  # hazır hale geliyordu. Artık build buna bağlı: kontroller geçmezse imaj yok.
+  # ci.yml bu dalı kapsamıyor, aksi halde her push'ta iki koşu oluyordu.
+  kontrol:
+    name: Lint, tip, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      # Panelin özel alan bileşenleri import map'e yazılır. Üretilmezse
+      # tip kontrolü eksik modül görür.
+      - name: Payload import map
+        run: npx payload generate:importmap
+
+      - run: npm run lint
+
+      - name: Tip kontrolü
+        run: npx tsc --noEmit
+
+      - run: npm test
+
   build:
     name: Build image
+    needs: [kontrol]
     runs-on: ubuntu-latest
     permissions:
       contents: read
