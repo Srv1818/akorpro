@@ -1,4 +1,5 @@
 import { headers as nextHeaders } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import { STAFF_ROLES } from "@/lib/auth/constants";
 import { getPayloadClient } from "@/lib/payload/client";
 import type { SessionUser } from "@/lib/auth/session-user";
@@ -12,6 +13,16 @@ export type { SessionUser };
  * Payload'da `payload.auth()` çerezi aynı süreç içinde çözüyor; ağ turu yok.
  *
  * Çerez yoksa veya geçersizse `null` döner — çağıranlar bunu bekliyor.
+ *
+ * `unstable_rethrow` ŞART. Buradaki `catch` eskiden her şeyi yutuyordu,
+ * Next'in kendi kontrol akışı hatalarını da. `nextHeaders()` bir istek-anı
+ * API'si: sayfa derleme sırasında önceden üretilmeye çalışılırken bilerek
+ * hata fırlatıyor ki Next o rotayı dinamik işaretlesin. O hata yutulunca
+ * Next sayfayı statik sanıyor ve `user: null` ile üretip HTML'e gömüyor.
+ *
+ * Sonucu ağırdı: /calma-listeleri ve /katki derlemede "giriş yapmanız
+ * gerekir" olarak dondu. Kullanıcı giriş yapmış olsa, başlıkta avatarı
+ * görünse bile bu sayfalar hep çıkış yapmış hali gösteriyordu. (2026-10-01)
  */
 export async function getServerSessionUser(): Promise<SessionUser | null> {
   try {
@@ -35,7 +46,9 @@ export async function getServerSessionUser(): Promise<SessionUser | null> {
       role,
       displayName,
     };
-  } catch {
+  } catch (err) {
+    // Önce Next'in kendi sinyalleri geçsin (headers/cookies, notFound, redirect).
+    unstable_rethrow(err);
     return null;
   }
 }

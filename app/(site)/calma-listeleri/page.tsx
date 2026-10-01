@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/calma-listeleri" },
 };
 
+/**
+ * Oturum okunuyor, bu yüzden dinamik. Açıkça yazılı olması önemli:
+ * `getServerSessionUser` istek başlıklarına bakıyor ve bu sayfa derleme
+ * anında önceden üretilirse herkese "giriş yapmanız gerekir" gösterir.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function CalmaListeleriPage() {
   const user = await getServerSessionUser();
 

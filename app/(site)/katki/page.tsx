@@ -10,6 +10,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * Oturum okunuyor, bu yüzden dinamik. Açıkça yazılı olması önemli:
+ * `getServerSessionUser` istek başlıklarına bakıyor ve bu sayfa derleme
+ * anında önceden üretilirse herkese "giriş yapmanız gerekir" gösterir.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function KatkiPage() {
   const user = await getServerSessionUser();
   if (!user) {
