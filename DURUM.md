@@ -794,3 +794,75 @@ halini sunucuda çizmek, ya da metni gerçekten ayırt edici hale getirmek.
 `noindex` koyuyor. `.com`'da 30 Eylül'de düzeltildi (`app/(site)/loading.tsx`
 kaldırılarak). `.com.tr` master dalından besleniyor ve ona dokunulmuyor;
 `.com.tr` yönlendirmeye alınırsa sorun kendiliğinden kapanır.
+
+## .com.tr geçişi — YARIM KALDI, nameserver bekleniyor (2026-10-01)
+
+Karar: `.com.tr` alan adı korunuyor, yalnız barındırma Vercel'den Payload'a
+taşınıyor. Adresler birebir aynı kaldığı için dizin değeri kaybolmuyor,
+yönlendirmeye ve yeni Search Console mülküne gerek yok.
+
+### Tamamlananlar
+
+**Google Cloud.** OAuth istemcisine ikinci yönlendirme adresi eklendi:
+`https://akorpro.com.tr/payload-api/users/oauth/callback`. `.com` adresi
+duruyor, ikisi birlikte çalışıyor.
+
+**GitHub + Coolify.** `NEXT_PUBLIC_SITE_URL` iki yerde de
+`https://akorpro.com.tr` oldu. Değer hem derleme hem çalışma zamanında
+gerekiyor, ikisi de ayarlı. Yeni imaj derlendi ve deploy edildi.
+
+**Coolify alan adları.** `akorpro.com.tr` ve `www.akorpro.com.tr` eklendi,
+iç port 3000. `akorpro.com` kaydı geri dönüş için duruyor. www yönlendirmesi
+"Redirect to non-www" olarak açıldı; ayar uygulama seviyesinde, dört alan
+adını birden kapsıyor.
+
+**Cloudflare bölgesi `akorpro.com.tr`.** Ücretsiz plan. Üç kayıt:
+
+| Tür | Ad | İçerik | Proxy |
+|---|---|---|---|
+| A | akorpro.com.tr | 158.220.96.32 | Açık |
+| CNAME | www | akorpro.com.tr | Açık |
+| TXT | akorpro.com.tr | google-site-verification=TDDdB2nn... | Kapalı |
+
+Silinenler: dört MX (guzel.net.tr), eski SPF, `autoconfig` ve `autodiscover`
+CNAME'leri. E-posta kutusu yıllar önce kapanmış, Gmail'e yönlendirme
+kurulacak. SSL modu Full, `akorpro.com` ile aynı. Bot Preference Sync
+kapatıldı, robots.txt'ye karışmasın.
+
+**`admin.akorpro.com` silindi.** Directus kalıntısıydı; 503 dönüyordu,
+Coolify'da tanımlı değildi, kodda yalnız bir yorum satırında geçiyordu.
+
+**Deploy sonrası doğrulama (`.com` üzerinden).** robots.txt üretim
+kurallarını veriyor, site haritasındaki 180 adres `.com.tr`, kanonik
+etiketler `.com.tr`, sayfalar 200, olmayan sayfa 404.
+
+### Kalan adımlar
+
+1. **Nameserver.** Metunic'te girildi ama henüz yayılmadı. Hedef:
+   `emerson.ns.cloudflare.com` ve `samara.ns.cloudflare.com`.
+   `.com.tr` uzantısında değişiklik Nic.tr üzerinden işlendiği için
+   saatler sürebilir. `dig +short NS akorpro.com.tr` ile kontrol edilir.
+2. **Yayılınca doğrulama.** Sertifika alındı mı, robots, site haritası,
+   bir şarkı sayfası, giriş akışı, panel, çalma listeleri.
+3. **`.com` yönlendirmesi.** Cloudflare'de `akorpro.com` → `akorpro.com.tr`,
+   yolu koruyarak 301. Geçiş doğrulanmadan kurulmamalı, `.com` şu an test
+   yüzeyimiz.
+4. **Gmail posta yönlendirmesi.** Bölge aktif olunca Cloudflare Email
+   Routing'den hedef adres `akorprotr@gmail.com` eklenip doğrulanacak,
+   sonra catch-all kuralı. MX ve SPF kayıtlarını Cloudflare kendisi ekler.
+5. **Vercel.** Birkaç gün geri dönüş yolu olarak bırakılacak, silinmeyecek.
+
+### Açık kalan küçük konu
+
+www yönlendirmesi Coolify tarafından 302 ile yapılıyor, Vercel bugün 301
+veriyor. Google ikisini de işler ama kalıcı olanı tercih eder. Coolify'da
+ayarı yok; `.com` yönlendirme kuralını kurarken Cloudflare'de www için de
+301 kuralı eklenebilir.
+
+### Search Console etkilenmedi
+
+Doğrulama TXT'si Cloudflare bölgesine birebir taşındı, mülk doğrulaması
+düşmeyecek. Alan adı değişmediği için dizindeki 33 adres, gönderilmiş site
+haritası ve altı aylık performans geçmişi aynen duruyor. Yeni robots
+engelleri (panel, katkı, opengraph adresleri) dizindeki hiçbir sayfayla
+çakışmıyor.
