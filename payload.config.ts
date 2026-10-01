@@ -29,6 +29,12 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
 /**
+ * Google'a hem authorize hem jeton takası adımında gönderilen adres.
+ * İkisi birebir aynı olmak zorunda, bu yüzden tek yerden türetiliyor.
+ */
+const OAUTH_CALLBACK_URI = `${SITE_URL}/payload-api/users/oauth/callback`;
+
+/**
  * `next build` sırasında Next bu değeri kendisi koyar; çalışma zamanında boş.
  *
  * Değişken DİNAMİK anahtarla okunuyor. `process.env.NEXT_PHASE` yazılsaydı
@@ -147,8 +153,49 @@ export default buildConfig({
             clientSecret: process.env.GOOGLE_CLIENT_SECRET,
             serverURL: SITE_URL,
             // Eklenti varsayılanı `/api/...` kuruyor; API tabanımız `/payload-api`.
-            authorizeRedirectUri: `${SITE_URL}/payload-api/users/oauth/callback`,
+            authorizeRedirectUri: OAUTH_CALLBACK_URI,
             tokenEndpoint: "https://oauth2.googleapis.com/token",
+            /**
+             * Jeton takasını eklentiye bırakmıyoruz.
+             *
+             * Eklentinin callback ucu redirect_uri'yi
+             * `${serverURL}/api/${collection}${callbackPath}` diye SABİT kuruyor
+             * ve Payload'ın `routes.api` ayarını yok sayıyor
+             * (payload-oauth2/dist/callback-endpoint.js). Bizde API tabanı
+             * `/payload-api`, çünkü `/api` uygulamanın kendi route'larında.
+             *
+             * Sonuç: authorize adımı `/payload-api/...` gönderiyor, takas adımı
+             * `/api/...` gönderiyordu. OAuth her iki adımda aynı redirect_uri'yi
+             * şart koşuyor; Google kodu reddediyor, eklenti erişim jetonu
+             * alamayıp hata fırlatıyor ve kullanıcı "Giriş tamamlanamadı"
+             * sayfasına düşüyordu. Google ekranı açıldığı için sorun orada
+             * değil, dönüşte görünmüyordu. (2026-10-01)
+             *
+             * Burada `defaultGetToken` ile aynı işi yapıyoruz, tek farkı doğru
+             * redirect_uri. PKCE kullanılmıyor, o yüzden code_verifier yok.
+             */
+            getToken: async (code: string): Promise<string> => {
+              const res = await fetch("https://oauth2.googleapis.com/token", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  Accept: "application/json",
+                },
+                body: new URLSearchParams({
+                  code,
+                  client_id: process.env.GOOGLE_CLIENT_ID as string,
+                  client_secret: process.env.GOOGLE_CLIENT_SECRET as string,
+                  redirect_uri: OAUTH_CALLBACK_URI,
+                  grant_type: "authorization_code",
+                }).toString(),
+              });
+              const data = (await res.json()) as { access_token?: string; error?: string };
+              if (typeof data.access_token !== "string") {
+                // Hata mesajı loga düşsün; eklenti yalnız yönlendirme yapıyor.
+                throw new Error(`Google jeton takası başarısız: ${data.error ?? JSON.stringify(data)}`);
+              }
+              return data.access_token;
+            },
             providerAuthorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth",
             scopes: [
               "openid",
@@ -181,7 +228,16 @@ export default buildConfig({
               // Açık yönlendirme koruması: yalnız site içi yollar kabul edilir.
               return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
             },
-            failureRedirect: () => "/giris?hata=google",
+            /**
+             * Eklenti callback'teki her hatayı yutuyor ve yalnız buraya
+             * veriyor (payload-oauth2/dist/callback-endpoint.js:193). Eskiden
+             * hatayı atıyorduk; sonuç olarak giriş sessizce bozulabiliyordu ve
+             * sunucu logunda tek satır bile çıkmıyordu. Artık yazılıyor.
+             */
+            failureRedirect: (_req, error) => {
+              console.error("[oauth] Google girişi tamamlanamadı:", error);
+              return "/giris?hata=google";
+            },
           }),
         ]
       : []),
