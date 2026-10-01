@@ -112,6 +112,29 @@ const nextConfig: NextConfig = {
       { source: "/login", destination: "/giris", permanent: true },
       { source: "/search", destination: "/arama", permanent: true },
       { source: "/contribute", destination: "/iletisim", permanent: true },
+      /**
+       * Taşımada düzeltilen şarkı slug'ları.
+       *
+       * .com.tr'deki slug'lar hatalıydı ("yagmu" eksik harfli, "anlasana"
+       * yerine yeni kayıt "anlasan"). Yeni yazımlar doğru ama Google ve
+       * dışarıdan verilen bağlantılar eskisini biliyor; 308 ile kalıcı
+       * olarak yönlendiriliyor, böylece birikmiş değer yeni adrese geçiyor.
+       *
+       * Buraya yeni satır eklerken: hedef slug'ın gerçekten var olduğundan
+       * emin olun. Hedef sonradan yeniden adlandırılırsa bu satır 404'e
+       * yönlendirir; slug değiştiren herkes bu listeyi de güncellemeli.
+       */
+      {
+        source: "/akor/ersay-uner/yagmu",
+        destination: "/akor/ersay-uner/yagmur",
+        permanent: true,
+      },
+      {
+        source: "/akor/haluk-levent/anlasana",
+        destination: "/akor/haluk-levent/anlasan",
+        permanent: true,
+      },
+
       // Trailing slash normalisation
       { source: "/gitar-akorlari/", destination: "/gitar-akorlari", permanent: true },
       { source: "/kesfet/", destination: "/", permanent: true },
