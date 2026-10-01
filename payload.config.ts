@@ -218,9 +218,22 @@ export default buildConfig({
                 googleId: me.sub,
                 displayName: me.name,
                 avatarUrl: me.picture,
-                // Google ile ilk kez giren herkes katkıcı olur; yetkiyi
-                // yönetici elle yükseltir. Aksi halde herkes panele girerdi.
-                role: "contributor",
+                /**
+                 * `role` BİLEREK gönderilmiyor — eklemeyin.
+                 *
+                 * Eklenti bu nesneyi hem kullanıcı oluştururken hem de HER
+                 * girişte güncellerken aynen kullanıyor
+                 * (payload-oauth2/dist/callback-endpoint.js). Burada
+                 * `role: "contributor"` yazılıydı; niyet "ilk girişte katkıcı
+                 * olsun" idi ama pratikte her girişte rolü eziyordu. Google
+                 * girişi bugüne kadar hiç tamamlanmadığı için fark edilmemişti;
+                 * 1 Ekim'de giriş düzelir düzelmez yönetici hesabı katkıcıya
+                 * düştü ve panel kapandı.
+                 *
+                 * İlk giriş zaten katkıcı oluyor: Users koleksiyonunda `role`
+                 * alanının `defaultValue` değeri "contributor". Yani niyet
+                 * korunuyor, mevcut roller eziliyor değil.
+                 */
               };
             },
             successRedirect: (req) => {

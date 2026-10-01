@@ -5,6 +5,7 @@ import * as migration_20260929_082319_drop_discover from './20260929_082319_drop
 import * as migration_20260929_082339_editor_picks from './20260929_082339_editor_picks';
 import * as migration_20260929_090000_seed_artists from './20260929_090000_seed_artists';
 import * as migration_20261001_090000_normalize_song_fields from './20261001_090000_normalize_song_fields';
+import * as migration_20261001_120000_restore_admin_role from './20261001_120000_restore_admin_role';
 
 export const migrations = [
   {
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20261001_090000_normalize_song_fields.up,
     down: migration_20261001_090000_normalize_song_fields.down,
     name: '20261001_090000_normalize_song_fields'
+  },
+  {
+    up: migration_20261001_120000_restore_admin_role.up,
+    down: migration_20261001_120000_restore_admin_role.down,
+    name: '20261001_120000_restore_admin_role'
   },
 ];
