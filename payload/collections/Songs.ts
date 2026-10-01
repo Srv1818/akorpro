@@ -34,6 +34,19 @@ const setSlugAndDenormalized: CollectionBeforeValidateHook = async ({
 }) => {
   if (!data) return data;
 
+  /**
+   * Metin alanlarının başındaki/sonundaki boşluk kırpılıyor.
+   *
+   * Taşınan 17 şarkının başlığı boşlukla bitiyordu ("Kara Sevda "). Gözle
+   * görünmüyor ama başlık sayfa `<title>`'ına, yapısal veriye ve paylaşım
+   * kartlarına birebir giriyor. Mevcut kayıtlar
+   * `20261001_090000_normalize_song_fields` ile temizlendi; burası tekrar
+   * oluşmasını engelliyor.
+   */
+  for (const alan of ["title", "genre", "originalKey", "tempo", "timeSignature", "tuning"] as const) {
+    if (typeof data[alan] === "string") data[alan] = data[alan].trim();
+  }
+
   if (operation === "create" || !data.slug || !String(data.slug).trim()) {
     data.slug = slugify(data.title);
   } else {
