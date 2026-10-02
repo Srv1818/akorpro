@@ -795,7 +795,7 @@ halini sunucuda çizmek, ya da metni gerçekten ayırt edici hale getirmek.
 kaldırılarak). `.com.tr` master dalından besleniyor ve ona dokunulmuyor;
 `.com.tr` yönlendirmeye alınırsa sorun kendiliğinden kapanır.
 
-## .com.tr geçişi — YARIM KALDI, nameserver bekleniyor (2026-10-01)
+## .com.tr geçişi — TAMAMLANDI (2026-10-02)
 
 Karar: `.com.tr` alan adı korunuyor, yalnız barındırma Vercel'den Payload'a
 taşınıyor. Adresler birebir aynı kaldığı için dizin değeri kaybolmuyor,
@@ -836,34 +836,45 @@ Coolify'da tanımlı değildi, kodda yalnız bir yorum satırında geçiyordu.
 kurallarını veriyor, site haritasındaki 180 adres `.com.tr`, kanonik
 etiketler `.com.tr`, sayfalar 200, olmayan sayfa 404.
 
-### Kalan adımlar
+### Geçiş tamamlandı
 
-1. **Nameserver.** Metunic'te girildi ama henüz yayılmadı. Hedef:
-   `emerson.ns.cloudflare.com` ve `samara.ns.cloudflare.com`.
-   `.com.tr` uzantısında değişiklik Nic.tr üzerinden işlendiği için
-   saatler sürebilir. `dig +short NS akorpro.com.tr` ile kontrol edilir.
-2. **Yayılınca doğrulama.** Sertifika alındı mı, robots, site haritası,
-   bir şarkı sayfası, giriş akışı, panel, çalma listeleri.
-3. **`.com` yönlendirmesi.** Cloudflare'de `akorpro.com` → `akorpro.com.tr`,
-   yolu koruyarak 301. Geçiş doğrulanmadan kurulmamalı, `.com` şu an test
-   yüzeyimiz.
-4. **Gmail posta yönlendirmesi — büyük kısmı yapıldı.** Cloudflare Email
-   Routing'de `akorprotr@gmail.com` hedef adres olarak eklendi ve doğrulandı.
-   Catch-all kuralı bu adrese bağlandı ve etkinleştirildi (Active).
+Nameserver'lar 1-2 Ekim gecesi yayıldı. `akorpro.com.tr` artık Cloudflare
+üzerinden VPS'teki Payload uygulamasında. Vercel devre dışı ama silinmedi.
 
-   **Kalan tek adım:** Email Routing → Settings → DNS records altındaki
-   "Add missing records" düğmesi. Üç MX (`route1/2/3.mx.cloudflare.net`),
-   bir DKIM TXT ve bir SPF TXT eklenecek. Şu an basılamıyor, Cloudflare
-   "This zone must be active before you can enable Email Service" diyor.
-   Nameserver yayılıp bölge aktif olunca tek tıkla bitiyor.
-5. **Vercel.** Birkaç gün geri dönüş yolu olarak bırakılacak, silinmeyecek.
+**2 Ekim'de tamamlanan son üç adım:**
 
-### Açık kalan küçük konu
+1. **Posta kayıtları.** Bölge aktif olunca Email Routing'in "Add missing
+   records" düğmesi çalıştı. Üç MX (`route1/2/3.mx.cloudflare.net`), DKIM
+   ve SPF yayında. Catch-all kuralı `akorprotr@gmail.com` adresine bağlı
+   ve aktif. Alan adına gelen posta Gmail'e düşüyor.
 
-www yönlendirmesi Coolify tarafından 302 ile yapılıyor, Vercel bugün 301
-veriyor. Google ikisini de işler ama kalıcı olanı tercih eder. Coolify'da
-ayarı yok; `.com` yönlendirme kuralını kurarken Cloudflare'de www için de
-301 kuralı eklenebilir.
+2. **`.com` yönlendirmesi.** Cloudflare Redirect Rule, `akorpro.com`
+   bölgesinde, bütün istekler için: `concat("https://akorpro.com.tr",
+   http.request.uri.path)`, 301, sorgu dizesi korunuyor. Ölçüldü: apex,
+   alt yollar, www ve sorgulu adresler doğru hedefe 301 dönüyor.
+
+3. **www 301 oldu.** Coolify'ın kendi yönlendirmesi 302 veriyordu.
+   `akorpro.com.tr` bölgesine `https://www.*` → `https://${1}` kuralı
+   eklendi, 301, sorgu dizesi korunuyor. Kenarda çözüldüğü için istek
+   sunucuya hiç ulaşmıyor.
+
+   Not: kuralı kaydederken Cloudflare "www proxy'li olmayabilir" uyarısı
+   veriyor ve sessizce kaydetmiyor. www CNAME'i proxy'li olduğu için uyarı
+   yanlış; "Ignore and deploy rule anyway" seçilip devam edilmeli.
+
+**Geçiş sonrası doğrulama (2 Ekim):** ana sayfa, şarkı listesi, şarkı,
+sanatçı, akor kütüphanesi, gamlar, çember, arama, giriş, panel ve iletişim
+sayfalarının hepsi 200. Olmayan adresler 404. Site haritası 105 şarkı ve
+69 sanatçı. Kanonik etiketler doğru. Robots üretim kurallarını veriyor.
+Google doğrulama TXT'si yerinde, Search Console mülkü etkilenmedi.
+Eski iki slug 308 ile yeni adrese gidiyor.
+
+### Geçişten sonra kalanlar
+
+- **Vercel** birkaç gün geri dönüş yolu olarak duruyor, sonra kapatılabilir.
+- **Posta** uçtan uca denenmedi; alan adına bir test postası atıp Gmail'e
+  düştüğünü görmek gerekiyor.
+- **Search Console** ölçümü 10 Ekim civarı.
 
 ### Search Console etkilenmedi
 
