@@ -45,14 +45,18 @@ export default function robots(): MetadataRoute.Robots {
           "/calma-listeleri",
           "/katki",
           "/preview/*",
-          /**
-           * Next'in ürettiği paylaşım görseli rotaları. Google bunları sayfa
-           * sanıp tarıyor: `.com.tr` taramasında sekiz tanesi "taranmış ama
-           * dizine eklenmemiş" kutusuna düşmüştü ve tarama bütçesi boşa
-           * gidiyordu. (2026-09-30 Search Console incelemesi.)
-           */
-          "/*/opengraph-image*",
-          "/opengraph-image*",
+          // Paylaşım görseli rotaları BİLEREK engellenmiyor — eklemeyin.
+          //
+          // 1 Ekim'de opengraph-image adreslerini engelleyen iki kalıp
+          // eklenmişti. Gerekçe, Search Console'da sekiz opengraph adresinin
+          // "taranmış ama dizine eklenmemiş" kutusuna düşmesiydi. Yanlış bir
+          // karardı: o adresler sayfa değil, sosyal medya önizleme görselleri.
+          // Engellenince X ve benzeri platformlar görseli çekemedi, paylaşım
+          // kartları kırık kutu olarak göründü. (2026-10-02'de X'te gözlendi.)
+          //
+          // Taranıp dizine eklenmemeleri zaten doğru davranış; görsel
+          // oldukları için sayfa olarak dizine girmeleri beklenmiyor.
+          // Tarama bütçesi kaygısı kırık paylaşım kartına değmez.
         ],
       },
     ],

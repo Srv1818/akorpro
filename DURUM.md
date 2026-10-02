@@ -700,10 +700,17 @@ maddelerin çoğu geçiş anına bağlı.
 `/api/*`, `/giris`, `/calma-listeleri`, `/preview/*` engelliyor ama Payload
 paneli listede yok. `.com.tr`'nin canlı robots.txt'sinde var, bu dosyada yok.
 
-**3. Sosyal medya görseli adresleri engellenmeli.** `.com.tr` taramasında
-sekiz adet `/opengraph-image?...` adresi "taranmış ama dizine eklenmemiş"
-kutusuna düşmüş. Next bunları rota olarak üretiyor, Google sayfa sanıp
-tarıyor ve tarama bütçesi boşa gidiyor. Üretim kuralına bir satır yeter.
+**3. ~~Sosyal medya görseli adresleri engellenmeli.~~ YANLIŞ KARAR, GERİ
+ALINDI.** Search Console'da sekiz `/opengraph-image?...` adresinin "taranmış
+ama dizine eklenmemiş" kutusuna düşmesi üzerine 1 Ekim'de robots'a iki
+engel eklenmişti. 2 Ekim'de X'te paylaşım kartının kırık çıktığı görüldü:
+o adresler sayfa değil, sosyal medya önizleme görselleri. Engellenince
+X, Facebook ve benzerleri görseli çekemiyor. Engeller kaldırıldı,
+`app/robots.ts` içine tekrar eklenmemesi için not düşüldü.
+
+Dersi: "taranmış ama dizine eklenmemiş" kutusundaki her adres sorun
+değildir. Görsel rotalarının sayfa olarak dizine girmemesi zaten doğru
+davranış.
 
 **4. `akorpro.com` mülkü Search Console'a eklenmeli.** Bugün hesapta böyle
 bir mülk yok, yalnız `akorpro.com.tr` var (alan adı mülkü). Doğrulama
@@ -881,5 +888,5 @@ Eski iki slug 308 ile yeni adrese gidiyor.
 Doğrulama TXT'si Cloudflare bölgesine birebir taşındı, mülk doğrulaması
 düşmeyecek. Alan adı değişmediği için dizindeki 33 adres, gönderilmiş site
 haritası ve altı aylık performans geçmişi aynen duruyor. Yeni robots
-engelleri (panel, katkı, opengraph adresleri) dizindeki hiçbir sayfayla
+engelleri (panel, katkı) dizindeki hiçbir sayfayla
 çakışmıyor.
