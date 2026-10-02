@@ -26,10 +26,16 @@ function buildCsp(): string {
   // Yüklenen dosyalar R2'den servis ediliyorsa o kaynak da izinli olmalı.
   const media = (process.env.NEXT_PUBLIC_MEDIA_URL ?? "").replace(/\/$/, "");
 
+  // GTM kapsayıcısının içinden yüklenen her araç burada da izinli olmalı:
+  // kapsayıcı bir etiket ekleyince CSP otomatik genişlemiyor, sessizce bloke
+  // olur. Clarity iki aşamalı yükleniyor — önyükleyici www.clarity.ms'ten,
+  // asıl kayıt motoru scripts.clarity.ms'ten geliyor — bu yüzden tam alan adı
+  // değil joker gerekiyor.
   const scriptSrc = [
     "script-src 'self'",
     "'unsafe-inline'",
     "https://www.googletagmanager.com",
+    "https://*.clarity.ms",
     ...(isDev ? ["'unsafe-eval'"] : []),
   ].join(" ");
 
@@ -43,8 +49,13 @@ function buildCsp(): string {
     [
       // Veri artık aynı origin'den geliyor; ayrı bir API adresi yok.
       "connect-src 'self'",
+      // GA4 isteği bölgesel uca gidiyor (region1.google-analytics.com gibi),
+      // bu yüzden tam alan adı yetmiyor.
+      "https://*.google-analytics.com",
       "https://www.google-analytics.com",
       "https://analytics.google.com",
+      "https://www.googletagmanager.com",
+      "https://*.clarity.ms",
       "https://*.sentry.io",
     ]
       .filter(Boolean)

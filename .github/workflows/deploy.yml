@@ -85,7 +85,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
-            NEXT_PUBLIC_GA4_ID=${{ vars.NEXT_PUBLIC_GA4_ID }}
+            NEXT_PUBLIC_GTM_ID=${{ vars.NEXT_PUBLIC_GTM_ID }}
             NEXT_PUBLIC_VITALS_ENDPOINT=${{ vars.NEXT_PUBLIC_VITALS_ENDPOINT }}
             NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=${{ vars.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED }}
             NEXT_PUBLIC_MEDIA_URL=${{ vars.NEXT_PUBLIC_MEDIA_URL }}

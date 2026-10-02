@@ -1,0 +1,83 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-10-02 00:00:00",
+  "containerVersion": {
+    "path": "accounts/6380127590/containers/265857219/versions/0",
+    "accountId": "6380127590",
+    "containerId": "265857219",
+    "containerVersionId": "0",
+    "container": {
+      "path": "accounts/6380127590/containers/265857219",
+      "accountId": "6380127590",
+      "containerId": "265857219",
+      "name": "akorpro.com.tr",
+      "publicId": "GTM-TGKVJ6KW",
+      "usageContext": ["WEB"],
+      "fingerprint": "0",
+      "tagManagerUrl": "https://tagmanager.google.com/#/container/accounts/6380127590/containers/265857219/workspaces?apiLink=container"
+    },
+    "tag": [
+      {
+        "accountId": "6380127590",
+        "containerId": "265857219",
+        "tagId": "1",
+        "name": "GA4 - Google etiketi",
+        "type": "googtag",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "tagId",
+            "value": "G-8Z7BGZ3VNW"
+          }
+        ],
+        "fingerprint": "0",
+        "firingTriggerId": ["2147479553"],
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NOT_SET"
+        }
+      },
+      {
+        "accountId": "6380127590",
+        "containerId": "265857219",
+        "tagId": "2",
+        "name": "Microsoft Clarity",
+        "type": "html",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "html",
+            "value": "<script type=\"text/javascript\">\n(function(c,l,a,r,i,t,y){\n  c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};\n  t=l.createElement(r);t.async=1;t.src=\"https://www.clarity.ms/tag/\"+i;\n  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);\n})(window, document, \"clarity\", \"script\", \"yrbrh8ep6l\");\n</script>"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "supportDocumentWrite",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "0",
+        "firingTriggerId": ["2147479553"],
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NEEDED",
+          "consentType": {
+            "type": "LIST",
+            "list": [
+              {
+                "type": "TEMPLATE",
+                "value": "analytics_storage"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "fingerprint": "0"
+  }
+}

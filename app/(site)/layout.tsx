@@ -5,7 +5,7 @@ import { SiteNavbar } from "@/components/layout/site-navbar";
 import { ThemeProvider } from "@/components/theme/providers";
 import { SITE_URL } from "@/lib/paths";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
-import { GoogleAnalytics } from "@/components/analytics/ga4";
+import { GoogleTagManager } from "@/components/analytics/gtm";
 import { ClientOnlyProviders } from "@/components/layout/client-only-providers";
 import { Analytics } from "@vercel/analytics/react";
 import "../globals.css";
@@ -94,7 +94,7 @@ export default function RootLayout({
         className="neu-theme flex min-h-full flex-col font-sans antialiased"
       >
         <Analytics />
-        <GoogleAnalytics />
+        <GoogleTagManager />
         <SiteJsonLd />
         <ClientOnlyProviders />
         <ThemeProvider>

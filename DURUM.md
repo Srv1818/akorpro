@@ -890,3 +890,62 @@ düşmeyecek. Alan adı değişmediği için dizindeki 33 adres, gönderilmiş s
 haritası ve altı aylık performans geçmişi aynen duruyor. Yeni robots
 engelleri (panel, katkı) dizindeki hiçbir sayfayla
 çakışmıyor.
+
+## Ölçüm altyapısı — GA4 + Clarity + GTM (2026-10-02)
+
+Hepsi `akorprotr@gmail.com` hesabında. Sayfada **tek** ölçüm script'i var: GTM.
+GA4 ve Clarity doğrudan yüklenmiyor, ikisi de kapsayıcının içinde etiket.
+Yeni bir araç eklemek artık deploy gerektirmiyor.
+
+| Araç | Kimlik | Hesap/Proje |
+|---|---|---|
+| Google Etiket Yöneticisi | `GTM-TGKVJ6KW` | hesap `Akorpro` (6380127590), kapsayıcı `akorpro.com.tr` (265857219) |
+| GA4 | `G-8Z7BGZ3VNW` | mülk `akorpro.com.tr`, akış 15941591138, Türkiye / GMT+03:00 / ₺ |
+| Microsoft Clarity | `yrbrh8ep6l` | proje `Akorpro` — **bu tek araç `buyukatakan@gmail.com` altında** |
+
+Kapsayıcı sürüm 2'de yayında. İçeriğin kaydı: `docs/gtm-kapsayici.json`.
+(JSON'u GTM'e içe aktarmaya çalışma — "Kapsayıcı İçe Aktar" yerel dosya seçici
+açıyor, otomasyonla kullanılamıyor. Dosya yalnız dokümantasyon.)
+
+### Consent Mode v2 nasıl kurgulandı
+
+- İzin varsayılanları `components/analytics/gtm.tsx` içinde, GTM yükleyicisiyle
+  **aynı inline script'te ve ondan önce** yazılıyor. Ayrı `<Script>`'e bölmek
+  sırayı garanti etmiyor; sıra bozulursa etiketler izin bilgisi olmadan bir kez
+  ateşleniyor.
+- `akorpro-consent` çerezi aynı script'te senkron okunuyor: daha önce kabul etmiş
+  ziyaretçide `analytics_storage` doğrudan `granted` varsayılanıyla başlıyor.
+  Böylece ilk sayfa görüntülemesi hidrasyonu beklemiyor (`wait_for_update` yarışı yok).
+- `CookieBanner` değişmedi: `window.gtag("consent","update",…)` çağrısı dataLayer'a
+  gidiyor, GTM onu zaten anlıyor.
+- GA4 Google etiketi Consent Mode'u kendi uyguluyor (ek izin kontrolü "Belirlenmedi").
+  Clarity ise Özel HTML olduğu için elle gated: **analytics_storage gerektiriyor**.
+
+### Doğrulandı (yerelde, 2026-10-02)
+
+| Durum | GTM | GA4 | Clarity |
+|---|---|---|---|
+| İzin verilmemiş | yüklü | yüklü (izinsiz mod) | **yüklenmiyor** |
+| Kabul edilmiş, sayfa yenilenmiş | yüklü | yüklü | yüklü, Clarity paneline canlı oturum düştü |
+
+### CSP tuzağı
+
+Kapsayıcıya etiket eklemek CSP'yi genişletmiyor — araç **sessizce** bloke olur,
+konsolda bile her zaman görünmez. `proxy.ts` güncellendi:
+
+- `script-src`: `https://*.clarity.ms` (joker şart — Clarity iki aşamalı yükleniyor,
+  önyükleyici `www.clarity.ms`, asıl motor `scripts.clarity.ms`)
+- `connect-src`: `https://*.google-analytics.com` (GA4 bölgesel uca gönderiyor,
+  ör. `region1.google-analytics.com` — tam alan adı yetmiyor),
+  `https://www.googletagmanager.com`, `https://*.clarity.ms`
+
+GTM `<noscript>` iframe'i bilerek eklenmedi: JS'siz ziyaretçiden GA4 zaten veri
+toplayamıyor ve iframe CSP'ye `frame-src` açmayı gerektiriyor.
+
+### Elle yapılacak tek şey
+
+GitHub repo değişkeni: **`NEXT_PUBLIC_GTM_ID` = `GTM-TGKVJ6KW`**
+(Settings → Secrets and variables → Actions → Variables). `gh` CLI bu makinede
+oturum açmamış, bu yüzden otomatik eklenemedi. Değişken olmadan `GoogleTagManager`
+`null` dönüyor ve imajda hiç ölçüm olmuyor — build kırılmaz, sessizce ölçümsüz kalır.
+Eski `NEXT_PUBLIC_GA4_ID` değişkeni artık kullanılmıyor, silinebilir.
