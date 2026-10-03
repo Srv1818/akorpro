@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/theme/providers";
 import { SITE_URL } from "@/lib/paths";
 import { SiteJsonLd } from "@/components/seo/site-json-ld";
 import { GoogleTagManager } from "@/components/analytics/gtm";
+import { ConsentBootstrap } from "@/components/consent/consent-bootstrap";
+import { CookieBanner } from "@/components/consent/cookie-banner";
 import { ClientOnlyProviders } from "@/components/layout/client-only-providers";
 import { Analytics } from "@vercel/analytics/react";
 import "../globals.css";
@@ -89,6 +91,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="dns-prefetch" href="https://www.googleapis.com" />
+        <ConsentBootstrap />
       </head>
       <body
         className="neu-theme flex min-h-full flex-col font-sans antialiased"
@@ -97,6 +100,7 @@ export default function RootLayout({
         <GoogleTagManager />
         <SiteJsonLd />
         <ClientOnlyProviders />
+        <CookieBanner />
         <ThemeProvider>
           <nav aria-label="Erişim kısayolları" className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:left-4 focus-within:top-4 focus-within:z-[100] focus-within:flex focus-within:gap-2">
             <a

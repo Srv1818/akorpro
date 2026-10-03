@@ -11,74 +11,61 @@ function getCookieValue(name: string): string | undefined {
 }
 
 /**
- * Fires GA4 consent mode update then (optionally) loads the gtag script.
+ * GA4/Clarity izin durumunu günceller. GTM bu çağrıyı dataLayer'da görüyor.
  */
 function applyConsent(value: ConsentValue) {
   const w = window as unknown as Record<string, unknown>;
   const gtag = w.gtag as ((...args: unknown[]) => void) | undefined;
+  if (typeof gtag !== "function") return;
 
-  if (typeof gtag === "function") {
-    if (value === "all") {
-      gtag("consent", "update", {
-        analytics_storage: "granted",
-        ad_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization: "denied",
-      });
-    } else {
-      gtag("consent", "update", {
-        analytics_storage: "denied",
-        ad_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization: "denied",
-      });
-    }
-  }
+  gtag("consent", "update", {
+    analytics_storage: value === "all" ? "granted" : "denied",
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  });
 }
 
+/**
+ * Çerez bandı. Sunucuda da render ediliyor — bilerek.
+ *
+ * Eskiden `ssr: false` ile ayrı bir chunk olarak yükleniyor, üstüne de
+ * "LCP adayı olmasın" diye `requestIdleCallback(..., {timeout: 3000})` ile
+ * geciktiriliyordu. İkisi birlikte mobilde LCP'yi 6,4 saniyeye çıkarmıştı:
+ * ölçümde LCP öğesi bu banttaki paragraftı ve sürenin %86'sı (5,5 sn) saf
+ * render gecikmesiydi. Boyamayı geciktirmek bandın LCP olmasını engellemiyor,
+ * yalnızca LCP'yi geciktiriyor.
+ *
+ * Şimdi band ilk HTML'in içinde geliyor ve FCP ile boyanıyor; hidrasyonu
+ * beklemiyor. Daha önce karar vermiş ziyaretçide ise `<head>`'deki
+ * `ConsentBootstrap` onu boyanmadan gizliyor.
+ *
+ * Buraya tekrar `ssr: false` veya bir gecikme eklemeyin — ölçülen regresyon bu.
+ */
 export function CookieBanner() {
-  const [needsConsent, setNeedsConsent] = useState(false);
-  // Separate from needsConsent so the element is in the DOM but not painted
-  // until after the first browser frame — prevents banner from becoming the LCP candidate.
-  const [painted, setPainted] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
+  // Kayıtlı karar varsa izni GTM'e bildir. Bandın görünürlüğü burada değil,
+  // ConsentBootstrap'in eklediği `consent-set` sınıfında belirleniyor.
   useEffect(() => {
     const stored = getCookieValue(CONSENT_COOKIE);
-    if (!stored) {
-      setNeedsConsent(true);
-      // Defer visibility until browser is idle — keeps the banner out of the
-      // LCP window so it doesn't become the largest contentful paint element.
-      const show = () => setPainted(true);
-      if ("requestIdleCallback" in window) {
-        requestIdleCallback(show, { timeout: 3000 });
-      } else {
-        setTimeout(show, 1000);
-      }
-    } else {
-      applyConsent(stored as ConsentValue);
-    }
+    if (stored) applyConsent(stored as ConsentValue);
   }, []);
 
-  const accept = useCallback(() => {
-    setConsentCookie("all");
-    applyConsent("all");
-    setNeedsConsent(false);
+  const decide = useCallback((value: "all" | "essential") => {
+    setConsentCookie(value);
+    applyConsent(value);
+    setDismissed(true);
   }, []);
 
-  const reject = useCallback(() => {
-    setConsentCookie("essential");
-    applyConsent("essential");
-    setNeedsConsent(false);
-  }, []);
-
-  if (!needsConsent) return null;
+  if (dismissed) return null;
 
   return (
     <div
+      data-consent-banner
       role="dialog"
       aria-label="Çerez bildirimi"
-      aria-hidden={!painted}
-      className={`fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 p-4 backdrop-blur-sm sm:p-5${painted ? "" : " invisible"}`}
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 p-4 backdrop-blur-sm sm:p-5"
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-muted">
@@ -91,14 +78,14 @@ export function CookieBanner() {
         <div className="flex shrink-0 gap-2">
           <button
             type="button"
-            onClick={reject}
+            onClick={() => decide("essential")}
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-surface"
           >
             Yalnızca zorunlu
           </button>
           <button
             type="button"
-            onClick={accept}
+            onClick={() => decide("all")}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground shadow-sm transition hover:bg-accent-muted"
           >
             Kabul et

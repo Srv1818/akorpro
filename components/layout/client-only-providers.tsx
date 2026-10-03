@@ -2,10 +2,10 @@
 
 import dynamic from "next/dynamic";
 
-const CookieBanner = dynamic(
-  () => import("@/components/consent/cookie-banner").then((m) => m.CookieBanner),
-  { ssr: false },
-);
+// CookieBanner bilerek burada DEĞİL: `ssr: false` onu hidrasyondan sonra
+// yüklenen ayrı bir chunk'a çeviriyordu ve mobilde LCP öğesi o band oluyordu
+// (6,4 sn, %86'sı render gecikmesi). Artık layout'tan doğrudan, sunucuda
+// render ediliyor. Gerekçenin tamamı `components/consent/cookie-banner.tsx`'te.
 const WebVitalsReporter = dynamic(
   () => import("@/components/analytics/web-vitals").then((m) => m.WebVitalsReporter),
   { ssr: false },
@@ -20,7 +20,6 @@ export function ClientOnlyProviders() {
     <>
       <WebVitalsReporter />
       <SwRegister />
-      <CookieBanner />
     </>
   );
 }
