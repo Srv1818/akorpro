@@ -949,3 +949,70 @@ GitHub repo değişkeni: **`NEXT_PUBLIC_GTM_ID` = `GTM-TGKVJ6KW`**
 oturum açmamış, bu yüzden otomatik eklenemedi. Değişken olmadan `GoogleTagManager`
 `null` dönüyor ve imajda hiç ölçüm olmuyor — build kırılmaz, sessizce ölçümsüz kalır.
 Eski `NEXT_PUBLIC_GA4_ID` değişkeni artık kullanılmıyor, silinebilir.
+
+## Mobil performans — 75 → 90 (2026-10-03)
+
+Ölçüm aracı: `npx lighthouse@12 … --form-factor=mobile --throttling-method=simulate`
+(PSI API'nin günlük anonim kotası doluydu). Ham çıktılar oturum scratchpad'inde.
+
+| Metrik | Önce | Sonra |
+|---|---|---|
+| Skor | 75 | **90** |
+| LCP | 6,4 sn | **3,2 sn** |
+| FCP | 2,2 sn | 2,3 sn |
+| TBT | 20 ms | 50 ms |
+| CLS | 0 | 0 |
+
+Koşular arası oynaklık belirgin (LCP 3,2 ↔ 3,7 sn) — tek koşuya bakıp karar vermeyin.
+
+### Asıl sebep: çerez bandı
+
+LCP öğesi `body > div.fixed > div.mx-auto > p.text-sm` idi, yani çerez bandındaki
+paragraf. Dökümün %86'sı (5.505 ms) saf render gecikmesi. İki kaynağı vardı ve
+ikisi de bizim kendi "optimizasyonumuz"du:
+
+1. `ClientOnlyProviders` içinde `ssr: false` — band ilk HTML'de yoktu.
+2. `requestIdleCallback(show, {timeout: 3000})` — gerekçesi kodda
+   *"prevents banner from becoming the LCP candidate"* diye yazılıydı. **Yanlış
+   varsayım:** boyamayı geciktirmek bandın LCP olmasını engellemiyor, yalnızca
+   LCP'yi geciktiriyor. Mobil CPU boşta zaman bulamadığı için her seferinde
+   3 sn'lik timeout'a kadar bekleniyordu.
+
+Çözüm: band layout'tan doğrudan sunucuda render ediliyor; `<head>`'deki
+`ConsentBootstrap` çerezi boyamadan önce okuyup `<html>`'e `consent-set`
+ekliyor, böylece karar vermiş ziyaretçide band hiç boyanmıyor (LCP adayı da
+olmuyor). `cookies()` kullanılmadı — root layout statik kalsın diye.
+
+### GTM kritik yoldan çıkarıldı
+
+gtm.js + gtag.js = 298 KiB, sayfadaki en ağır tek parça, 163 KiB'ı hiç
+çalışmıyor. Artık `load` + `requestIdleCallback` ile yükleniyor.
+
+**Bu, bandda yapılan hatanın tersi değil:** band BOYANAN bir öğeydi, GTM değil.
+Boyanmayan bir kaynağı ertelemek LCP'yi yalnızca iyileştirir. Bandı asla böyle
+ertelemeyin. Bedeli: ölçüm birkaç yüz ms geç başlıyor, `load`'dan önce terk
+edilen oturumlar GA4'e düşmeyebilir.
+
+### Çözülmeyen: "Eski JavaScript ~14 KiB"
+
+`next.config.ts`'teki `webpack:` bloğu Next 16'da **hiç çalışmıyor** — varsayılan
+bundler Turbopack (build logu: `Next.js 16.3.6 (Turbopack)`). Polyfill değişimi
+webpack döneminde yazılmış, yükseltmeyle sessizce devre dışı kalmış.
+
+Turbopack karşılığı `turbopack.resolveAlias` istek dizesiyle eşleştiriyor;
+`app-globals.js` modülü göreli yolla çağırdığı için ne paket yolu anahtarı ne de
+glob (`*/polyfills/polyfill-module`) tutuyor — ikisi de denendi, build çıktısında
+polyfill duruyor. Maliyet sıkıştırılmış ~4 KiB; bilerek bırakıldı.
+Turbopack destekleyince `webpack:` bloğundaki mantık oraya taşınmalı.
+
+### `/icons/*` önbelleği
+
+Next bu dosyaları Cache-Control'süz veriyordu, Cloudflare kendi varsayılanını
+(Browser Cache TTL 4 saat) uyguluyordu — logo her sayfa görüntülemesinde yeniden
+isteniyordu. Artık `max-age=31536000, immutable`.
+
+### Sırada ne var (yapılmadı)
+
+- TTFB 861 ms / sunucu yanıtı 430 ms — bir sonraki en büyük kalem.
+- Fontlar 132 KiB (woff2 ×2) — alt küme çıkarılabilir.
+- LCP hâlâ 3,2 sn, CWV "iyi" eşiği 2,5 sn'nin üstünde.

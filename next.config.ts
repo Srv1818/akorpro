@@ -51,6 +51,18 @@ const nextConfig: NextConfig = {
       "next/dist/esm/build/polyfills/polyfill-module": "./lib/polyfill-module-minimal.js",
     },
   },
+  // DİKKAT: Next 16'da varsayılan bundler Turbopack, yani `next build` bu bloğu
+  // HİÇ çalıştırmıyor (build logu: "Next.js 16.3.6 (Turbopack)"). Aşağıdaki
+  // polyfill değişimi webpack döneminde yazılmıştı ve yükseltmeyle sessizce
+  // devre dışı kaldı — Lighthouse "Eski JavaScript ~14 KiB" uyarısı buradan.
+  //
+  // Turbopack'te karşılığı `turbopack.resolveAlias`, ama o istek dizesiyle
+  // eşleştiriyor; app-globals.js modülü göreli yolla (`../build/polyfills/...`)
+  // çağırdığı için ne paket yolu anahtarı ne de glob (`*/polyfills/...`) tutuyor
+  // — ikisi de denendi, build çıktısında polyfill duruyor.
+  //
+  // Bilerek bırakıldı: maliyet sıkıştırılmış ~4 KiB ve `next build --webpack`
+  // ile hâlâ çalışıyor. Turbopack bunu desteklerse buraya taşınmalı.
   webpack: (config, { isServer }) => {
     config.ignoreWarnings = config.ignoreWarnings ?? [];
     config.ignoreWarnings.push({
@@ -149,6 +161,16 @@ const nextConfig: NextConfig = {
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        // `public/` altındaki statikler Next'ten Cache-Control'süz çıkıyor ve
+        // Cloudflare kendi varsayılanını (Browser Cache TTL = 4 saat) uyguluyor.
+        // Logo her sayfa görüntülemesinde yeniden isteniyordu. İçerik değişirse
+        // dosya adı değişsin diye değil — bunlar sabit varlıklar, uzun TTL doğru.
+        source: "/icons/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
       },
     ];
   },
